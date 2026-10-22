@@ -1,4 +1,7 @@
--- Loom v2.1 PostgreSQL 16+ candidate schema. NOT YET EXECUTED against PostgreSQL.
+-- Loom v2.1 PostgreSQL 16+ schema candidate.
+-- Applied to a disposable PostgreSQL 16.15 cluster on 2026-10-23; 14 live
+-- constraints/RLS checks passed. PostgreSQL Store/production writer procedures,
+-- multi-host scheduling and disaster recovery are NOT implemented/validated.
 -- Read docs/postgres-integration.md before running. Apply once to an empty,
 -- dedicated database. Do not apply to the current SQLite database.
 --

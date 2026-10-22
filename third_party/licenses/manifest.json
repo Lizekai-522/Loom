@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "observed_date": "2026-10-22",
-  "source": "Installed distribution metadata and packaged licenses in work/loom-venv; pip excluded as installer",
+  "observed_date": "2026-10-23",
+  "source": "Installed distribution metadata and packaged licenses in work/loom-venv; pip excluded as installer; native NATS/PostgreSQL runtimes excluded from source deliverable",
   "packages": [
     {
       "name": "annotated-doc",
@@ -56,6 +56,19 @@
       ]
     },
     {
+      "name": "cffi",
+      "version": "2.1.1",
+      "license": "MIT-0",
+      "source": "https://github.com/python-cffi/cffi",
+      "scope": "S2-runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/cffi-2.1.1/LICENSE",
+          "sha256": "5ba24ddc57067f9249add644c3afc41a5d6dc37e23433ef759d95df370b0af63"
+        }
+      ]
+    },
+    {
       "name": "click",
       "version": "8.5.0",
       "license": "BSD-3-Clause",
@@ -78,6 +91,27 @@
         {
           "path": "third_party/licenses/colorama-0.4.6/LICENSE.txt",
           "sha256": "cac35c02686e5d04a5a7140bfb3b36e73aed496656e891102e428886d7930318"
+        }
+      ]
+    },
+    {
+      "name": "cryptography",
+      "version": "50.0.2",
+      "license": "Apache-2.0 OR BSD-3-Clause",
+      "source": "https://github.com/pyca/cryptography/",
+      "scope": "S2-runtime",
+      "license_files": [
+        {
+          "path": "third_party/licenses/cryptography-50.0.2/LICENSE",
+          "sha256": "3e0c7c091a948b82533ba98fd7cbb40432d6f1a9acbf85f5922d2f99a93ae6bb"
+        },
+        {
+          "path": "third_party/licenses/cryptography-50.0.2/LICENSE.APACHE",
+          "sha256": "aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe"
+        },
+        {
+          "path": "third_party/licenses/cryptography-50.0.2/LICENSE.BSD",
+          "sha256": "602c4c7482de6479dd2e9793cda275e5e63d773dacd1eca689232ab7008fb4fb"
         }
       ]
     },
@@ -160,6 +194,19 @@
       ]
     },
     {
+      "name": "nats-py",
+      "version": "2.16.0",
+      "license": "Apache-2.0",
+      "source": "https://github.com/nats-io/nats.py",
+      "scope": "S2-runtime",
+      "license_files": [
+        {
+          "path": "third_party/licenses/nats-py-2.16.0/LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ]
+    },
+    {
       "name": "opentelemetry-api",
       "version": "1.45.1",
       "license": "Apache-2.0",
@@ -203,6 +250,45 @@
         {
           "path": "third_party/licenses/pluggy-1.7.0/LICENSE",
           "sha256": "d6b65e6c213a5d0b577911d34d6e5949b9f59d76c238c5071a2f3fc16cfb2606"
+        }
+      ]
+    },
+    {
+      "name": "psycopg",
+      "version": "3.3.6",
+      "license": "LGPL-3.0-only",
+      "source": "https://github.com/psycopg/psycopg",
+      "scope": "postgres-integration-driver",
+      "license_files": [
+        {
+          "path": "third_party/licenses/psycopg-3.3.6/LICENSE.txt",
+          "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+        }
+      ]
+    },
+    {
+      "name": "psycopg-binary",
+      "version": "3.3.6",
+      "license": "LGPL-3.0-only",
+      "source": "https://github.com/psycopg/psycopg",
+      "scope": "postgres-integration-driver-binary",
+      "license_files": [
+        {
+          "path": "third_party/licenses/psycopg-binary-3.3.6/LICENSE.txt",
+          "sha256": "7d3a95e5e06978064ed3f8e2b7c8f845e7fd8a405294727cc708f94cb83b8059"
+        }
+      ]
+    },
+    {
+      "name": "pycparser",
+      "version": "3.12",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/eliben/pycparser",
+      "scope": "S2-runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/pycparser-3.12/LICENSE",
+          "sha256": "0a9e78156ae8b96caf1b4f11ac2df424b83de29736f9e757630548a6272fdf90"
         }
       ]
     },
@@ -302,6 +388,23 @@
       ]
     },
     {
+      "name": "tzdata",
+      "version": "2026.5",
+      "license": "Apache-2.0",
+      "source": "https://github.com/python/tzdata",
+      "scope": "postgres-integration-driver-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/tzdata-2026.5/LICENSE",
+          "sha256": "df58f69ea88683035d720b5375bcef0cf5aeaa98a1d098d572e0992c378deb46"
+        },
+        {
+          "path": "third_party/licenses/tzdata-2026.5/licenses/LICENSE_APACHE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ]
+    },
+    {
       "name": "uvicorn",
       "version": "0.54.0",
       "license": "BSD-3-Clause",
@@ -314,5 +417,6 @@
         }
       ]
     }
-  ]
+  ],
+  "initial_observed_date": "2026-10-22"
 }

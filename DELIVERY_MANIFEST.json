@@ -1,7 +1,9 @@
 {
-  "version": "0.1.0",
-  "stage": "S1-local-development",
-  "date": "2026-10-22",
+  "version": "0.2.0",
+  "stage": "S2-infrastructure-pilot",
+  "date": "2026-10-23",
+  "generated_at": "2026-10-23T00:57:14.570456+08:00",
+  "source_file_count_excluding_manifest": 86,
   "files": [
     {
       "path": ".gitignore",
@@ -9,14 +11,34 @@
       "bytes": 97
     },
     {
-      "path": "docs/api/openapi.json",
-      "sha256": "242acf8f4d786688080bb878b686be7572da3bdd4608d534a0748c668810afa2",
-      "bytes": 15919
+      "path": "README.md",
+      "sha256": "e544478798b75a6fca50e9fb4d0fd38db99313df3036a984d85a3d579fc9f45d",
+      "bytes": 10550
+    },
+    {
+      "path": "docs/Loom.md",
+      "sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
+      "bytes": 189731
     },
     {
       "path": "docs/api/README.md",
-      "sha256": "aaf67bf01da0640842b7be7eacab9f3a9dcb794c21eb79008fc369934738bfc1",
-      "bytes": 1474
+      "sha256": "3d770f988e0a02413406bf03d176d9d9e642fcd693e7e6f12b14ee6b332aff18",
+      "bytes": 1829
+    },
+    {
+      "path": "docs/api/openapi.json",
+      "sha256": "2d110cda5e25a52981e95bca174171f46808b8de968bbfeb0189e800c588a0e0",
+      "bytes": 15921
+    },
+    {
+      "path": "docs/checkpoints.md",
+      "sha256": "889942aa151e82ef3b317b4ee98a7c59910f267ef597f7634cdb973dca4c059f",
+      "bytes": 13800
+    },
+    {
+      "path": "docs/coverage-s2.json",
+      "sha256": "69ec388ef5053729fdff53de5fce51853f153c00d2282fe867ea608bb496717a",
+      "bytes": 75394
     },
     {
       "path": "docs/coverage.json",
@@ -30,18 +52,18 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "sha256": "c60c6123676eb886aa1f8174c24438449f5ea38487620e434b3ffc26493481f7",
-      "bytes": 16641
+      "sha256": "b9dbc56ccd9b06baa06302f3b9e605b208ed1d65a5e42ea35666c2b896f8f0cf",
+      "bytes": 18909
     },
     {
-      "path": "docs/Loom.md",
-      "sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
-      "bytes": 189731
+      "path": "docs/nats-integration.md",
+      "sha256": "e6e6c8941288862aa4adc02fc3483f08a636f4c2e16c93da1294971f22a680d9",
+      "bytes": 14799
     },
     {
       "path": "docs/postgres-integration.md",
-      "sha256": "1a7d492ba01b33c620ccc2adb310d9616baca2aaad30163e64a7a0a8ef4b9d6a",
-      "bytes": 14708
+      "sha256": "6fee3266393a9ae0df5fb697eac6d719b5f62e98f071e9f76500e5c81966b3d8",
+      "bytes": 19538
     },
     {
       "path": "docs/review-resolution.md",
@@ -55,18 +77,18 @@
     },
     {
       "path": "docs/third-party-notices.md",
-      "sha256": "085a21d600d54937fbe57edaf79233143183916f3a7ff69974df2f8103369c80",
-      "bytes": 6483
+      "sha256": "3c81609d5f425c86a3d7ea7618d470b980e1e878c519fecb8be3e861c0d9d797",
+      "bytes": 8969
     },
     {
       "path": "docs/validation.md",
-      "sha256": "b99d9d82f29ca49b4008fe1ec9767aee3335033dcf71980e3fca2055f9b9b296",
-      "bytes": 3991
+      "sha256": "8b44e215b2748aa7082bb63523ae15458ad82e07671a53ac10015b50022544c8",
+      "bytes": 9506
     },
     {
       "path": "migrations/postgres/001_core.sql",
-      "sha256": "fc618fab436ac720f95d54c341ea06f77a1e8b667c429aa276741b82417786d1",
-      "bytes": 26793
+      "sha256": "81ac97e3f78d09e1f5bf3c77360d3fbb85f0e06589710686ac1bc93b93272600",
+      "bytes": 26990
     },
     {
       "path": "packs/software-dev/manifest.json",
@@ -75,18 +97,13 @@
     },
     {
       "path": "pyproject.toml",
-      "sha256": "db63dcefed2d17cd94fe1267c2caeb361ba65787f586a9430afdef6a47b304b3",
-      "bytes": 591
-    },
-    {
-      "path": "README.md",
-      "sha256": "7f4114f1ca28007d2a6fbd5ff96244d08e95f28ef54692f528d286e5b4654a82",
-      "bytes": 6099
+      "sha256": "ea4ca70e7c289e6ffcb5f3ada43f80a24d2aec5a8328812246e1ab1d1d0ed4e2",
+      "bytes": 675
     },
     {
       "path": "requirements.lock",
-      "sha256": "11e4b529913d0da815d5311357f93b6d0eabe9286e1c444862ffe722286e61d1",
-      "bytes": 545
+      "sha256": "926fc5a62c07e22c013959235c85b0ae3b533d2744618164559b9319e6d13ad3",
+      "bytes": 662
     },
     {
       "path": "scripts/check.ps1",
@@ -94,13 +111,33 @@
       "bytes": 477
     },
     {
+      "path": "scripts/check_api.py",
+      "sha256": "d38ee70eb0e4c0e458aba53f334ede099a82c00cba53e2f73c396893beda2a7c",
+      "bytes": 5728
+    },
+    {
+      "path": "scripts/check_postgres.py",
+      "sha256": "57e83cc599bf71cf41b7cf2a76649acbbd11345a1ecfee501811645bbfeaa58b",
+      "bytes": 1485
+    },
+    {
+      "path": "scripts/check_s2.py",
+      "sha256": "5e227b345b873cb71b7bcdda093a5671b9deb12aefda81674e93d8fdbf163e07",
+      "bytes": 3493
+    },
+    {
       "path": "scripts/check_spec.py",
       "sha256": "908e8dea26774a2488ee0254c44f69ba52af6ff5ef386d5ae06e727b9a5814de",
       "bytes": 1423
     },
     {
+      "path": "scripts/demo_checkpoints.py",
+      "sha256": "e7f800c26ed9564543d9c230c7af3758328df17cad2c13a9bd3594e33a39864d",
+      "bytes": 12866
+    },
+    {
       "path": "src/loom/__init__.py",
-      "sha256": "75981194fbe17507a66d65e3a34f3aad7dc4ef264de30a524ec1e828545a46b5",
+      "sha256": "725760ed86a5895b1e1da9a5332b7c03c511669baf12dd4927aa85a80a5321cf",
       "bytes": 73
     },
     {
@@ -110,18 +147,28 @@
     },
     {
       "path": "src/loom/api.py",
-      "sha256": "07d301d7ce274e1dc9da4a31ec4d60f7cb7ba24fb919bddb79f687f3b360fd40",
-      "bytes": 5741
+      "sha256": "6161c479e502729dca62a1d193ac84bcaee2329bb1995ed61cdf0a5f96c5c9d4",
+      "bytes": 5794
+    },
+    {
+      "path": "src/loom/checkpoints.py",
+      "sha256": "4877343a3e6c96b7dc4226e3bb28ccc5102e7afbebd5fb3a30dc9f0bb15ff941",
+      "bytes": 21876
     },
     {
       "path": "src/loom/cli.py",
-      "sha256": "82480dff2b04c2db1209d21188e9f0ac1d6fa3caa9cdec6d828d8fba836233a9",
-      "bytes": 1920
+      "sha256": "1086e7e2a7a3e19c1b9248cbd8a0b0f4b9bc727966a7b81b355fe1ecbc0704a1",
+      "bytes": 3034
     },
     {
       "path": "src/loom/demo.py",
       "sha256": "875d7ad3e96dc68dd41b2e3633a9a66c7f10bd275a4a35c5dd108a5e13223198",
       "bytes": 5727
+    },
+    {
+      "path": "src/loom/jetstream.py",
+      "sha256": "4f26db60d672dfe0b0ca6c2a6b51428b114e25a93e3d2e8e76a4de4d05adc5e6",
+      "bytes": 15545
     },
     {
       "path": "src/loom/policy.py",
@@ -144,9 +191,34 @@
       "bytes": 701
     },
     {
+      "path": "tests/integration/__init__.py",
+      "sha256": "528cc5b2c3a05c605d1b61fdd3d8d5d2414f459dbcb4ad3ce3ab908dbdc207af",
+      "bytes": 61
+    },
+    {
+      "path": "tests/integration/test_nats_live.py",
+      "sha256": "1b68558075497172bb8b12485301cca6631ad750df3b53a9ce4d0f374efe53a8",
+      "bytes": 9668
+    },
+    {
+      "path": "tests/integration/test_nats_restart.py",
+      "sha256": "553e342aabeaadc88003c07b8c800dac5fc03719bf292251a897d58d52be2cf7",
+      "bytes": 4722
+    },
+    {
+      "path": "tests/integration/test_postgres_live.py",
+      "sha256": "6bb5fe546d1b4d74ef56bd257e453f95240ca75cefd48655050bcb23396a20d9",
+      "bytes": 21808
+    },
+    {
       "path": "tests/test_api.py",
       "sha256": "d3ea4792e6ce11d0b2244aa04d04756661753c635052cb09b28ff0797b8bf347",
       "bytes": 4931
+    },
+    {
+      "path": "tests/test_checkpoints.py",
+      "sha256": "abd01e30fe81b85d8b3bfd9c3fb43cbf87cb4d5d0958f589c2fb964ed9cab11a",
+      "bytes": 17645
     },
     {
       "path": "tests/test_cli.py",
@@ -157,6 +229,11 @@
       "path": "tests/test_demo.py",
       "sha256": "6c5be5b1382ae6e5fd9ea14dcc084a08631f11796b5727de31cf55b563f5a1d9",
       "bytes": 1364
+    },
+    {
+      "path": "tests/test_jetstream.py",
+      "sha256": "4dcf2b3ed943de38797bb0d5d73f36309f7ca5a7f8ced0e12c51a2472f519195",
+      "bytes": 7120
     },
     {
       "path": "tests/test_policy.py",
@@ -194,6 +271,11 @@
       "bytes": 989
     },
     {
+      "path": "third_party/licenses/cffi-2.1.1/LICENSE",
+      "sha256": "5ba24ddc57067f9249add644c3afc41a5d6dc37e23433ef759d95df370b0af63",
+      "bytes": 1123
+    },
+    {
       "path": "third_party/licenses/click-8.5.0/LICENSE.txt",
       "sha256": "9a8ad106a394e853bfe21f42f4e72d592819a22805d991b5f3275029292b658d",
       "bytes": 1475
@@ -202,6 +284,21 @@
       "path": "third_party/licenses/colorama-0.4.6/LICENSE.txt",
       "sha256": "cac35c02686e5d04a5a7140bfb3b36e73aed496656e891102e428886d7930318",
       "bytes": 1491
+    },
+    {
+      "path": "third_party/licenses/cryptography-50.0.2/LICENSE",
+      "sha256": "3e0c7c091a948b82533ba98fd7cbb40432d6f1a9acbf85f5922d2f99a93ae6bb",
+      "bytes": 197
+    },
+    {
+      "path": "third_party/licenses/cryptography-50.0.2/LICENSE.APACHE",
+      "sha256": "aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe",
+      "bytes": 11360
+    },
+    {
+      "path": "third_party/licenses/cryptography-50.0.2/LICENSE.BSD",
+      "sha256": "602c4c7482de6479dd2e9793cda275e5e63d773dacd1eca689232ab7008fb4fb",
+      "bytes": 1532
     },
     {
       "path": "third_party/licenses/fastapi-0.159.1/LICENSE",
@@ -235,8 +332,13 @@
     },
     {
       "path": "third_party/licenses/manifest.json",
-      "sha256": "280c9e81d8fff80f8da9b52103eab1239d24a2930c971deed60aebb5217d7ac8",
-      "bytes": 10265
+      "sha256": "79be6621ebbc9340cebc1c7d356934333f474e1ff888e65164ce95cfb1e280a2",
+      "bytes": 13850
+    },
+    {
+      "path": "third_party/licenses/nats-py-2.16.0/LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "bytes": 11357
     },
     {
       "path": "third_party/licenses/opentelemetry-api-1.45.1/LICENSE",
@@ -262,6 +364,21 @@
       "path": "third_party/licenses/pluggy-1.7.0/LICENSE",
       "sha256": "d6b65e6c213a5d0b577911d34d6e5949b9f59d76c238c5071a2f3fc16cfb2606",
       "bytes": 1110
+    },
+    {
+      "path": "third_party/licenses/psycopg-3.3.6/LICENSE.txt",
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118",
+      "bytes": 7652
+    },
+    {
+      "path": "third_party/licenses/psycopg-binary-3.3.6/LICENSE.txt",
+      "sha256": "7d3a95e5e06978064ed3f8e2b7c8f845e7fd8a405294727cc708f94cb83b8059",
+      "bytes": 7817
+    },
+    {
+      "path": "third_party/licenses/pycparser-3.12/LICENSE",
+      "sha256": "0a9e78156ae8b96caf1b4f11ac2df424b83de29736f9e757630548a6272fdf90",
+      "bytes": 1543
     },
     {
       "path": "third_party/licenses/pydantic-2.14.1/LICENSE",
@@ -304,24 +421,39 @@
       "bytes": 1090
     },
     {
+      "path": "third_party/licenses/tzdata-2026.5/LICENSE",
+      "sha256": "df58f69ea88683035d720b5375bcef0cf5aeaa98a1d098d572e0992c378deb46",
+      "bytes": 625
+    },
+    {
+      "path": "third_party/licenses/tzdata-2026.5/licenses/LICENSE_APACHE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "bytes": 11357
+    },
+    {
       "path": "third_party/licenses/uvicorn-0.54.0/LICENSE.md",
       "sha256": "efe1acf3e62fb99c288b0ec73e5a773b7268ef4320fe757ea994214e4b63c371",
       "bytes": 1526
     }
   ],
-  "excluded": [
-    ".git",
-    "runtime databases and artifacts",
-    "virtual environments",
-    "caches",
-    "editable package metadata"
-  ],
   "validation": {
-    "tests_passed": 65,
-    "subtests_passed": 19,
-    "line_coverage_percent": 88.87627695800226,
-    "real_model_execution": false,
-    "real_external_writes": 0,
-    "postgres_instance_tested": false
-  }
+    "main_tests_passed": 135,
+    "subtests_passed": 33,
+    "skipped": 0,
+    "api_smoke_checks": 9,
+    "checkpoint_demo_checks": 10
+  },
+  "runtime": {
+    "python": "3.13.12",
+    "nats_server": "2.15.1",
+    "postgresql": "16.15"
+  },
+  "production_ready": false,
+  "real_models_used": false,
+  "notes": [
+    "API/Store still use SQLite; PostgreSQL tests validate separate DDL/roles/constraints.",
+    "Signed checkpoints use local encrypted keys and trusted files, not external WORM/HSM.",
+    "Manifest excludes itself; archive SHA-256 is delivered separately.",
+    "No databases, credentials, private keys, venvs or native server binaries are included."
+  ]
 }

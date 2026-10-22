@@ -1,8 +1,8 @@
 # PostgreSQL 生产适配候选设计与验证计划
 
-日期：2026-10-22。目标：PostgreSQL 16+。对应迁移：`migrations/postgres/001_core.sql`。
+更新日期：2026-10-23。目标：PostgreSQL 16+。对应迁移：`migrations/postgres/001_core.sql`。
 
-**状态：可审阅 DDL，尚未在 PostgreSQL 上执行。** 本次机器的 Docker daemon 未运行，当前可运行内核仍使用 SQLite。该文件不代表 PostgreSQL 适配器、RLS 集成、多主机并发、真实副作用或灾备恢复已经通过。
+**状态：DDL 已在隔离的 PostgreSQL 16.15 上应用，14 项真实数据库检查通过；属于 S2 的部分进展。** Docker daemon 未运行，本次使用官方页面指向的 EDB 便携二进制，新建 loopback 测试 cluster，没有安装系统服务或提权。当前应用内核仍使用 SQLite；PostgreSQL Store 适配器、生产写命令过程、全局容量/预算并发协议、真实副作用和灾备恢复仍未完成。
 
 ## 1. 已提供的数据库结构
 
@@ -86,7 +86,7 @@ Claim 插入触发器使用数据库时钟并锁住 task/run 行，递增当前 
 
 ## 6. 在隔离 PostgreSQL 实例上的验证步骤
 
-以下步骤是**待执行计划**，不是本次测试结果。只使用合成数据，不接真实工具、用户数据库或模型计费账户。
+下列步骤是完整集成门禁。本次已在新建合成数据库中执行 DDL、角色/RLS、触发器、复合外键和双连接 claim 竞争检查；生产写命令层、完整账本/投影重建、主备/RPO 与真实 Gateway 行为仍待验证。测试不接真实工具、用户数据库或模型计费账户。
 
 1. 启动固定镜像版本的 PostgreSQL 测试实例，记录确切版本与数据库参数，使用新建专用数据库。
 2. 由 DBA 建立上述组角色和独立测试登录；迁移登录取得最小创建与 SET ROLE 权限，业务登录无 owner/scope_admin 成员关系。
@@ -120,7 +120,7 @@ Claim 插入触发器使用数据库时钟并锁住 task/run 行，递增当前 
 
 ## 7. 本次验证范围
 
-本次完成候选 SQL 编写、官方语义核对和离线解析检查：
+2026-10-22 完成 SQL 编写、官方语义核对和离线解析检查：
 
 | 项目 | 结果 |
 |---|---|
@@ -130,8 +130,64 @@ Claim 插入触发器使用数据库时钟并锁住 task/run 行，递增当前 
 | SQL 函数 | 1 个 SQL 函数主体通过解析 |
 | 动态 SQL | 7 个 format 模板以安全占位表名展开后可解析 |
 | 结构检查 | 21 张表全部含 tenant_id |
-| 实例执行 | 未执行；没有进行真实 PostgreSQL 迁移、授权、RLS、触发器或并发测试 |
+| 当日实例执行 | 未执行；以下 2026-10-23 记录补充了实际数据库检查 |
 
-解析器临时安装在本次工作区 `work/postgres-sql-parser`，没有加入项目 requirements、pyproject 依赖或项目虚拟环境。PostgreSQL 17.7 解析器接受语法不等同于 PostgreSQL 16 实例通过迁移；目标版本 16 与后续支持版本仍需分别执行。
+解析器临时安装在本次工作区 `work/postgres-sql-parser`，没有加入项目 requirements、pyproject 依赖或项目虚拟环境。PostgreSQL 17.7 解析器接受语法不等同于 PostgreSQL 16 实例通过迁移；下方 2026-10-23 记录单独补上了 16.15 实例执行，其他目标版本仍需分别验证。
 
-解析检查不解析动态 SQL 的实际对象权限，不执行触发器或角色切换，也不验证 JSON 编码、外键数据、策略可见性与运行时函数语义。实际执行状态应以项目验证记录为准；在上述真实 PostgreSQL 测试完成前，本文件始终属于实施候选。
+解析检查不解析动态 SQL 的实际对象权限，不执行触发器或角色切换，也不验证 JSON 编码、外键数据、策略可见性与运行时函数语义。
+
+### 2026-10-23 真实数据库记录
+
+运行 `scripts/check_postgres.py --config <private work JSON>`，真实 PostgreSQL 16.15 上 **14 项通过、0 跳过**。已检查：
+
+- 21 张表全部启用并强制 RLS；两个实际业务登录各自只读其租户，改变自定义 tenant GUC 不扩大权限。
+- 实际审计登录仅见授权租户，无 SUPERUSER、BYPASSRLS 或 owner 成员关系，不能改授权表；业务登录不能直接改 run 成功状态。
+- 跨租户/run 复合外键；冻结 Anchor、验收判据和规则版本不可原位替换。
+- 事件与 outbox 同事务插入；actor、type、chain、schema_version、submission_key、payload 或 hash 不匹配时拒绝；失败追加不推进链头。
+- UPDATE、DELETE、TRUNCATE 已追加事件被触发器拦截，包括测试管理员连接。
+- 数据库签发递增 epoch；旧 epoch 不再符合 active/current/未过期的发起资格查询；未验证前置、暂停 run 拒绝 claim。
+- 两个真实数据库连接同时认领同任务，只有一个成功，最终仅一条 active claim。
+- 预算硬约束拒绝超预留；显式 overrun 状态能记录实际超额；同逻辑工具操作跨 attempt 的唯一性约束生效。
+
+这些测试验证 DDL 和受限读取角色，没有冒充完整 PostgreSQL 命令适配器或真实出口 fencing。涉及合成插入/约束的测试使用独立测试管理员，RLS 可见性和拒绝写入测试使用真实业务/审计登录；两者区分明确。
+
+默认没有 `LOOM_POSTGRES_TEST_CONFIG` 时，14 项 live 测试会明确标为 skipped。显式配置后，缺驱动、文件不存在、连接失败、迁移失败或测试失败均返回失败；已经验证显式错误配置不会转换为 skip。专用脚本遇到任何 skip 或零项测试也返回非零。
+
+## 8. 便携运行时来源与边界
+
+| 项目 | 本次记录 |
+|---|---|
+| 来源链 | [PostgreSQL Windows 官方下载页](https://www.postgresql.org/download/windows/) 指向 EDB ZIP 二进制 |
+| 发布页 | [EDB PostgreSQL binaries](https://www.enterprisedb.com/download-postgresql-binaries) |
+| 固定文件 | [postgresql-16.15-1-windows-x64-binaries.zip](https://get.enterprisedb.com/postgresql/postgresql-16.15-1-windows-x64-binaries.zip) |
+| 文件大小 | 332,441,502 字节 |
+| 本地计算 SHA-256 | `25e6fcdfb8caec38691bf461125e7564508760666f7b8e5dc6a5f0818f58f81e` |
+| 二进制实际版本 | `postgres (PostgreSQL) 16.15`，Windows x64 |
+| 提取范围 | `pgsql/bin`、`pgsql/lib`、`pgsql/share`，以及 server/命令行工具许可证；未提取 pgAdmin 或 StackBuilder |
+| 项目外运行时 | 工作区 `work/loom-infra/postgres-runtime`；未纳入源码或发布包 |
+| 测试 cluster | 工作区 `work/loom-infra/postgres-cluster`，初始化默认数据库与合成测试库 `loom_test_s2` |
+| 网络/进程 | 前台 exec 托管，绑定 `127.0.0.1:55432`；没有安装系统服务 |
+| 客户端 | 项目工作虚拟环境 `psycopg==3.3.6`；本子任务未改 pyproject 或依赖锁文件 |
+
+SHA-256 是本次下载文件的本地计算摘要，用于之后对照完整性；本次没有取得独立发布者签名或单独发布的校验清单，不将本地摘要称为独立认证。下载通过官方指向的 HTTPS 域名完成，许可证保存在工作运行时目录。
+
+测试凭据随机生成，只存于 `work/loom-infra/postgres-session.json`，不打印、不写入仓库。配置含可核对的数据目录和 cluster system identifier，用于避免误连其他数据库。此私有配置只允许 `disposable_cluster=true`、loopback 主机和 `loom_test_*` 库；检查脚本会重建该库的 `loom` schema。
+
+## 9. 重跑与停止
+
+在项目根目录，且便携测试服务仍运行时：
+
+```powershell
+$pgTestConfig = (Resolve-Path '../../work/loom-infra/postgres-session.json').Path
+& '../../work/loom-venv/Scripts/python.exe' -B scripts/check_postgres.py --config $pgTestConfig
+```
+
+这会重置专用合成测试库中的 `loom` schema。不要将生产或用户数据库配置传入该脚本。密码不作为命令参数传递。
+
+若需将 live 测试纳入整套测试，用相同私有路径设置 `LOOM_POSTGRES_TEST_CONFIG`。没有配置时，默认测试只报告跳过数据库集成项，不表示数据库通过。
+
+测试结束后可用以下命令正常关闭该工作区的测试 cluster；再次使用时需以前台方式启动，不要安装服务：
+
+```powershell
+& '../../work/loom-infra/postgres-runtime/pgsql/bin/pg_ctl.exe' -D '../../work/loom-infra/postgres-cluster' stop -m fast
+```

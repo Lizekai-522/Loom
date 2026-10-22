@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from . import __version__
 from .store import Claim, Conflict, InvalidInput, LoomError, NotFound, Store, canonical
 
 
@@ -55,7 +56,7 @@ def create_app(store: Store, tenant_keys: dict[str, str]) -> FastAPI:
         raise ValueError("configure tenant keys with at least 16 characters")
     if len(set(tenant_keys.values())) != len(tenant_keys):
         raise ValueError("tenant keys must be unique")
-    app = FastAPI(title="Loom local kernel", version="0.1.0",
+    app = FastAPI(title="Loom local kernel", version=__version__,
                   description="Local S1 development API. No real model or external write execution.")
     security = HTTPBearer(auto_error=False)
 
@@ -83,7 +84,7 @@ def create_app(store: Store, tenant_keys: dict[str, str]) -> FastAPI:
 
     @app.get("/health")
     def health():
-        return {"status": "ok", "stage": "S1-local", "external_writes_enabled": False}
+        return {"status": "ok", "version": __version__, "stage": "S1-local", "external_writes_enabled": False}
 
     @app.post("/v1/runs", status_code=201)
     def create_run(body: RunInput, tenant: Tenant, idempotency_key: Key):
@@ -121,6 +122,6 @@ def create_app(store: Store, tenant_keys: dict[str, str]) -> FastAPI:
         chain = store.events(tenant, run_id)
         return {"valid": store.verify_events(chain), "event_count": len(chain),
                 "head": chain[-1]["hash"] if chain else "0" * 64,
-                "external_checkpoint": "not_implemented"}
+                "external_checkpoint": "not_configured"}
 
     return app

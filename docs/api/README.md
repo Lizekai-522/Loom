@@ -2,6 +2,8 @@
 
 此目录的 `openapi.json` 由当前 FastAPI 应用生成，描述实际可运行的 S1-local HTTP 子集。设计方案附录中的其余接口仍属后续目标，未因列入规范而自动实现。
 
+本轮包版本为 0.2.0，`/health` 增加 `version`；`stage` 仍为 `S1-local`，因为 HTTP 内核继续使用 SQLite。`/integrity` 的 `external_checkpoint: "not_configured"` 表示该 HTTP 实例尚未配置独立检查点；新增的离线 Ed25519 组件不在普通查询时自动签名，使用方法见 [检查点说明](../checkpoints.md)。
+
 | 动作 | 实际接口 |
 |---|---|
 | 创建/查询 run | `POST /v1/runs`、`GET /v1/runs/{run_id}` |
