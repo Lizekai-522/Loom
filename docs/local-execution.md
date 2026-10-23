@@ -93,3 +93,11 @@ sha256:19d840be00b00dd952e065969de532fd28670b8c9e99c7c597408d195f67ac7e
 默认 `packs/software-dev/workflow-v1.json` 仍是 spec → design/case → code → review → fix → verify 的七角色规划模板，evaluation_digest 默认 None，未完成该模板的真实全链执行。当前配置的七角色都路由到同一个 Flash，也不能形成两个不同受信模型身份。用户已确认本阶段先接通 Flash，双签保留待配置；最终 Goal 验收继续受独立验证约束，此执行器不会伪造签名，也不把有限用例通过直接改成 done/succeeded。
 
 本轮模拟 HTTP/模拟 sandbox 的状态机测试与上述真实探针分别统计。工作流专项测试验证冻结合同、事务和能力边界；它们都不能替代真实第二模型、全工作流、生产权限及恢复演练。
+
+## 0.7 已批准辅助输入执行
+
+新入口`scripts/run_context_task.py`，默认只读task/pack并预览，不读身份或密钥、不打开DB、不联网或启动Docker。显式`--approve`后才通过本机具名HTTP Worker发布本机准备的requirements，operator审批计划/当前target epoch输入，随后执行Flash与Docker；这不是analyst模型生成。API与本机DB必须一致，错误库最多留下一个draft，不批准/领取。参数见第七轮测试指南和脚本help。
+
+本轮真实run`849020d2-47cb-4f07-a506-15ebf3884c2a`，5用例通过，452tokens、251µUSD上界，剩余预留0，非账单。实际输入绑定摘要`07e3266fd893bcdb4f01839f3fddb2c26026a9012f00d98f5550b4c06a7af0f8`；只发typed user数据，权限和隐藏用例不送模型。task只submitted/verified=false，独立review未领取。
+
+快照/预算/intent/绑定审计同事务，返回后先结已知usage再检查版本；沙箱及提交再次复核。失效转人工，旧grant不跟新revision或Rebind epoch。不能把本机准入称远端收据；网络期间不持DB锁。没有自动补attempt或等待状态，最后epoch停止可能需新Goal。

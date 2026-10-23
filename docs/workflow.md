@@ -8,7 +8,7 @@
 
 每个 `TaskNode` 包含 id、title、instruction、role、depends、priority、channel、limits 和可选 evaluation_digest、repair、input_artifacts。validator 使用 verification 通道，其余角色使用 business。依赖必须引用本定义中的节点；重复 ID、自依赖、缺失依赖、循环、跨 run 形式的引用均拒绝。当前没有路径输入字段，scope 只接受平台命名的受控本地工作区。Goal、说明、instruction 和上游产物始终是任务数据，不能提升为平台系统指令。
 
-`input_artifacts` 最多声明8个辅助读取来源，逐项绑定 source_node、kind、schema_version 和 required；来源角色必须能产生该类型，禁止自身/未知来源和重复选择器。该字段参与批准摘要与合同，未填写时省略这一新增字段，保持旧合同摘要；旧 evaluation_digest:null 语义不变。它不修改 `depends`，不产生派发边。operator 仍须批准精确候选版本，0.6只提供只读预览，尚未接入模型或执行器。[候选合同与批准](artifacts.md)
+`input_artifacts` 最多声明8个辅助读取来源，逐项绑定 source_node、kind、schema_version 和 required；来源角色必须能产生该类型，禁止自身/未知来源和重复选择器。该字段参与批准摘要与合同，未填写时省略这一新增字段，保持旧合同摘要；旧 evaluation_digest:null 语义不变。它不修改 `depends`，不产生派发边。0.6提供候选与只读预览；0.7在当前有效claim下，将operator精确批准的辅助数据接入Python执行器的user消息，并在发起与提交事务中复核。pending epoch0的批准不能沿用到claim epoch1，Rebind也不复制旧批准；失效转人工且不自动扩充尝试额度。[候选合同与批准](artifacts.md)
 
 `evaluation_digest` 如有值必须是 64 位小写十六进制摘要，并纳入完整计划摘要、冻结合同及独立投影列。真实代码执行器必须要求宿主侧 FrozenTest suite 的摘要与已批准值一致；None 表示没有授权的执行判据，不能当作“跳过校验”。黄金 expected 值保留在宿主侧，不放入模型 prompt。当前示例七节点均未绑定实际 suite，因此只是可批准的规划模板，不凭此授权真实生成代码执行。旧本地数据库会新增可空列，旧合同不会自动获得判据绑定。
 

@@ -1,8 +1,8 @@
 # Loom
 
-基于 Loom v2.1 修订方案的 Agent 编排项目，当前包版本 **0.6.0，artifact-preview-alpha**。在 Goal/Plan、具名权限、中文控制台和 Flash → Docker 有界修复链路上，增加需求、设计、公开开发检查的结构化候选注册、精确辅助输入批准和只读预览。API 与任务内核继续使用单实例 SQLite；候选预览尚未接入模型执行，完整七角色及全部修复原语仍在推进。
+基于 Loom v2.1 修订方案的 Agent 编排项目，当前版本 **0.7.0，execution-context-alpha**。已将精确批准的辅助输入接入Python执行器：发起前原子绑定上下文、预算与意图，模型返回及提交前复核版本，控制台展示安全摘要。API/任务内核仍单实例SQLite，完整七角色与全部修复原语继续推进。
 
-完整回归 **469主测试、302子测试通过，0失败、0跳过；另100项实际HTTP和46项真实浏览器断言通过**，详见 [验证记录](docs/validation.md)。0.5历史为432主/267子、0.4为368主/265子。完整套件使用真实Docker/NATS/独立PostgreSQL，模型网关使用Mock；新增产物HTTP由测试Worker提交，无新增付费调用。真实模型探针分别登记。
+完整回归 **530主测试、326子测试，零失败/跳过；另116项实际HTTP、29项新增真实浏览器断言通过**，详见[验证记录](docs/validation.md)。本轮另完成一次真实Flash+Docker：5用例、452tokens、251µUSD费用上界，非供应商账单；完整套件的模型仍Mock。旧0.6为469主/302子、100HTTP/46浏览器，作为历史保留。
 
 0.4.0新增Unicode任务通过 **5个冻结用例**，提供方返回 **452 tokens**，保守费用记账上界 **262µUSD**，并与工作台证据对账。0.3.0历史探针为4个用例、417 tokens、247µUSD。费用均为上界记账，非供应商账单。用户确认本阶段先使用 Flash，双签保持待配置；任务仍为 `submitted`，人工核对或操作控制都不代替独立验证，也不将完整 run 标为成功。[真实执行方式与边界](docs/local-execution.md)
 
@@ -75,7 +75,7 @@ API 只绑定回环地址。`/health`、静态控制台和接口文档可无认�
 
 通过 `POST /v1/goals` 创建，再用 `PUT /v1/goals/{run_id}/plan` 保存定义及 expected_revision，最后以当前 revision/digest 批准。创建 Goal、保存/批准计划、控制/核对及旧 run/task/提交命令需要 `Idempotency-Key`。注册判据、计划审批与权限见 [API 契约](docs/api/README.md)。已实现本机动作角色边界，**尚未完成生产 OIDC、人员身份认证、双人审批或独立验证服务身份**；同一 Windows 用户管理多个 token 不证明多个独立人员。
 
-本轮实际服务为原API9 + Goal/Plan12 + 具名控制31 + 旧真实任务兼容17 + 候选交接31 = 100项；浏览器另46项。旧fixture检查继续使用原私有会话，可在服务运行时复现，不必输出或重新生成token：
+本轮实际服务检查116项：原9+Goal12+控制31+旧真实任务17+候选31+新绑定对账16；另29项新增浏览器断言。旧fixture检查沿用原私有会话，不输出或重新生成token：
 
 ```powershell
 $firstRoundSession = (Resolve-Path '../../work/loom-first-round-session.json').Path
@@ -137,7 +137,7 @@ $image = (Get-Content '../../work/loom-sandbox-image.id' -Raw).Trim()
 
 ## 当前边界
 
-候选来源为认证 Worker 提交，内容及模型来源未验证；人工批准只授予辅助读取，`execution_connected=false`。预览尚未进入模型提示、执行派发或Gate-V，静态字节限额不等于token裁剪；FR-051/052仍部分实现。
+候选来源为认证Worker提交，内容及来源模型未验证。预览GET的`execution_connected=false`表示该查询本身不执行；0.7 Python执行器可在有效claim/精确批准下消费typed辅助数据。准入事件不是供应商收据，不授予依赖完成或Gate-V权限。静态字节限制不等于token裁剪，FR-051/052仍partial；Rebind换代须重新批准，最后epoch停止可能需新Goal。
 
 1. API 和任务内核仍由 SQLite 通过数据库事务在**单主机**协调。独立 PostgreSQL DDL/RLS 检查已通过，不代表完整 PostgreSQL Store、多主机调度或主备灾备完成。
 2. Ed25519 检查点可以发现与独立受信快照不一致的截断、改写和历史分叉；必须保护公钥白名单和高水位。相同本机账号能同时改 DB、密钥与高水位时没有独立安全边界；本地文件不是 WORM、HSM 或远端不可回滚锚定。
@@ -149,10 +149,12 @@ $image = (Get-Content '../../work/loom-sandbox-image.id' -Raw).Trim()
 8. 当前回放重建已实现的业务投影；全量快照恢复、跨版本事件升级、全部生产投影和外部效果补偿仍待实现。
 9. 已实现批准的同节点有界Rebind真实执行路径；Substitute仍只有本地fixture记录。完整图RepairPlan、六种原语、工具/模型替代、动态改图、模板库和经验库尚未全通。
 10. 事件接口暂为本地整链读取；分页、SSE、生产限流和大规模性能测试尚未实现。
-11. 当前脚本创建implement → independent_review两节点计划，仅执行获准developer/fixer节点。公开开发检查可驱动同节点有界修复；人工控制覆盖暂停/恢复/终止/未知核对。真实七角色协作、全部修复循环、任意仓库与依赖安装、生产部署及完整FR001–062仍未验收。
+11. 旧run_local_task.py创建implement → independent_review两节点；新run_context_task.py创建spec、implement、independent_review三节点，spec用于明确导入输入，真实模型仅执行获准开发节点。公开开发检查可驱动同节点有界修复；人工控制覆盖暂停/恢复/终止/未知核对。真实七角色协作、全部修复循环、任意仓库与依赖安装、生产部署及完整FR001–062仍未验收。
 
 ## 复用与授权
 
 当前实际复用 FastAPI、Pydantic、Uvicorn、nats-py、cryptography，以及 PostgreSQL 集成驱动 psycopg，通过锁版本依赖接入；没有将第三方编排框架作为 Loom 内核。30 个发行包的 36 份许可/署名文件保存在 `third_party/licenses/`。NATS Server 与 PostgreSQL 便携二进制只用于本机隔离试点，来源与摘要见各集成文档，未进入源码包。Temporal、LangGraph 仍为研究候选。
 
 本项目新增代码未在本次工作中指定开源许可证；第三方组件继续按各自许可证使用。
+
+0.7新增入口：[run_context_task.py](scripts/run_context_task.py) 默认仅预览；显式`--approve`才创建本机Goal、通过具名HTTP身份导入/批准输入并调用Flash。详见[输入与执行合同](docs/artifacts.md)及[本机执行](docs/local-execution.md)。

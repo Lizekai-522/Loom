@@ -225,12 +225,15 @@ class ModelGateway:
             raise GatewayError("UNKNOWN_MODEL_ROLE")
         return await self.generate(self.role_aliases[role], messages, max_output_tokens, json_mode=json_mode)
 
-    async def generate(self, route_alias: str, messages: Sequence[Mapping[str, str]],
-                       max_output_tokens: int, *, json_mode: bool = False) -> ModelResult:
+    def prepare_request(self, route_alias: str, messages: Sequence[Mapping[str, str]],
+                        max_output_tokens: int, *, json_mode: bool = False) -> bytes:
+        """Validate exact wire bytes without looking up credentials or doing I/O.
+
+        Trusted executors can reject oversized input before recording a paid
+        intent. Dispatch uses this same serializer; headers and keys are absent.
+        """
         route = self._route(route_alias)
-        state = self.readiness(route_alias)
-        if not state.ready:
-            raise GatewayError(state.reason)
+        _require((route.provider, route.model) in VERIFIED_MODELS, "MODEL_UNVERIFIED")
         _require(type(json_mode) is bool, "INVALID_MODEL_INPUT")
         _require(_integer(max_output_tokens, 1, route.max_output_tokens), "INVALID_MODEL_INPUT")
         _require(isinstance(messages, (list, tuple)) and 1 <= len(messages) <= 128, "INVALID_MODEL_INPUT")
@@ -251,6 +254,15 @@ class ModelGateway:
         except (ValueError, UnicodeError, TypeError):
             raise GatewayError("INVALID_MODEL_INPUT") from None
         _require(len(raw) <= route.max_request_bytes, "MODEL_REQUEST_TOO_LARGE")
+        return raw
+
+    async def generate(self, route_alias: str, messages: Sequence[Mapping[str, str]],
+                       max_output_tokens: int, *, json_mode: bool = False) -> ModelResult:
+        route = self._route(route_alias)
+        state = self.readiness(route_alias)
+        if not state.ready:
+            raise GatewayError(state.reason)
+        raw = self.prepare_request(route_alias, messages, max_output_tokens, json_mode=json_mode)
         # Resolve the key only at dispatch; neither routes nor public results hold it.
         key = self._key(route)
         if key is None:

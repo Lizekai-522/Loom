@@ -61,7 +61,7 @@
         </section>
         <section id="tab-artifacts" class="tab-panel" aria-label="产物和辅助输入预览" hidden>
           <div class="section-heading"><h2>候选产物</h2><button id="artifacts-refresh" type="button">重新读取</button></div>
-          <p class="field-help">候选来自已认证 Worker 提交，尚未独立验证。批准辅助输入只供目标节点参考，不验证产物、不放行父任务或依赖；当前未接入模型执行。</p>
+          <p class="field-help">候选来自已认证 Worker 提交，尚未独立验证。批准辅助输入只供目标节点参考，不验证产物、不放行父任务或依赖。本次预览不会发起执行，实际绑定看“人工待办”中的执行记录。</p>
           <p id="artifacts-state" class="muted" role="status" aria-live="polite"></p><div id="artifact-list" class="artifact-list"></div><div id="artifact-detail"></div>
           <div class="input-preview-panel">
             <h2>目标节点的辅助输入</h2><label for="input-target">目标任务</label><select id="input-target" aria-describedby="input-selectors"></select><p id="input-selectors" class="field-help"></p>

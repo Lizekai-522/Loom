@@ -327,17 +327,21 @@ class Store:
         """Untrusted worker submission releases capacity but never opens dependencies."""
         args = {"run_id": claim.run_id, "task_id": claim.task_id, "epoch": claim.epoch, "worker": claim.worker_id, "output": output}
         def apply(db):
-            self._assert_claim(db, claim)
-            unknown = db.execute("SELECT 1 FROM effects WHERE tenant=? AND task_id=? AND state IN ('intent','indeterminate','partial')",
-                                 (claim.tenant_id, claim.task_id)).fetchone()
-            if unknown:
-                raise Conflict("resolve pending external effects before submitting output")
-            db.execute("UPDATE tasks SET status='submitted',output=?,lease_until=NULL WHERE tenant=? AND id=?",
-                       (canonical(output), claim.tenant_id, claim.task_id))
-            result = {"task_id": claim.task_id, "status": "submitted", "content_hash": digest(output)}
-            self._event(db, claim.tenant_id, claim.run_id, "task.output_submitted", {**result, "output": output}, "worker:" + claim.worker_id, key)
-            return result
+            return self._submit_output(db, claim, key, output)
         return self._command(claim.tenant_id, key, "submit_output", args, apply)
+
+    def _submit_output(self, db, claim: Claim, key: str, output: dict) -> dict:
+        """Standard submission within a trusted caller's authority transaction."""
+        self._assert_claim(db, claim)
+        unknown = db.execute("SELECT 1 FROM effects WHERE tenant=? AND task_id=? AND state IN ('intent','indeterminate','partial')",
+                             (claim.tenant_id, claim.task_id)).fetchone()
+        if unknown:
+            raise Conflict("resolve pending external effects before submitting output")
+        db.execute("UPDATE tasks SET status='submitted',output=?,lease_until=NULL WHERE tenant=? AND id=?",
+                   (canonical(output), claim.tenant_id, claim.task_id))
+        result = {"task_id": claim.task_id, "status": "submitted", "content_hash": digest(output)}
+        self._event(db, claim.tenant_id, claim.run_id, "task.output_submitted", {**result, "output": output}, "worker:" + claim.worker_id, key)
+        return result
 
     def renew_claim(self, claim: Claim, *, lease_seconds: float = 90) -> Claim:
         """A live owner may renew its own epoch; expired owners cannot revive it."""
@@ -485,16 +489,21 @@ class Store:
         This operation does not perform network I/O or retry an existing grant.
         """
         with self.transaction() as db:
-            self._assert_claim(db, claim)
-            old = db.execute("SELECT 1 FROM reservations WHERE tenant=? AND id=?",
-                             (claim.tenant_id, reservation_id)).fetchone()
-            reserved = self._reserve(db, claim, reservation_id, max_cost=max_cost, max_tokens=max_tokens)
-            grant = self._begin_effect(db, claim, operation_id, request)
-            if not grant["dispatch"] and old is None:
-                raise Conflict("existing effect cannot acquire a different reservation")
-            if grant["dispatch"] and reserved["state"] != "reserved":
-                raise Conflict("settled budget cannot authorize a new effect")
-            return grant
+            return self._reserve_and_begin_effect(db, claim, reservation_id, max_cost=max_cost,
+                max_tokens=max_tokens, operation_id=operation_id, request=request)
+
+    def _reserve_and_begin_effect(self, db, claim: Claim, reservation_id: str, *, max_cost: int,
+                                  max_tokens: int, operation_id: str, request: dict) -> dict:
+        self._assert_claim(db, claim)
+        old = db.execute("SELECT 1 FROM reservations WHERE tenant=? AND id=?",
+                         (claim.tenant_id, reservation_id)).fetchone()
+        reserved = self._reserve(db, claim, reservation_id, max_cost=max_cost, max_tokens=max_tokens)
+        grant = self._begin_effect(db, claim, operation_id, request)
+        if not grant["dispatch"] and old is None:
+            raise Conflict("existing effect cannot acquire a different reservation")
+        if grant["dispatch"] and reserved["state"] != "reserved":
+            raise Conflict("settled budget cannot authorize a new effect")
+        return grant
 
     def finish_effect(self, claim: Claim, call_id: str, result: dict) -> dict:
         with self.transaction() as db:

@@ -6,6 +6,7 @@ independent verification, task completion, or permission to run anything.
 """
 from __future__ import annotations
 
+from hashlib import sha256
 import json
 import re
 from uuid import uuid4
@@ -61,6 +62,17 @@ def _subject(actor):
     _text(actor, "authenticated actor")
     if not actor.startswith("subject:") or not actor[8:].strip() or len(actor[8:]) > 128:
         raise InvalidInput("a named authenticated subject is required")
+
+
+class ExecutionContextError(Conflict):
+    """Expected auxiliary-input stop; never includes supplied data in errors."""
+    code = "EXECUTION_CONTEXT_INVALID"
+    REASONS = frozenset({"CONTEXT_REQUIRED_INPUT_MISSING", "CONTEXT_SNAPSHOT_CHANGED",
+                         "CONTEXT_BINDING_INVALID", "CONTEXT_TOO_LARGE"})
+
+    def __init__(self, reason):
+        self.reason = reason if reason in self.REASONS else "CONTEXT_BINDING_INVALID"
+        super().__init__(self.reason)
 
 
 class ArtifactService:
@@ -305,44 +317,195 @@ class ArtifactService:
         """Read only. Never copies arbitrary task outputs or resolves references."""
         with self.store.connect() as db:
             db.execute("BEGIN")
-            target = self._contract(db, tenant, run_id, target_task_id)
-            state = db.execute("SELECT status,epoch FROM tasks WHERE tenant=? AND run_id=? AND id=?",
-                               (tenant, run_id, target_task_id)).fetchone()
-            if state is None or state["status"] in {"stale", "cancelled", "indeterminate"}:
-                raise Conflict("target task is no longer valid for context preview")
-            items, missing = [], []
-            for selector in target.get("input_artifacts") or []:
-                grant = db.execute("SELECT * FROM artifact_input_grants WHERE tenant=? AND run_id=? AND target_task_id=? AND source_node=? AND kind=? ORDER BY rowid DESC LIMIT 1",
-                                   (tenant, run_id, target_task_id, selector["source_node"], selector["kind"])).fetchone()
-                if grant is None:
-                    missing.append(selector)
-                    continue
-                self._event_matches(db, tenant, run_id, grant["approval_event_hash"], "artifact.input_approved",
-                                    grant["actor"], self._grant_binding(grant))
-                if grant["target_epoch"] != state["epoch"]:
-                    raise Conflict("target epoch changed; explicit input approval is required again")
-                row, body = self._candidate(db, tenant, run_id, grant["artifact_id"])
-                if self._stale_reasons(db, row):
-                    raise Conflict("approved artifact input is stale; explicit approval is required again")
-                if (grant["plan_digest"] != target["plan_digest"] or row["schema_version"] != selector["schema_version"]
-                        or any(grant[key] != row[key] for key in ("source_task_id", "source_node", "kind", "source_epoch",
-                                                                 "revision", "content_hash", "plan_digest", "source_event_hash"))):
-                    raise Conflict("artifact input grant binding is inconsistent")
-                items.append({**self._candidate_binding(row), "source_event_hash": row["source_event_hash"],
-                              "grant_id": grant["id"], "target_epoch": grant["target_epoch"],
-                              "approval_event_hash": grant["approval_event_hash"],
-                              "untrusted_data": True, "body": body})
-            context = {"schema_version": "loom.artifact-context/v1", "tenant_id": tenant, "run_id": run_id,
-                       "task_id": target_task_id, "target_epoch": state["epoch"],
-                       "plan_digest": target["plan_digest"], "items": items,
-                       "missing_inputs": missing, "ready": not any(item["required"] for item in missing),
-                       "untrusted_data": True, "producer_verified": False, "counts_as_success": False,
-                       "execution_connected": False, "max_bytes": MAX_CONTEXT_BYTES}
-            result = {**context, "context_digest": digest(context), "bytes": 0}
-            # Account for both derived fields and the number of digits in the
-            # final byte count. This is a static UTF-8 cap, not a token estimate.
-            while (size := len(canonical(result).encode("utf-8"))) != result["bytes"]:
-                result["bytes"] = size
-            if result["bytes"] > MAX_CONTEXT_BYTES:
-                raise Conflict("artifact context exceeds its static byte limit")
-            return result
+            return self._preview_context_in(db, tenant, run_id, target_task_id)
+
+    @staticmethod
+    def _bounded_context(context, *, execution=False):
+        result = {**context, "context_digest": digest(context), "bytes": 0}
+        # Both derived fields, including the number of digits in bytes, count.
+        while (size := len(canonical(result).encode("utf-8"))) != result["bytes"]:
+            result["bytes"] = size
+        if result["bytes"] > MAX_CONTEXT_BYTES:
+            if execution:
+                raise ExecutionContextError("CONTEXT_TOO_LARGE")
+            raise Conflict("artifact context exceeds its static byte limit")
+        return result
+
+    def _preview_context_in(self, db, tenant, run_id, target_task_id, *, execution=False):
+        target = self._contract(db, tenant, run_id, target_task_id)
+        state = db.execute("SELECT status,epoch FROM tasks WHERE tenant=? AND run_id=? AND id=?",
+                           (tenant, run_id, target_task_id)).fetchone()
+        if state is None or state["status"] in {"stale", "cancelled", "indeterminate"}:
+            raise Conflict("target task is no longer valid for context preview")
+        items, missing = [], []
+        for selector in target.get("input_artifacts") or []:
+            grant = db.execute("SELECT * FROM artifact_input_grants WHERE tenant=? AND run_id=? AND target_task_id=? AND source_node=? AND kind=? ORDER BY rowid DESC LIMIT 1",
+                               (tenant, run_id, target_task_id, selector["source_node"], selector["kind"])).fetchone()
+            if grant is None:
+                missing.append(selector)
+                continue
+            self._event_matches(db, tenant, run_id, grant["approval_event_hash"], "artifact.input_approved",
+                                grant["actor"], self._grant_binding(grant))
+            if grant["target_epoch"] != state["epoch"]:
+                raise Conflict("target epoch changed; explicit input approval is required again")
+            row, body = self._candidate(db, tenant, run_id, grant["artifact_id"])
+            if self._stale_reasons(db, row):
+                raise Conflict("approved artifact input is stale; explicit approval is required again")
+            if (grant["plan_digest"] != target["plan_digest"] or row["schema_version"] != selector["schema_version"]
+                    or any(grant[key] != row[key] for key in ("source_task_id", "source_node", "kind", "source_epoch",
+                                                             "revision", "content_hash", "plan_digest", "source_event_hash"))):
+                raise Conflict("artifact input grant binding is inconsistent")
+            items.append({**self._candidate_binding(row), "source_event_hash": row["source_event_hash"],
+                          "grant_id": grant["id"], "target_epoch": grant["target_epoch"],
+                          "approval_event_hash": grant["approval_event_hash"], "untrusted_data": True, "body": body})
+        context = {"schema_version": "loom.artifact-context/v1", "tenant_id": tenant, "run_id": run_id,
+                   "task_id": target_task_id, "target_epoch": state["epoch"],
+                   "plan_digest": target["plan_digest"], "items": items,
+                   "missing_inputs": missing, "ready": not any(item["required"] for item in missing),
+                   "untrusted_data": True, "producer_verified": False, "counts_as_success": False,
+                   "execution_connected": False, "max_bytes": MAX_CONTEXT_BYTES}
+        return self._bounded_context(context, execution=execution)
+
+    def _capture_execution_context_in(self, db, claim):
+        self.store._assert_claim(db, claim)
+        try:
+            target = self._contract(db, claim.tenant_id, claim.run_id, claim.task_id)
+            if not target.get("input_artifacts"):
+                return None
+            if "artifacts.read" not in target["tools"]:
+                raise ExecutionContextError("CONTEXT_BINDING_INVALID")
+            preview = self._preview_context_in(db, claim.tenant_id, claim.run_id, claim.task_id, execution=True)
+            if not preview["ready"]:
+                raise ExecutionContextError("CONTEXT_REQUIRED_INPUT_MISSING")
+            context = {key: value for key, value in preview.items()
+                       if key not in {"schema_version", "bytes", "context_digest", "execution_connected"}}
+            context.update(schema_version="loom.execution-context/v1", worker_id=claim.worker_id)
+            return self._bounded_context(context, execution=True)
+        except ExecutionContextError:
+            raise
+        except (Conflict, InvalidInput, NotFound):
+            raise ExecutionContextError("CONTEXT_BINDING_INVALID") from None
+
+    def capture_execution_context(self, claim: Claim) -> dict | None:
+        """Read an exact current snapshot; no persistence, dispatch or budgets."""
+        with self.store.connect() as db:
+            db.execute("BEGIN")
+            return self._capture_execution_context_in(db, claim)
+
+    def assert_execution_context_in(self, db, claim: Claim, snapshot: dict | None):
+        """Authority linearization point within a trusted caller's transaction."""
+        current = self._capture_execution_context_in(db, claim)
+        try:
+            if snapshot is not None and type(snapshot) is not dict:
+                raise ValueError
+            supplied = canonical(snapshot)
+            if len(supplied.encode("utf-8")) > MAX_CONTEXT_BYTES:
+                raise ExecutionContextError("CONTEXT_TOO_LARGE")
+            if supplied != canonical(current):
+                raise ExecutionContextError("CONTEXT_SNAPSHOT_CHANGED")
+        except (TypeError, ValueError, RecursionError, UnicodeError, OverflowError):
+            raise ExecutionContextError("CONTEXT_BINDING_INVALID") from None
+        return current
+
+    def assert_execution_context(self, claim: Claim, snapshot: dict | None):
+        with self.store.connect() as db:
+            db.execute("BEGIN")
+            return self.assert_execution_context_in(db, claim, snapshot)
+
+    def admit_execution_effect(self, claim: Claim, snapshot: dict | None, *, reservation_id: str,
+                               max_cost: int, max_tokens: int, operation_id: str, request: dict) -> dict:
+        """Validate inputs, reserve, mint intent and audit in one transaction.
+
+        The event means local admission, not provider receipt or consumption.
+        The trusted executor computes prompt_digest from its final messages.
+        No transaction is held over external I/O; later invalidation must also
+        be checked before accepting or submitting a returned candidate.
+        """
+        with self.store.transaction() as db:
+            current = self.assert_execution_context_in(db, claim, snapshot)
+            if current is None:
+                return self.store._reserve_and_begin_effect(db, claim, reservation_id,
+                    max_cost=max_cost, max_tokens=max_tokens, operation_id=operation_id, request=request)
+            if type(request) is not dict:
+                raise InvalidInput("model request metadata must be an object")
+            _hash(request.get("prompt_digest"))
+            if "context_digest" in request and request["context_digest"] != current["context_digest"]:
+                raise ExecutionContextError("CONTEXT_SNAPSHOT_CHANGED")
+            bound_request = {**request, "context_digest": current["context_digest"]}
+            grant = self.store._reserve_and_begin_effect(db, claim, reservation_id,
+                max_cost=max_cost, max_tokens=max_tokens, operation_id=operation_id, request=bound_request)
+            if grant["dispatch"]:
+                refs = [{key: item[key] for key in (
+                    "grant_id", "approval_event_hash", "artifact_id", "source_node", "source_task_id",
+                    "source_epoch", "target_epoch", "kind", "schema_version", "revision", "content_hash", "source_event_hash")}
+                        for item in current["items"]]
+                self.store._event(db, claim.tenant_id, claim.run_id, "execution.context_bound",
+                    {"schema_version": "loom.context-bound/v1", "task_id": claim.task_id, "epoch": claim.epoch,
+                     "worker_id": claim.worker_id, "plan_digest": current["plan_digest"],
+                     "context_digest": current["context_digest"], "context_bytes": current["bytes"], "context_item_count": len(refs),
+                     "refs": refs, "call_id": grant["call_id"], "reservation_id": reservation_id,
+                     "prompt_digest": request["prompt_digest"], "untrusted_data": True,
+                     "producer_verified": False, "counts_as_success": False}, "local-executor")
+            return {**grant, "context_digest": current["context_digest"], "context_bytes": current["bytes"],
+                    "context_item_count": len(current["items"])}
+
+    @staticmethod
+    def _snapshot_receipt_binding(snapshot):
+        """Bound and copy caller data before hashing or consulting a receipt."""
+        if type(snapshot) is not dict:
+            raise ExecutionContextError("CONTEXT_BINDING_INVALID")
+        nodes = 0
+
+        def bounded(value, depth=0):
+            nonlocal nodes
+            nodes += 1
+            if depth > 32 or nodes > MAX_CONTEXT_BYTES:
+                raise ValueError
+            if type(value) is dict:
+                for key, child in value.items():
+                    if type(key) is not str or len(key) > MAX_CONTEXT_BYTES:
+                        raise ValueError
+                    bounded(child, depth + 1)
+            elif type(value) is list:
+                for child in value:
+                    bounded(child, depth + 1)
+            elif type(value) is str:
+                if len(value) > MAX_CONTEXT_BYTES:
+                    raise ExecutionContextError("CONTEXT_TOO_LARGE")
+            elif value is not None and type(value) not in {int, float, bool}:
+                raise ValueError
+
+        try:
+            bounded(snapshot)
+            raw = canonical(snapshot).encode("utf-8")
+            if len(raw) > MAX_CONTEXT_BYTES:
+                raise ExecutionContextError("CONTEXT_TOO_LARGE")
+            # The copy used by apply is exactly the bytes in the receipt hash;
+            # caller mutation cannot change the checked request afterwards.
+            frozen = json.loads(raw)
+            _hash(frozen["context_digest"])
+            return frozen, sha256(raw).hexdigest()
+        except (TypeError, ValueError, KeyError, InvalidInput, RecursionError, UnicodeError, OverflowError):
+            raise ExecutionContextError("CONTEXT_BINDING_INVALID") from None
+
+    def submit_execution_output(self, claim: Claim, key: str, output: dict, snapshot: dict | None) -> dict:
+        """Input validation and standard submitted transition are indivisible."""
+        if snapshot is None:
+            # Still reject None for a task which declares auxiliary selectors;
+            # _command's cached legacy receipt must not be a validation bypass.
+            with self.store.transaction() as db:
+                target = self._contract(db, claim.tenant_id, claim.run_id, claim.task_id)
+                if target.get("input_artifacts"):
+                    raise ExecutionContextError("CONTEXT_SNAPSHOT_CHANGED")
+            return self.store.submit_output(claim, key, output)
+        snapshot, snapshot_digest = self._snapshot_receipt_binding(snapshot)
+        args = {"run_id": claim.run_id, "task_id": claim.task_id, "epoch": claim.epoch,
+                "worker": claim.worker_id, "output": output,
+                "execution_context_digest": snapshot["context_digest"],
+                "execution_context_snapshot_digest": snapshot_digest}
+
+        def apply(db):
+            self.assert_execution_context_in(db, claim, snapshot)
+            return self.store._submit_output(db, claim, key, output)
+
+        return self.store._command(claim.tenant_id, key, "submit_execution_output", args, apply)

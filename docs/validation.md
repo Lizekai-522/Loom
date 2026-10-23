@@ -1,32 +1,32 @@
-# Loom 0.6 验证记录
+# Loom 0.7 验证记录
 
-日期：2026-10-23（Asia/Shanghai）；版本0.6.0，artifact-preview-alpha。
+日期2026-10-23，版本0.7.0，execution-context-alpha。**530主测试、326子测试，零失败/跳过；另116项实际HTTP、29项新增真实浏览器断言通过。** 专项与完整套件有重叠，不加总；真实模型另列。
 
-**469主测试、302子测试通过，0失败、0跳过；另100项实际HTTP和46项真实浏览器断言通过。** 新增模型请求0，生成候选的HTTP测试数据不冒充模型结果。
+按用户确认的逐步循环，先核对0.6提交0c0a79b/148文件源码包/对应证据及主API健康，再执行A1网关精确预检28主/70子、A2核心101主/61子、B执行86主/9子、C摘要API12主及浏览器29断言。新增真实Docker上下文专项4主通过，已纳入最终完整门槛。
 
-## 逐步门槛
-
-先核对干净0.5提交52e2100、对应已通过报告及主API健康，再实现0.6-A核心候选合同。核心专项连同旧workflow/execution/Rebind为111主/58子通过；B新API及旧control为39主通过；C控制台与故障反例通过后才运行下述完整门槛。这些专项与完整套件重叠，不相加。
-
-| 阶段 | 主测试 | 子测试 | 失败 | 跳过 |
+| 完整阶段 | 主测试 | 子测试 | 失败 | 跳过 |
 |---|---:|---:|---:|---:|
-| unit-and-local | 433 | 288 | 0 | 0 |
-| real-infrastructure | 36 | 14 | 0 | 0 |
+| unit-and-local | 490 | 312 | 0 | 0 |
+| real-infrastructure | 40 | 14 | 0 | 0 |
 
-真实基础设施36主/14子：JetStream8、原生broker重启1、PostgreSQL DDL/RLS14、原Docker隔离9、有界修复Docker4。模型HTTP使用测试替身；API/内核仍SQLite，独立PG检查不代表运行时PG Store已实现。
+基础设施40主/14子：JetStream8、原生重启1、独立PostgreSQL14、原Docker9、Rebind Docker4、新上下文Docker4。新增上下文专项实际运行3个容器用例，模型HTTP均Mock，不使用真实key。完整套件real_models_used=false与下方单独真实探针区分。
 
-## HTTP与浏览器
+独立审查发现缓存提交回执仅绑定自报context_digest，篡改完整snapshot后同key仍拿旧回执；无新写入或派发，但同key异参边界不完整。已额外绑定整个有界snapshot摘要，body/标记/bytes/refs篡改拒绝，原样历史重放仍可用。修复前528主/318子通过记录单独保留，不能代替已补拒绝测试后的最终门槛；独立窄复测另列报告。
 
-实际8796检查为原API9、Goal/Plan12、人工控制31、旧真实任务兼容17，另候选交接31。候选演示run为`77978d67-e408-43a2-9756-34f9dd0dd1c1`，来源明确为认证HTTP测试Worker，无模型、无代码执行。source仍submitted，design仍pending且硬依赖不可领取；旧真实任务452 tokens/262µUSD上界、5用例、合同/事件均保留。
+## 实际HTTP与浏览器
 
-真实浏览器使用独立8797服务和公开sentinel身份：46断言覆盖候选/目标/运行切换、慢响应、503、旧revision、目标epoch变化、纯文本注入、响应丢失同键重试、viewer及原控制流程，并检查移动端布局。未使用8796真实身份或API key；测试服务和会话已关闭。
+主8796接口：原API9、Goal12、人工控制31、旧真实任务17、候选交接31、新绑定对账16，合计116。旧任务合同、5用例、452 tokens/262µUSD上界、事件链不变。绑定摘要只返回可信local-executor事件的白名单标量，不返回refs/body/source/隐藏数据；读取不写入事件。
 
-## 修复与独立反例
+浏览器29项是本轮实际新断言，不把旧46重计。独立8797/loom07、公开sentinel身份，覆盖摘要脱敏/非法类型/历史epoch、精确CAS、预览与批准不自动执行、viewer、慢响应/退出和移动端。该fixture启动时实际health为0.6.0/S1-local，报告完整保留观测；目标0.7标签为人工元数据，最终web源hash一致，未用标签替代健康观测。测试会话/服务已关闭，日志保留并排除源码包。
 
-目标epoch变化时原界面误报解析错误并仍可提出必败旧CAS，已改为明确刷新提示、锁定批准，forced submit为0写，完整刷新后恢复。核心在接入前补齐target_epoch绑定和最终响应字节计数：65536字节允许、65537拒绝。独立审查还验证同键并发单写、receipt故障全部回滚、跨租户/run、来源与双向epoch、revision/content/plan/event绑定、GET无写入及硬depends不变；这些探针不另计主测试。
+## 一次真实Flash与Docker
 
-## 安装与交付
+独立记录run `849020d2-47cb-4f07-a506-15ebf3884c2a`：具名HTTP Worker发布本机明确批准的requirements输入，先claim开发节点，再按当前epoch由operator精确批准；输入来源不冒充模型分析，也不标已验证。开发器只在user数据中使用typed body，本地身份/授权refs与隐藏测试不送模型。一次Flash响应，5个真实Docker冻结用例通过，452 tokens、费用上界记账251µUSD、剩余预留0。并未查询供应商账单。
 
-标准隔离editable构建/安装及pip check通过，未更改依赖版本；Starlette TestClient/httpx弃用警告仍为非失败提示。OpenAPI按0.6生成24个路径，原方案81数字引用/10ADR及24项修订映射检查通过。主API升级前已备份SQLite并检查完整性，沿用旧身份和私有具名配置，未发布公网。
+任务仍submitted/verified=false，独立review仍被硬依赖阻挡，full_workflow_completed=false。execution.context_bound只证明本机发起准入，不能据此保证远端收到；本次另有实际模型响应和沙箱结果。DB事务不跨网络，输入失效后拒绝继续提交，已发生费用仍保留。
 
-机器报告位于源码之外outputs，均以Loom_0.6开头；独立审查单独记录。历史见[0.5](validation-0.5.md)、[0.4](validation-0.4.md)。本轮只验收候选注册、辅助读取批准和只读preview；未接prompt/派发/Gate-V。独立双模型按用户决定待配置，FR-051/052仍部分实现。生产身份、完整七角色/修复、任意仓库、PG Store/多主机和恢复/业务效果仍待验收。
+## 安装与边界
+
+标准隔离editable安装及pip check通过，OpenAPI仍24路径（无新付费HTTP执行入口），原方案81数字引用/10ADR/24映射检查通过。升级前SQLite备份完整性通过。代码包/清单/Git逐文件对账与凭据值扫描另记交付校验。未发布公网或推送GitHub。
+
+target epoch0批准不能沿用到领取后的epoch1；Rebind不自动继承辅助授权。失效转人工、释放lease，不补冻结attempts；最后epoch停止可能须新Goal。本轮不是完整七角色/自动交接修复或FR-051 token裁剪。双签按用户决定待配置，生产身份/恢复、完整PG Store、多主机等继续保留。历史见[0.6](validation-0.6.md)，详细输入合同见[artifacts](artifacts.md)。

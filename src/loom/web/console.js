@@ -276,14 +276,29 @@
     if (attempts.length) summary.append(node("h3", "", "执行与修复记录"));
     for (const attempt of attempts.slice(-50).reverse()) {
       const article = node("article", "intervention-item");
-      article.append(node("strong", "", attempt.event_type));
+      const contextEvent = attempt.event_type === "execution.context_bound";
+      const contextValid = contextEvent && typeof attempt.context_digest === "string" && hashPattern.test(attempt.context_digest)
+        && integer(attempt.context_bytes) && attempt.context_bytes <= 65536
+        && integer(attempt.context_item_count) && attempt.context_item_count <= 8
+        && attempt.untrusted_data === true && attempt.producer_verified === false && attempt.counts_as_success === false;
+      article.append(node("strong", "", contextEvent ? contextValid ? "本次尝试已绑定辅助上下文" : "辅助上下文绑定记录待核对" : attempt.event_type));
       const detail = [attempt.task_id, attempt.epoch === undefined ? "" : `epoch ${attempt.epoch}`,
-        attempt.primitive, attempt.family, attempt.code, attempt.reason, attempt.stage].filter(Boolean).join(" · ");
+        ...(contextEvent ? [] : [attempt.primitive, attempt.family, attempt.code, attempt.reason, attempt.stage])].filter(Boolean).join(" · ");
       article.append(node("p", "muted", detail));
-      if (attempt.from_epoch !== undefined || attempt.to_epoch !== undefined) {
+      if (contextEvent) {
+        if (contextValid) {
+          article.append(node("p", "mono break-word", `辅助上下文摘要 ${attempt.context_digest}`),
+            node("p", "muted", `${count(attempt.context_bytes)} UTF-8 字节 · ${count(attempt.context_item_count)} 个辅助条目 · 不可信数据 · 未验证`));
+        } else article.append(node("p", "inline-error", "绑定摘要字段不完整或不合法，未据此确认绑定。请刷新并核对执行证据。"));
+        const currentTask = (review.tasks || []).find((task) => task.id === attempt.task_id);
+        if (currentTask && currentTask.epoch !== attempt.epoch) article.append(node("p", "muted", `历史尝试记录 · 当前任务 epoch ${str(currentTask.epoch)}`));
+        article.append(node("p", "field-help", "此记录仅表示本次尝试获准使用该辅助上下文，不证明提供方已收到或执行完成；不验证内容、不放行依赖，也不代替独立验收。"));
+      } else if (attempt.from_epoch !== undefined || attempt.to_epoch !== undefined) {
         article.append(node("p", "muted", `尝试 ${str(attempt.from_epoch)} → ${str(attempt.to_epoch)}`));
       }
-      for (const [key, label] of [["event_hash", "事件"], ["source_sha256", "源码摘要"], ["evaluation_digest", "测试摘要"]]) {
+      const hashes = contextEvent ? [["event_hash", "事件"], ["plan_digest", "计划摘要"]]
+        : [["event_hash", "事件"], ["source_sha256", "源码摘要"], ["evaluation_digest", "测试摘要"]];
+      for (const [key, label] of hashes) {
         if (typeof attempt[key] === "string") article.append(node("p", "mono break-word", `${label} ${attempt[key]}`));
       }
       summary.append(article);
@@ -423,7 +438,7 @@
     const status = state.contextStatus, preview = state.context;
     $("context-state").textContent = status === "loading" ? "正在读取目标辅助输入预览…"
       : status === "error" ? `预览读取失败，输入状态未知。${state.contextError}`
-      : status === "ready" ? `${preview.ready ? "辅助数据齐备" : "仍缺必需辅助输入"} · 目标 epoch ${preview.target_epoch} · ${preview.bytes} / ${preview.max_bytes} UTF-8 字节 · 未接入执行`
+      : status === "ready" ? `${preview.ready ? "辅助数据齐备" : "仍缺必需辅助输入"} · 目标 epoch ${preview.target_epoch} · ${preview.bytes} / ${preview.max_bytes} UTF-8 字节 · 本次预览不会发起执行，实际绑定看人工待办中的执行记录`
       : "选择目标任务后读取预览。";
     const panel = $("context-preview"); panel.replaceChildren();
     if (status !== "ready") return;
@@ -691,7 +706,7 @@
     const body = approvalBody();
     if (!body || !$("auxiliary-reviewed").checked) { notify("候选、目标或读取版本尚未核对，未发送辅助输入批准。请重新读取并审阅。", true); return; }
     mutate("POST", `${pathForRun()}/tasks/${encodeURIComponent(state.targetId)}/auxiliary-inputs`, body,
-      "辅助输入批准已记录，仅作为不可信数据参考；未验证候选、未放行依赖，也未接入模型执行。");
+      "辅助输入批准已记录，仅作为不可信数据参考；未验证候选、未放行依赖，本操作不发起执行。实际绑定看人工待办中的执行记录。");
   });
   document.querySelectorAll("[data-tab]").forEach((button) => button.addEventListener("click", () => switchTab(button.dataset.tab)));
   $("show-interventions").addEventListener("click", () => {
