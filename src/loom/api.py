@@ -12,6 +12,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from . import __version__
+from .attempts import attempt_summaries
 from .auth import AuthRegistry, LocalIdentity, Principal
 from .operator import OperatorService
 from .store import Claim, Conflict, InvalidInput, LoomError, NotFound, Store, canonical, digest
@@ -255,7 +256,13 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
                     "model_generation": row["id"] == digest({"tenant_id": tenant, "run_id": run_id, "task_id": row["task_id"], "operation_id": f"model-generation:{row['epoch']}"})})
             reservations = [{"reservation_id": row["id"], **{key: row[key] for key in ("task_id", "epoch", "state", "cost", "tokens", "actual_cost", "actual_tokens")}} for row in db.execute("SELECT * FROM reservations WHERE tenant=? AND run_id=? ORDER BY rowid", (tenant, run_id))]
             return {"run": run, "tasks": tasks, "effects": effects, "reservations": reservations,
+                    "attempts": attempt_summaries(store, tenant, run_id),
                     "verification": "pending_configuration", "counts_as_success": False}
+
+    @app.get("/v1/runs/{run_id}/attempts")
+    def read_attempts(run_id: str, tenant: Tenant):
+        return {"items": attempt_summaries(store, tenant, run_id),
+                "verification": "pending_configuration", "counts_as_success": False}
 
     @app.post("/v1/runs/{run_id}/tasks", status_code=201)
     def add_task(run_id: str, body: TaskInput, tenant: WriteTenant, idempotency_key: Key):

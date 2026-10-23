@@ -5,7 +5,8 @@
   const state = {
     token: "", principal: null, goals: [], interventions: [], runId: null,
     goal: null, snapshot: null, plan: null, review: null, tab: "tasks",
-    busy: false, session: 0, selection: 0, controllers: new Set(), keys: new Map(),
+    busy: false, loading: false, pendingRunId: null, loadedSelection: 0,
+    interventionsError: false, noticeKind: null, session: 0, selection: 0, controllers: new Set(), keys: new Map(),
   };
   const statusNames = {
     draft: "草案", open: "运行开放", paused: "已暂停", awaiting_human: "待人工处理",
@@ -39,7 +40,8 @@
     return node("span", `badge${kind}`, statusNames[value] || str(value));
   }
 
-  function notify(message, error = false) {
+  function notify(message, error = false, kind = null) {
+    state.noticeKind = kind;
     $("notice").textContent = message;
     $("notice").className = error ? "notice error" : "notice";
     $("notice").hidden = !message;
@@ -100,29 +102,32 @@
 
   function refreshControls() {
     for (const element of document.querySelectorAll("[data-cap]")) {
-      element.disabled = state.busy || !has(element.dataset.cap);
+      element.disabled = state.busy || state.loading || !has(element.dataset.cap);
     }
     const status = state.snapshot?.status;
     const selected = Boolean(state.runId && state.snapshot);
+    const unchecked = state.loading || (selected && state.loadedSelection !== state.selection);
     const approved = state.plan?.status === "approved";
     $("control-fields").hidden = !selected || !has("control");
-    $("action-state").textContent = !selected ? "选择目标后可查看可用操作。"
+    $("action-state").textContent = state.loading ? "正在核对所选运行，加载完成前暂停写入操作。"
+      : unchecked ? "当前显示的数据尚未重新核对，请刷新或重选目标后再操作。"
+      : !selected ? "选择目标后可查看可用操作。"
       : !has("control") ? "此身份可查看运行，人工控制需要具名操作员权限。"
       : terminalStates.has(status) ? "运行已经终止或完成，不能再恢复执行。"
       : status === "draft" ? "请先保存并批准草案计划。"
       : status === "submitted" ? "候选等待独立复核，人工控制不会替代验收。"
       : "所有控制操作都会写入台账，并保留操作理由。";
-    $("pause-button").disabled = state.busy || !has("control") || status !== "open";
-    $("resume-button").disabled = state.busy || !has("control") || !["paused", "awaiting_human"].includes(status);
-    $("terminate-button").disabled = state.busy || !has("control") || !selected || terminalStates.has(status);
-    $("save-plan-button").disabled = state.busy || !has("goal.write") || !state.plan || approved || status !== "draft";
+    $("pause-button").disabled = state.busy || unchecked || !has("control") || status !== "open";
+    $("resume-button").disabled = state.busy || unchecked || !has("control") || !["paused", "awaiting_human"].includes(status);
+    $("terminate-button").disabled = state.busy || unchecked || !has("control") || !selected || terminalStates.has(status);
+    $("save-plan-button").disabled = state.busy || unchecked || !has("goal.write") || !state.plan || approved || status !== "draft";
     $("plan-file").disabled = $("save-plan-button").disabled;
     $("plan-definition").readOnly = $("save-plan-button").disabled;
-    $("approve-plan-button").disabled = state.busy || !has("plan.approve") || !state.plan?.digest || approved || status !== "draft";
+    $("approve-plan-button").disabled = state.busy || unchecked || !has("plan.approve") || !state.plan?.digest || approved || status !== "draft";
     $("plan-reviewed").disabled = $("approve-plan-button").disabled;
     const effects = (state.review?.effects || []).filter((effect) => unknownStates.has(effect.state) && effect.model_generation === true);
     $("reconcile-section").hidden = !selected || !has("control") || effects.length === 0;
-    $("reconcile-button").disabled = state.busy || !has("control") || effects.length === 0;
+    $("reconcile-button").disabled = state.busy || unchecked || !has("control") || effects.length === 0;
     $("refresh-button").disabled = state.busy;
     document.querySelectorAll(".goal-button, .intervention-item button").forEach((button) => { button.disabled = state.busy; });
     return effects;
@@ -141,6 +146,10 @@
     state.goal = state.snapshot = state.plan = state.review = null;
     state.keys.clear();
     state.busy = false;
+    state.loading = false;
+    state.pendingRunId = null;
+    state.loadedSelection = 0;
+    state.interventionsError = false;
     $("access-token").value = "";
     $("login-panel").hidden = false;
     $("workspace").hidden = true;
@@ -169,10 +178,11 @@
     $("goals-state").textContent = goals.length ? `${goals.length} 个目标` : query ? "没有符合筛选条件的目标。" : "还没有目标。可创建一个草案。";
     $("goal-list").replaceChildren(...goals.map((goal) => {
       const item = node("li");
-      const button = node("button", `goal-button${goal.run_id === state.runId ? " active" : ""}`);
+      const selectedId = state.pendingRunId || state.runId;
+      const button = node("button", `goal-button${goal.run_id === selectedId ? " active" : ""}`);
       button.type = "button";
       button.disabled = state.busy;
-      if (goal.run_id === state.runId) button.setAttribute("aria-current", "true");
+      if (goal.run_id === selectedId) button.setAttribute("aria-current", "true");
       button.append(node("strong", "", goal.title || "未命名目标"));
       const meta = node("span", "goal-meta");
       meta.append(badge(goal.status), node("span", "mono", str(goal.run_id).slice(0, 8)));
@@ -220,8 +230,9 @@
   }
 
   function renderInterventions() {
-    $("intervention-count").textContent = count(state.interventions.length);
-    if (!state.interventions.length) $("intervention-list").replaceChildren(node("p", "inline-empty", "当前没有人工待办。双签未配置时，提交的候选仍不会自动验收。"));
+    $("intervention-count").textContent = state.interventionsError ? "读取失败" : count(state.interventions.length);
+    if (state.interventionsError) $("intervention-list").replaceChildren(node("p", "inline-empty", "人工待办读取失败，当前数量未知。请点击工作台“刷新”重试，不能据此判断没有待办。"));
+    else if (!state.interventions.length) $("intervention-list").replaceChildren(node("p", "inline-empty", "当前没有人工待办。双签未配置时，提交的候选仍不会自动验收。"));
     else $("intervention-list").replaceChildren(...state.interventions.map((item) => {
       const article = node("article", "intervention-item");
       article.append(node("strong", "", item.title || item.run_id), badge(item.status));
@@ -253,6 +264,22 @@
     for (const reservation of Array.isArray(review.reservations) ? review.reservations : []) {
       const article = node("article", "intervention-item");
       article.append(node("strong", "mono", reservation.reservation_id), badge(reservation.state), node("p", "muted", `预留 ${amount(reservation.cost)} / ${count(reservation.tokens)} tokens；已核实 ${amount(reservation.actual_cost)} / ${count(reservation.actual_tokens)} tokens`));
+      summary.append(article);
+    }
+    const attempts = Array.isArray(review.attempts) ? review.attempts : [];
+    if (attempts.length) summary.append(node("h3", "", "执行与修复记录"));
+    for (const attempt of attempts.slice(-50).reverse()) {
+      const article = node("article", "intervention-item");
+      article.append(node("strong", "", attempt.event_type));
+      const detail = [attempt.task_id, attempt.epoch === undefined ? "" : `epoch ${attempt.epoch}`,
+        attempt.primitive, attempt.family, attempt.code, attempt.reason, attempt.stage].filter(Boolean).join(" · ");
+      article.append(node("p", "muted", detail));
+      if (attempt.from_epoch !== undefined || attempt.to_epoch !== undefined) {
+        article.append(node("p", "muted", `尝试 ${str(attempt.from_epoch)} → ${str(attempt.to_epoch)}`));
+      }
+      for (const [key, label] of [["event_hash", "事件"], ["source_sha256", "源码摘要"], ["evaluation_digest", "测试摘要"]]) {
+        if (typeof attempt[key] === "string") article.append(node("p", "mono break-word", `${label} ${attempt[key]}`));
+      }
       summary.append(article);
     }
     const prior = $("effect-select").value;
@@ -319,7 +346,9 @@
 
   async function selectRun(runId, tab = state.tab) {
     const generation = ++state.selection;
-    state.runId = runId;
+    state.pendingRunId = runId;
+    state.loading = true;
+    refreshControls();
     $("run-content").classList.add("loading");
     $("control-reason").value = "";
     $("terminate-confirm").value = "";
@@ -332,6 +361,9 @@
       ]);
       if (generation !== state.selection) return;
       if (snapshot.status !== "fulfilled") throw snapshot.reason;
+      if ((snapshot.value.id || snapshot.value.run_id) !== runId) throw Object.assign(new Error(), {code: "BAD_JSON"});
+      state.runId = runId;
+      state.loadedSelection = generation;
       state.goal = goal.status === "fulfilled" ? goal.value : null;
       state.plan = plan.status === "fulfilled" ? plan.value : null;
       state.snapshot = snapshot.value;
@@ -340,36 +372,64 @@
       switchTab(tab);
     } catch (error) {
       if (generation !== state.selection || error.code === "SESSION_CHANGED") return;
+      state.runId = null;
+      state.loadedSelection = 0;
       state.goal = state.snapshot = state.plan = state.review = null;
       renderRun();
       notify(publicError(error), true);
     } finally {
-      if (generation === state.selection) $("run-content").classList.remove("loading");
+      if (generation === state.selection) {
+        state.loading = false;
+        state.pendingRunId = null;
+        $("run-content").classList.remove("loading");
+        renderGoals();
+        refreshControls();
+      }
     }
   }
 
   async function refreshAll(selectId = state.runId) {
     const session = state.session;
+    const generation = ++state.selection;
+    state.loading = true;
+    refreshControls();
     $("goals-state").textContent = "正在读取目标…";
     try {
       const [goals, interventions] = await Promise.allSettled([request("GET", "/v1/goals"), request("GET", "/v1/interventions")]);
-      if (session !== state.session) return;
+      if (session !== state.session || generation !== state.selection) return;
+      state.interventionsError = interventions.status !== "fulfilled" || !Array.isArray(interventions.value.items);
+      if (!state.interventionsError) {
+        state.interventions = interventions.value.items;
+        if (state.noticeKind === "interventions") notify("人工待办已重新读取。");
+      } else notify("人工待办读取失败，当前数量未知。其他运行信息仍可查看，请重新读取待办后再处理。", true, "interventions");
+      renderInterventions();
       if (goals.status !== "fulfilled") throw goals.reason;
       state.goals = Array.isArray(goals.value.goals) ? goals.value.goals : [];
-      state.interventions = interventions.status === "fulfilled" && Array.isArray(interventions.value.items) ? interventions.value.items : [];
       renderGoals(); renderInterventions();
       if (selectId) await selectRun(selectId);
       else if (state.goals.length) await selectRun(state.goals[0].run_id);
-      else { state.snapshot = state.goal = state.plan = state.review = null; renderRun(); }
+      else { state.runId = null; state.loadedSelection = 0; state.snapshot = state.goal = state.plan = state.review = null; renderRun(); }
     } catch (error) {
-      if (session !== state.session || error.code === "SESSION_CHANGED") return;
+      if (session !== state.session || generation !== state.selection || error.code === "SESSION_CHANGED") return;
       $("goals-state").textContent = "目标读取失败。";
       notify(publicError(error), true);
+    } finally {
+      if (session === state.session && generation === state.selection) {
+        state.loading = false;
+        refreshControls();
+      }
     }
   }
 
   async function mutate(method, path, body, successMessage, after) {
     if (state.busy) return;
+    const target = path.match(/^\/v1\/(?:runs|goals)\/([^/]+)(?:\/|$)/);
+    const displayedId = state.snapshot?.id || state.snapshot?.run_id;
+    if (state.loading || (target && (state.loadedSelection !== state.selection
+        || displayedId !== state.runId || decodeURIComponent(target[1]) !== state.runId))) {
+      notify("当前运行尚未完成核对，未发送写入请求。请等待加载完成后重新确认目标与操作。", true);
+      return;
+    }
     const session = state.session;
     const fingerprint = JSON.stringify([method, path, body]);
     if (!state.keys.has(fingerprint)) state.keys.set(fingerprint, `console:${crypto.randomUUID()}`);
@@ -423,6 +483,7 @@
   $("goal-search").addEventListener("input", renderGoals);
   document.querySelectorAll("[data-tab]").forEach((button) => button.addEventListener("click", () => switchTab(button.dataset.tab)));
   $("show-interventions").addEventListener("click", () => {
+    if (state.interventionsError) { notify("人工待办读取失败，当前数量未知。请点击工作台“刷新”重新读取。", true, "interventions"); return; }
     if (!state.runId && state.interventions.length) selectRun(state.interventions[0].run_id, "interventions");
     else if (state.runId) switchTab("interventions");
     else notify("当前没有人工待办。");
@@ -442,14 +503,20 @@
   $("plan-file").addEventListener("change", async () => {
     const file = $("plan-file").files[0];
     if (!file) return;
+    if (state.loading || state.loadedSelection !== state.selection) return;
     if (file.size > 262144) { notify("计划文件不能超过 256 KiB。", true); $("plan-file").value = ""; return; }
     const generation = state.selection;
+    const session = state.session, runId = state.runId;
     try {
       const text = await file.text();
       const definition = JSON.parse(text);
       if (!definition || Array.isArray(definition) || typeof definition !== "object") throw new Error();
-      if (generation === state.selection) { $("plan-definition").value = JSON.stringify(definition, null, 2); $("plan-reviewed").checked = false; }
-    } catch { notify("计划文件不是有效的 JSON 对象。", true); }
+      if (session === state.session && generation === state.selection && runId === state.runId && !state.loading) {
+        $("plan-definition").value = JSON.stringify(definition, null, 2); $("plan-reviewed").checked = false;
+      }
+    } catch {
+      if (session === state.session && generation === state.selection && runId === state.runId) notify("计划文件不是有效的 JSON 对象。", true);
+    }
   });
   $("plan-definition").addEventListener("input", () => { $("plan-reviewed").checked = false; });
   $("plan-form").addEventListener("submit", (event) => {

@@ -1,16 +1,18 @@
 # Loom 实施路线与阶段验收计划
 
-初次记录：2026-10-22；本轮更新：2026-10-23（Asia/Shanghai）。依据 Loom 技术方案 v2.1 及审查报告 R01–R24，当前包版本 **0.4.0，human-control-alpha**。
+初次记录：2026-10-22；本轮更新：2026-10-23（Asia/Shanghai）。依据 Loom 技术方案 v2.1 及审查报告 R01–R24，当前包版本 **0.5.0，bounded-repair-alpha**。
 
 ## 当前项目状态
+
+**0.5进度补记：** 完整432主/267子、69项HTTP与34项浏览器断言通过。已补同节点公开开发检查→有界Rebind→冻结终验，预算与intent原子准入、隐藏失败报告/停止原子保存，安全attempt摘要及旧0.4合同兼容。新修复验证使用模拟模型HTTP和真实Docker；本轮无新增付费请求。用户决定双签继续待配置，通过仅submitted。下方旧轮次证据保留，新增入口与边界见[有界修复](bounded-repair.md)。
 
 项目已完成首轮 S1-local 建设，**S2 仍进行中，S3 已取得首个受限真实执行证据，人工控制产品入口已补入**。当前 API 与任务内核继续使用单实例 SQLite；真实 JetStream、独立 PostgreSQL 16.15 DDL/RLS 和本地 Ed25519 检查点保持独立边界。0.3.0 已有 Goal/Plan、七角色合同和 Flash/Docker；本轮增加本机具名角色、控制台、暂停/恢复/终止及未知模型调用核对。方案修订、局部实现、真实探针和完整需求验收分别登记。
 
 - **设计修订：** 桌面 Loom.md 已按 R01–R24 修订为 v2.1 实施基线候选；文字改正不表示架构复审或生产验收通过。
 - **已实现源码：** 原内核及 workflow/model_gateway/sandbox/execution，新增 auth/operator/web。本机具名 operator/worker/viewer 按动作授权，旧 developer 兼容 fixture 但无 control 权限。暂停、恢复、终止及未知模型调用核对按事务、幂等回执和审计事件持久化；不自动退还未知预留、不构造双签或普通成功。Goal 审批和 PostgreSQL 独立 schema 边界继续保留。
-- **本轮测试：** 最新分阶段数量与浏览器检查详见 [验证记录](validation.md)。0.3.0 历史为 252 主测试/247 子测试通过、0 跳过，另有 21 项实际 HTTP 检查；0.2.0 历史为 135 主测试/33 子测试。历史数字不作为 0.4.0 最新总数。真实模型探针与常规 Mock 模型测试分别登记。
+- **本轮测试：** 最新分阶段数量与浏览器检查详见 [验证记录](validation.md)。0.3.0 历史为 252 主测试/247 子测试通过、0 跳过，另有 21 项实际 HTTP 检查；0.2.0 历史为 135 主测试/33 子测试。历史数字不作为当前0.5.0最新总数。真实模型探针与常规 Mock 模型测试分别登记。
 - **API/控制台：** 沿用原启动器、首轮 SQLite 和旧 tenant token，以私有 `--identities-file` 增加具名 token；本机 /console 已提供创建目标、计划保存/审批、任务/证据/人工待办、暂停/恢复/终止及核对界面。具名 Worker ID 绑定认证 subject；review 证据核对当前 task/epoch/content hash 的执行事件。token 仅页面内存，无 CDN/内联脚本，CSP 限制同源资源。health stage 仍为 S1-local，生产 OIDC、真实人员及独立验证身份尚未完成。
-- **真实执行：** Docker恢复后，0.4.0新增Unicode任务通过5个宿主冻结用例，452 tokens、记账上界262µUSD，并与工作台证据对账；0.3.0历史探针为4个用例、417 tokens、247µUSD。费用均非供应商账单。用户确认先接 Flash，双签保持待配置。任务仍 submitted/awaiting_independent_models；本轮人工核对不将其改为 done，不声称七角色全链、真实修复循环或 Goal 已成功。
+- **真实执行：** Docker恢复后，0.4.0新增Unicode任务通过5个宿主冻结用例，452 tokens、记账上界262µUSD，并与工作台证据对账；0.3.0历史探针为4个用例、417 tokens、247µUSD。费用均非供应商账单。用户确认先接 Flash，双签保持待配置。任务仍 submitted/awaiting_independent_models；本轮人工核对不将其改为 done，不声称七角色全链、全部修复原语或Goal已成功。
 - **生产待验证：** 独立双模型及受信签名、真实七角色/修复/人工流程联动、部署身份与人员职责、完整 PG 命令、多主机、NATS accounts/TLS/R3、生产沙箱/出口代理、远端锚定、真实业务写恢复与容量/SLO 仍有待完成。
 
 依赖复用取舍见 [GitHub 复用记录](github-reuse.md)，已安装依赖的归属见 [第三方声明](third-party-notices.md)。FastAPI/Pydantic 用于接口，nats-py 用于真实消息适配，cryptography 用于真实 Ed25519 签名/验签，psycopg 用于隔离 PG 检查；Temporal、LangGraph 没有作为运行内核接入。[本轮验证](validation.md) 分别列出实测和剩余边界。
@@ -44,7 +46,7 @@
 | R06 投递/幂等 | SQLite 事务 outbox/inbox；真实 JetStream PubAck、durable 消费、确认丢失重投、乱序前缀追赶及原生进程重启验证 | PG 写命令与消息适配、多发布者生产部署、accounts/TLS/R3 和故障域；至少一次传输不等于 exactly-once |
 | R07 全局权威状态 | 同一 SQLite 数据库下原子认领/计数，epoch 与租约校验 | 多主机数据库事务、调度分片所有权、旧领导者隔离、全局/租户配额与接管协议 |
 | R08 验证容量 | `claim_next` 分开限制业务/总容量并预留验证槽；具名 worker 认领/提交绑定主体，operator 不可借 Worker 入口执行 | 独立验证通道身份与策略、全局容量压力/扩缩容；旧 developer 兼容入口不代表生产 Worker 隔离 |
-| R09 预算硬界 | 事务预留/结算；Flash 按固定费率版本、保守上下文输入上界和输出上限预留，按有效 usage 结算；超支记录并挂起 | 供应商账单与失败/取消/超时计费核对、价目/别名变化及账户级约束；本轮262µUSD是上界记账，非账单 |
+| R09 预算硬界 | 事务预留/结算；Flash 按固定费率版本、保守上下文输入上界和输出上限预留，按有效 usage 结算；超支记录并挂起 | 供应商账单与失败/取消/超时计费核对、价目/别名变化及账户级约束；0.4探针262µUSD是历史上界记账，0.5本轮无新增付费调用 |
 | R10 副作用安全 | 稳定 operation ID、唯一发起记录、claim；未知模型调用保留预算，具名核对事务记录依据、用量与回执，不自动再发 | 业务外部写、独立账本/RPO 窗口冻结、账单自动核对及一般部分完成恢复；浏览器内存命令键不跨重启保留 |
 | R11 回退/失效 | `invalidate` 传播下游 stale、递增 epoch、记录外部补偿需求 | 撤销真实在途动作、补偿/不可补偿结果、重新规划及原子版本冲突；记录事件不代表补偿完成 |
 | R12 租户隔离 | API token 绑定租户/具名主体与本机动作权限，worker_id 不能借用；PG 16.15 独立 RLS 子集已测，无 BYPASSRLS | PG 运行时 Store、对象下载、生产 OIDC/任务身份、NATS accounts、租户凭据与实际队列隔离 |
@@ -117,7 +119,7 @@
 
 依赖：S1/S2 相关安全与持久化检查，尤其 S2 最小代码沙箱、出网 scope、任务凭据隔离及受信报告来源实测通过；真实模型联调另需提供方配置和预算。不能因仅运行在本机便跳过执行隔离。
 
-已完成的真实链路仅为 Python 标准库 JSON 程序：宿主冻结用例及摘要，经批准合同路由 Flash JSON mode，再把候选送入无网络 Docker，宿主核验输出后提交。执行器只接受获准 developer/fixer；当前脚本构造 implement → independent_review 两节点，实际只执行开发节点。默认七角色模板仍为规划能力，不表示七个角色都已真实跑通。
+已完成的真实模型链路为 Python 标准库 JSON 程序：宿主冻结用例及摘要，经批准合同路由 Flash JSON mode，再把候选送入无网络 Docker，宿主核验输出后提交。执行器只接受获准 developer/fixer；当前脚本构造 implement → independent_review 两节点，实际只执行开发节点。默认七角色模板仍为规划能力，不表示七个角色都已真实跑通。
 
 0.3.0 的真实探针通过4个黄金用例，usage=282输入+135输出=417 tokens，247µUSD为上界记账。0.4.0新增任务通过5个冻结用例，312输入+140输出=452 tokens，上界记账262µUSD，实际工作台对账一致；两次均非账单核验。任务保持submitted/awaiting_independent_models、counts_as_success=false、full_workflow_completed=false，验证节点仍被依赖屏障阻挡。0.4.0已补人工控制和证据入口，真实七角色交接、修复及人工处理联动仍未全通。用户决定双签暂待配置，继续推进不依赖第二模型的新工作，同时保留最终验收屏障；不把同一模型多角色配置作为双模型结果。
 

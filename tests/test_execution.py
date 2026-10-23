@@ -466,16 +466,16 @@ class ExecutionTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_pause_after_effect_grant_prevents_http_and_retains_unknown_reservation(self):
         claim, _ = self.make_claim()
-        original = self.store.begin_effect
+        original = self.store.reserve_and_begin_effect
 
-        def grant_then_pause(current, operation_id, request):
-            granted = original(current, operation_id, request)
+        def grant_then_pause(current, *args, **kwargs):
+            granted = original(current, *args, **kwargs)
             with self.store.transaction() as db:
                 db.execute("UPDATE runs SET status='awaiting_human' WHERE tenant=? AND id=?",
                            (current.tenant_id, current.run_id))
             return granted
 
-        self.store.begin_effect = grant_then_pause
+        self.store.reserve_and_begin_effect = grant_then_pause
         result = await self.runner.run_python(claim, self.suite)
         self.assertEqual(result["status"], "awaiting_human")
         self.assertEqual(result["reason"], "EXECUTION_RUN_PAUSED")

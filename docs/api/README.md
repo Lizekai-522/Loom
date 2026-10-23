@@ -1,6 +1,6 @@
 # 本地 API 契约
 
-此目录的 `openapi.json` 由当前 FastAPI 应用生成，描述实际可运行的 HTTP 子集。当前版本 **0.4.0，human-control-alpha**；本机 [控制台](http://127.0.0.1:8796/console) 与 [接口文档](http://127.0.0.1:8796/docs) 同源提供。设计方案附录中的其余接口仍属后续目标，未因列入规范而自动实现。
+此目录的 `openapi.json` 由当前 FastAPI 应用生成，描述实际可运行的 HTTP 子集。当前版本 **0.5.0，bounded-repair-alpha**；本机 [控制台](http://127.0.0.1:8796/console) 与 [接口文档](http://127.0.0.1:8796/docs) 同源提供。设计方案附录中的其余接口仍属后续目标，未因列入规范而自动实现。
 
 `/health` 返回 version，stage 仍为 `S1-local`，表示 HTTP 内核继续使用单实例 SQLite；`external_writes_enabled=false` 表示此 API 没有执行真实外部写的路由。本机脚本的真实模型调用另见 [本机执行说明](../local-execution.md)。`/integrity` 的 `external_checkpoint: "not_configured"` 表示该 HTTP 实例尚未配置独立检查点；离线 Ed25519 组件不在普通查询时自动签名，使用方法见 [检查点说明](../checkpoints.md)。
 
@@ -17,6 +17,7 @@
 | Worker 提交待验证输出 | `POST /v1/runs/{run_id}/tasks/{task_id}/submit` |
 | 人工待办 | `GET /v1/interventions` |
 | 当前任务/调用/预留审阅摘要 | `GET /v1/runs/{run_id}/review` |
+| 执行尝试与修复安全摘要 | `GET /v1/runs/{run_id}/attempts`，亦包含在review.attempts中；不返回源码/输入/答案/stdout |
 | 暂停/恢复/终止 | `POST /v1/runs/{run_id}/control/{action}`，action 为 pause、resume、terminate |
 | 核对未知模型调用 | `POST /v1/runs/{run_id}/effects/{call_id}/reconcile` |
 | 事件/历史回放/完整性 | `GET /v1/runs/{run_id}/events`、`.../replay`、`.../integrity` |
@@ -59,4 +60,4 @@ decision 为 completed 或 not_sent；上面零值只展示结构，不能代替
 
 CLI 通过 `loom serve --identities-file <源码和公开outputs之外的私有JSON文件>` 加载具名主体。现有启动器保留首轮旧身份，并增加独立 operator/worker/viewer token；不要打印、截图或复制这些凭据到源码。控制台只把登录凭据留在页面内存，无 CDN、外部资源或内联脚本；重载/退出后幂等键不持久化，须先核对列表再决定是否重发。[控制台说明](../console.md)
 
-0.3.0 历史检查为 252 主测试/247 子测试，另有原 9 项 API + 12 项 Goal/Plan HTTP 检查；本轮 0.4.0 权限、人工控制与浏览器结果**详见 [最新验证记录](../validation.md)**。旧 fixture 脚本继续读取同一私有 session；工作环境位于 `../../work/loom-venv`。完整分阶段检查须指定 `check_s2.py --sandbox-image <sha256镜像ID>` 及 NATS/PG 三项配置，网关 Mock 与真实模型证据分别登记。
+0.3.0历史检查为252主/247子，0.4为368主/265子；本轮0.5.0为432主/267子、69项HTTP与34项浏览器断言，**详见 [最新验证记录](../validation.md)**。旧fixture脚本继续读取同一私有session；工作环境位于 `../../work/loom-venv`。完整分阶段检查须指定 `check_s2.py --sandbox-image <sha256镜像ID>` 及NATS/PG三项配置，网关Mock与真实模型证据分别登记。

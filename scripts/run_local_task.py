@@ -22,29 +22,49 @@ def load_job(path):
     raw = path.read_bytes()
     if len(raw) > 262144:
         raise ValueError("TASK_INPUT_TOO_LARGE")
-    data = json.loads(raw)
-    if (not isinstance(data, dict) or set(data) != {"title", "description", "tests"}
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise ValueError("TASK_DUPLICATE_FIELD")
+            result[key] = value
+        return result
+    data = json.loads(raw, object_pairs_hook=pairs)
+    if (not isinstance(data, dict) or not {"title", "description", "tests"} <= set(data) <= {"title", "description", "tests", "development_tests"}
             or not isinstance(data["title"], str) or not data["title"].strip()
             or len(data["title"]) > 500 or not isinstance(data["description"], str)
             or not data["description"].strip() or len(data["description"]) > 16000
             or not isinstance(data["tests"], list)):
         raise ValueError("TASK_INPUT_INVALID")
     tests, evaluation_digest = freeze_tests([FrozenTest(**case) for case in data["tests"]])
-    return data, tests, evaluation_digest
+    development, development_digest = (), None
+    if "development_tests" in data:
+        if not isinstance(data["development_tests"], list):
+            raise ValueError("DEVELOPMENT_TESTS_INVALID")
+        development, development_digest = freeze_tests([FrozenTest(**case) for case in data["development_tests"]])
+        if development_digest == evaluation_digest:
+            raise ValueError("DEVELOPMENT_AND_ACCEPTANCE_MUST_DIFFER")
+    return data, tests, evaluation_digest, development, development_digest
 
 
 async def run(args):
-    job, tests, evaluation_digest = load_job(args.task_file)
+    job, tests, evaluation_digest, development, development_digest = load_job(args.task_file)
+    if args.max_repairs and not development:
+        raise ValueError("PUBLIC_DEVELOPMENT_TESTS_REQUIRED")
     root = Path(__file__).resolve().parents[1]
     definition = json.loads((root / "packs/software-dev/workflow-v1.json").read_text(encoding="utf-8"))
     definition["nodes"] = [
         {"id": "implement", "title": job["title"], "instruction": job["description"], "role": "developer",
          "depends": [], "priority": 10, "channel": "business", "evaluation_digest": evaluation_digest,
-         "limits": {"cost_limit_microusd": 500000, "token_limit": 1100000, "max_attempts": 1}},
+         "limits": {"cost_limit_microusd": 500000, "token_limit": 1100000, "max_attempts": 1 + args.max_repairs}},
         {"id": "independent_review", "title": "Independent acceptance review", "instruction": "Review original evidence independently before delivery.",
          "role": "validator", "depends": ["implement"], "priority": 0, "channel": "verification",
          "limits": {"cost_limit_microusd": 1000, "token_limit": 1000, "max_attempts": 1}},
     ]
+    if args.max_repairs:
+        definition["nodes"][0]["repair"] = {
+            "schema_version": "loom.rebind/v1", "development_digest": development_digest,
+            "max_repairs": args.max_repairs, "stop_on_duplicate_source": True}
     definition = WorkflowDefinition.model_validate(definition)
     if not args.approve:
         return {"mode": "plan-preview", "network_requests": 0, "evaluation_digest": evaluation_digest,
@@ -69,7 +89,11 @@ async def run(args):
         plan = workflows.save_plan(tenant, run_id, prefix + ":plan", definition, 0)
         workflows.approve_plan(tenant, run_id, prefix + ":approve", plan["revision"], plan["digest"])
         claim = store.claim_next(tenant, run_id, "local-python-worker", lease_seconds=90)
-        result = await LocalTaskRunner(store, gateway, sandbox).run_python(claim, tests, max_output_tokens=args.max_output_tokens)
+        runner = LocalTaskRunner(store, gateway, sandbox)
+        if args.max_repairs:
+            result = await runner.run_python_cycle(claim, tests, development, max_output_tokens=args.max_output_tokens)
+        else:
+            result = await runner.run_python(claim, tests, max_output_tokens=args.max_output_tokens)
         child = store.claim_next(tenant, run_id, "review-check", channel="verification") if result["status"] == "submitted" else None
         chain = store.events(tenant, run_id)
         snapshot = store.snapshot(tenant, run_id)
@@ -96,11 +120,17 @@ def main():
     parser.add_argument("--secrets-file", type=Path, required=True)
     parser.add_argument("--sandbox-image", required=True)
     parser.add_argument("--max-output-tokens", type=int, default=512)
+    parser.add_argument("--max-repairs", type=int, default=0,
+                        help="operator-approved public-check Rebind count, 0 disables, 1-2 allowed")
     parser.add_argument("--approve", action="store_true")
     parser.add_argument("--report", type=Path, default=Path("artifacts/local-task.json"))
     args = parser.parse_args()
+    if not 0 <= args.max_repairs <= 2:
+        parser.error("repair count must be 0-2")
     if not 1 <= args.max_output_tokens <= 1024:
         parser.error("initial local task output is limited to 1-1024 tokens")
+    if args.report.resolve().is_relative_to(args.secrets_file.resolve().parent):
+        parser.error("report cannot be stored beside private secrets")
     if args.report.resolve() in {args.secrets_file.resolve(), args.task_file.resolve(), args.model_config.resolve(), Path(args.db).resolve()}:
         parser.error("report cannot overwrite input files or database")
     try:

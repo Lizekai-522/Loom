@@ -64,6 +64,20 @@ class TaskLimits(StrictModel):
     max_attempts: int = Field(default=3, ge=1, le=10)
 
 
+class RebindPolicy(StrictModel):
+    schema_version: Literal["loom.rebind/v1"]
+    development_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    max_repairs: int = Field(ge=1, le=2)
+    stop_on_duplicate_source: Literal[True] = True
+
+    @field_validator("stop_on_duplicate_source", mode="before")
+    @classmethod
+    def duplicate_stop_is_mandatory(cls, value):
+        if value is not True:
+            raise ValueError("duplicate source stopping cannot be disabled")
+        return value
+
+
 class TaskNode(StrictModel):
     id: Identifier
     title: str = Field(min_length=1, max_length=500)
@@ -74,6 +88,9 @@ class TaskNode(StrictModel):
     channel: Literal["business", "verification"] = "business"
     limits: TaskLimits
     evaluation_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    # Omit only the new optional field. Existing evaluation_digest:null remains
+    # in old canonical plans, so their approved digests are not rewritten.
+    repair: RebindPolicy | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @field_validator("title", "instruction")
     @classmethod
@@ -89,6 +106,11 @@ class TaskNode(StrictModel):
         expected = "verification" if self.role == "validator" else "business"
         if self.channel != expected:
             raise ValueError("task channel does not match its authorized role")
+        if self.repair is not None:
+            if self.role not in {"developer", "fixer"} or self.evaluation_digest is None:
+                raise ValueError("Rebind requires an executable role and frozen acceptance tests")
+            if self.repair.max_repairs + 1 > self.limits.max_attempts:
+                raise ValueError("repair policy exceeds the approved attempt limit")
         return self
 
 

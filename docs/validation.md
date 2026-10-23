@@ -1,48 +1,42 @@
-# 0.4.0 验证记录
+# 0.5.0 验证记录
 
-日期：2026-10-23（Asia/Shanghai）。Windows / Python 3.13.12。阶段 human-control-alpha，非生产就绪。
+日期：2026-10-23（Asia/Shanghai）。阶段bounded-repair-alpha，Windows / Python3.13.12，非生产就绪。
 
-## 当前验证结论
+## 结论与统计
 
-新增目标控制台、具名角色与人工控制链路已通过本地、真实 HTTP 和浏览器验证。**Docker启动故障恢复后，完整回归门槛已通过：368主测试、265子测试，0失败、0跳过。** 修复前9项setup错误另存历史报告，没有转为skip或删除。
+先复测0.4基线368主/265子零失败/跳过及52项HTTP，再通过额外浏览器故障注入发现并修复界面问题；之后推进0.5并进行最终完整回归。
 
-| 阶段 | 实际结果 | 范围 |
+| 阶段 | 结果 | 范围 |
 |---|---|---|
-| unit-and-local | 336 主测试、251 子测试通过 | 核心、API、工作流、认证、人工控制、执行器及模拟网关/沙箱 |
-| real-infrastructure | 32主测试、14子测试通过 | NATS live 8、强杀恢复1、PostgreSQL14、Docker9 |
-| 合计 | 368主测试、265子测试通过，0失败/跳过 | 完整门槛passed=true |
-| 实际HTTP（另计） | 9 + 12 + 31 = 52 个检查通过 | 旧API、Goal/Plan、具名角色/控制/审阅/审计 |
-| 真实浏览器（另计） | 14类检查通过 | 浏览器操作及网络故障注入，非真实模型工作流 |
+| unit-and-local | 396主测试、253子测试通过 | 原内核/API/权限、41项修复专项、7项原子admission、5项摘要API、7项CLI等 |
+| real-infrastructure | 36主测试、14子测试通过 | NATS8、broker重启1、独立PG14、原Docker9、新修复Docker4 |
+| 合计 | **432主测试、267子测试，0失败、0跳过** | 完整runner门槛passed=true |
+| 实际HTTP（另计） | **69项通过** | 原9 + Goal/Plan12 + 具名控制31 + 摘要/旧真实任务兼容17 |
+| 真实浏览器（另计） | **34项断言通过** | 慢网络/强制click/迟到响应/文件/队列失败、正常流程、权限、摘要、390px |
+| 新修复Docker专项 | 4项通过，6次真实容器用例、6次Mock HTTP | 已包含基础设施36项，不重复加总；模型响应均mock |
 
-机器结果见同级输出目录的 Loom_0.4_分阶段测试结果_2026-10-23.json。JUnit的主testcase元素与testsuite统计中的子测试分开登记。完整runner在每阶段删除旧报告，任一失败、缺失/损坏报告、零用例或skip均失败。
+新核心41项已包含本地396项；其余专项与主总数同理。JUnit主testcase与testsuite中的子测试分别统计。check_s2.py仍强制4项基础设施配置，拒绝skip、零用例、失败或旧/损坏JUnit。
 
-## 新能力专项
+## 修复与反例
 
-- auth 55 项：具名 operator/worker/viewer、角色矩阵、不可混合 operator+worker、重复身份/token、配置私有路径/大小/schema、错误脱敏与并发读取。
-- control API 25 项：主体绑定 worker_id、跨租户/跨角色拒绝、具名审批actor与幂等、伪造测试标记不可信、当前epoch/content_hash绑定、控制/核对。
-- operator 33 项及18子测试：暂停保留未知效果、恢复前核对/预算/尝试检查、终止fence、核对不双记账、not_sent不自动重发、原始响应保留、事务回滚与回放。
-- execution 26 项及9子测试：增加人工暂停后阻止新沙箱、终止后旧owner不能提交、迟到超支结算不复活cancelled。
+修复了慢切换显示A却控制B、待办失败显示为空、迟到文件覆盖、沙箱返回时暂停不能收敛、隐藏验收失败报告丢失及分事务停态、reserve/intent之间暂停留下孤立预留。原子admission失败注入验证预算/意图/事件/outbox一并回滚；hidden失败最后blocked事件写失败时，报告/分类/状态一并回滚，已发生的模型usage仍保留。
 
-这些专项均已包含336项，不重复相加。MockTransport/FakeSandbox不算真实模型或真实隔离。
+Rebind专项验证同节点新epoch、容量槽不释放、旧claim拒绝、并发幂等一次交接、跨任务/租户与伪造事件拒绝、预算/次数/重复源码停止、二轮暂停/取消、未知HTTP不重发或退款、上下文仅公开失败数据。旧pre-Rebind序列化shape和实际0.4批准合同继续可核验。
 
-## 浏览器证据
+## 真实与模拟边界
 
-使用单独loopback临时API、公开测试哨兵凭据和真实浏览器；没有向浏览器自动化提供项目模型密钥或实际操作员token。实测创建草案、上传JSON计划、修订/摘要审批、七任务显示、暂停/恢复/终止、事件链显示、viewer写入受限、凭据不进入本地/会话存储、重载退出、390px无横向溢出。
+本轮未新增付费模型调用。新修复专项两轮模型HTTP均为MockTransport，候选程序真实在批准的Docker沙箱执行，不能表述为真实Flash自动修复收益已被证明。此前0.4真实Unicode任务的5用例、452tokens、262微美元上界保持历史；当前0.5API实际读取并核对产物、旧合同、预算与事件链一致，没有重新调用模型。
 
-另注入服务器已创建Goal但回执丢失：同页面重提沿用同一幂等键，返回同一Goal，只创建一次。恶意HTML样式标题显示为纯文本。一次预期的网络错误属于故障注入；普通操作时没有浏览器错误。桌面和手机截图单独保存。
+公开开发检查先执行；隐藏验收失败不进入修复prompt，受信报告单独保留。通过仍submitted/verified=false，独立模型复核待配置；full_workflow_completed=false、counts_as_success=false。模型能力收益、完整七角色与六原语尚未验收。
 
-## Docker修复与新的真实任务
+浏览器使用独立公开sentinel服务8797与独立session，未使用主8796身份或模型密钥；测试结束已关闭自建环境。安全attempt摘要只显示白名单标量，不输出source/stdout/input/expected，HTML样式内容仍为纯文本。
 
-Docker Desktop 4.70在Windows26200遇到AF_UNIX残留socket导致Inference manager启动失败。停止核对路径的残留Docker进程后，保留并重建两个仅有socket的运行目录；secrets-engine目录通过Docker WSL内单一shell验证绝对路径/白名单后改名，并恢复新目录原ACL。镜像、卷及WSL数据未删除，未注销发行版或修改全局AI设置。Linux engine29.4.0与原镜像/runner摘要预检恢复；随后9项真实Docker回归通过。详细步骤、备份及旧版本复发风险见同级输出的Loom_Docker_修复记录_2026-10-23.md。
+## 安装与交付检查
 
-新Unicode连续字符分组任务通过5个宿主冻结用例：312输入+140输出=452tokens，上界记账262微美元，账单未独立核验。本轮仅1次真实模型请求，修复前预检失败未发出请求。CLI使用--tenant first-round与主API共享DB；实际HTTP审阅对账核实当前epoch产物摘要、可信测试、5个case、预算及事件链一致。任务保持submitted/verified=false，双签继续待配置，full_workflow_completed=false。
+0.5.0隔离editable构建/安装、pip check通过。最初尝试no-build-isolation因该venv无setuptools失败，改用项目标准隔离构建后成功，无应用依赖变动。原Starlette TestClient/httpx弃用警告仍为非失败提示。
 
-0.3.0的真实Flash4用例/417tokens/247微美元上界和完整252主测试/247子测试证据保留为历史，见 [0.3验证记录](validation-0.3.md)。双签按用户决定继续待配置，人工核对不产生模型签名，也不能通过有限测试直接验收Goal。
+OpenAPI已按0.5生成19个路径；原技术方案的81个数字引用、10个ADR、Python/JSON示例与24项修订映射机械检查通过。主API更新前使用SQLite备份，具名身份和旧token保留；未发布公网或推送GitHub。
 
-## 安装与后续
+机器报告保存在源码目录之外的outputs：Loom_0.5_分阶段测试结果、API回归结果、目标规划API实测、人工控制API实测、旧任务与新增API实测、修复循环隔离实测及0.4推进前浏览器复测。全部日期为2026-10-23。
 
-0.4.0 editable安装与pip check通过；wheel构建并核对包含3个控制台静态文件和auth/operator模块。无新增应用第三方依赖，现有Starlette TestClient的httpx弃用提示仍保留。
-
-完整复跑命令仍为README中的check_s2.py，显式提供不可变镜像、NATS/native broker和私有PG配置。本次Docker恢复、完整门槛与新任务已经复跑通过；同页面HTTP重提的幂等验证不表示跨浏览器重载/进程重启的exactly-once。
-
-七角色真实协作、修复循环、完整人工裁决/例外接受、生产OIDC/双人授权、PG Store/高可用与上线验收尚未完成。操作控制台本身不会发起模型或执行候选。
+历史见 [0.4验证](validation-0.4.md)、[0.3验证](validation-0.3.md)。入口与限制见 [有界修复](bounded-repair.md)。Docker仍为旧Desktop4.70临时恢复，升级/复发风险、生产身份/完整恢复/PG Store/高可用等边界继续保留。

@@ -396,39 +396,42 @@ class Store:
         return self._command(claim.tenant_id, key, "complete_task", args, apply)
 
     def reserve(self, claim: Claim, reservation_id: str, *, max_cost: int, max_tokens: int) -> dict:
+        with self.transaction() as db:
+            return self._reserve(db, claim, reservation_id, max_cost=max_cost, max_tokens=max_tokens)
+
+    def _reserve(self, db, claim: Claim, reservation_id: str, *, max_cost: int, max_tokens: int) -> dict:
         if not reservation_id or min(max_cost, max_tokens) < 0:
             raise InvalidInput("reservation ID and nonnegative maximums required")
-        with self.transaction() as db:
-            self._assert_claim(db, claim, allow_paused=True)
-            run = self._run(db, claim.tenant_id, claim.run_id)
-            old = db.execute("SELECT * FROM reservations WHERE tenant=? AND id=?", (claim.tenant_id, reservation_id)).fetchone()
-            if old:
-                if (old["task_id"], old["run_id"], old["epoch"], old["cost"], old["tokens"]) != (claim.task_id, claim.run_id, claim.epoch, max_cost, max_tokens):
-                    raise Conflict("reservation ID reused")
-                return dict(old)
-            if self._workflow_plan(db, claim.tenant_id, claim.run_id) is not None:
-                contract = db.execute("SELECT contract FROM workflow_tasks WHERE tenant=? AND run_id=? AND task_id=?",
-                                      (claim.tenant_id, claim.run_id, claim.task_id)).fetchone()
-                if contract is None:
-                    raise Conflict("managed task has no frozen execution contract")
-                limits = json.loads(contract[0])["limits"]
-                used = db.execute("""SELECT
-                    coalesce(sum(CASE WHEN state='reserved' THEN cost ELSE actual_cost END),0),
-                    coalesce(sum(CASE WHEN state='reserved' THEN tokens ELSE actual_tokens END),0)
-                    FROM reservations WHERE tenant=? AND run_id=? AND task_id=?""",
-                    (claim.tenant_id, claim.run_id, claim.task_id)).fetchone()
-                if (used[0] + max_cost > limits["cost_limit_microusd"]
-                        or used[1] + max_tokens > limits["token_limit"]):
-                    raise BudgetExceeded("logical task has insufficient budget across attempts")
-            if run["status"] != "open" or run["spent"] + run["reserved"] + max_cost > run["cost_limit"] or run["tokens_spent"] + run["tokens_reserved"] + max_tokens > run["token_limit"]:
-                raise BudgetExceeded("run has insufficient unreserved budget")
-            db.execute("UPDATE runs SET reserved=reserved+?,tokens_reserved=tokens_reserved+? WHERE tenant=? AND id=?",
-                       (max_cost, max_tokens, claim.tenant_id, claim.run_id))
-            db.execute("INSERT INTO reservations VALUES (?,?,?,?,?,?,?,?,?,?)",
-                       (claim.tenant_id, reservation_id, claim.run_id, claim.task_id, claim.epoch, max_cost, max_tokens, "reserved", None, None))
-            result = {"reservation_id": reservation_id, "cost": max_cost, "tokens": max_tokens, "state": "reserved"}
-            self._event(db, claim.tenant_id, claim.run_id, "budget.reserved", result, "gateway")
-            return result
+        self._assert_claim(db, claim, allow_paused=True)
+        run = self._run(db, claim.tenant_id, claim.run_id)
+        old = db.execute("SELECT * FROM reservations WHERE tenant=? AND id=?", (claim.tenant_id, reservation_id)).fetchone()
+        if old:
+            if (old["task_id"], old["run_id"], old["epoch"], old["cost"], old["tokens"]) != (claim.task_id, claim.run_id, claim.epoch, max_cost, max_tokens):
+                raise Conflict("reservation ID reused")
+            return dict(old)
+        if self._workflow_plan(db, claim.tenant_id, claim.run_id) is not None:
+            contract = db.execute("SELECT contract FROM workflow_tasks WHERE tenant=? AND run_id=? AND task_id=?",
+                                  (claim.tenant_id, claim.run_id, claim.task_id)).fetchone()
+            if contract is None:
+                raise Conflict("managed task has no frozen execution contract")
+            limits = json.loads(contract[0])["limits"]
+            used = db.execute("""SELECT
+                coalesce(sum(CASE WHEN state='reserved' THEN cost ELSE actual_cost END),0),
+                coalesce(sum(CASE WHEN state='reserved' THEN tokens ELSE actual_tokens END),0)
+                FROM reservations WHERE tenant=? AND run_id=? AND task_id=?""",
+                (claim.tenant_id, claim.run_id, claim.task_id)).fetchone()
+            if (used[0] + max_cost > limits["cost_limit_microusd"]
+                    or used[1] + max_tokens > limits["token_limit"]):
+                raise BudgetExceeded("logical task has insufficient budget across attempts")
+        if run["status"] != "open" or run["spent"] + run["reserved"] + max_cost > run["cost_limit"] or run["tokens_spent"] + run["tokens_reserved"] + max_tokens > run["token_limit"]:
+            raise BudgetExceeded("run has insufficient unreserved budget")
+        db.execute("UPDATE runs SET reserved=reserved+?,tokens_reserved=tokens_reserved+? WHERE tenant=? AND id=?",
+                   (max_cost, max_tokens, claim.tenant_id, claim.run_id))
+        db.execute("INSERT INTO reservations VALUES (?,?,?,?,?,?,?,?,?,?)",
+                   (claim.tenant_id, reservation_id, claim.run_id, claim.task_id, claim.epoch, max_cost, max_tokens, "reserved", None, None))
+        result = {"reservation_id": reservation_id, "cost": max_cost, "tokens": max_tokens, "state": "reserved"}
+        self._event(db, claim.tenant_id, claim.run_id, "budget.reserved", result, "gateway")
+        return result
 
     def settle(self, tenant: str, reservation_id: str, *, actual_cost: int, actual_tokens: int) -> dict:
         if min(actual_cost, actual_tokens) < 0:
@@ -453,26 +456,45 @@ class Store:
             return result
 
     def begin_effect(self, claim: Claim, operation_id: str, request: dict) -> dict:
-        """Trusted gateway entry. Stable operation_id is fixed by the task plan.
+        """Trusted intent ledger. Only the first stable operation may dispatch."""
+        with self.transaction() as db:
+            return self._begin_effect(db, claim, operation_id, request)
 
-        This local milestone never invokes real external systems. A repeated
-        grant is refused even when the original operation may not have started.
-        """
+    def _begin_effect(self, db, claim: Claim, operation_id: str, request: dict) -> dict:
         if not operation_id:
             raise InvalidInput("stable operation ID required")
         call_id = digest({"tenant_id": claim.tenant_id, "run_id": claim.run_id, "task_id": claim.task_id, "operation_id": operation_id})
+        self._assert_claim(db, claim)
+        old = db.execute("SELECT * FROM effects WHERE tenant=? AND id=?", (claim.tenant_id, call_id)).fetchone()
+        if old:
+            if old["request_hash"] != digest(request) or old["run_id"] != claim.run_id:
+                raise Conflict("logical operation reused with different request")
+            return {"call_id": call_id, "state": old["state"], "dispatch": False}
+        db.execute("INSERT INTO effects VALUES (?,?,?,?,?,?,?,?)",
+                   (claim.tenant_id, call_id, claim.run_id, claim.task_id, claim.epoch, digest(request), "intent", None))
+        result = {"call_id": call_id, "task_id": claim.task_id, "request_hash": digest(request), "state": "intent"}
+        self._event(db, claim.tenant_id, claim.run_id, "tool.intent", result, "gateway")
+        return {**result, "dispatch": True}
+
+    def reserve_and_begin_effect(self, claim: Claim, reservation_id: str, *, max_cost: int,
+                                 max_tokens: int, operation_id: str, request: dict) -> dict:
+        """Atomically reserve budget and record intent before any dispatch.
+
+        Pause/termination can occur before or after this transaction, never
+        leave a committed new reservation without its corresponding intent.
+        This operation does not perform network I/O or retry an existing grant.
+        """
         with self.transaction() as db:
             self._assert_claim(db, claim)
-            old = db.execute("SELECT * FROM effects WHERE tenant=? AND id=?", (claim.tenant_id, call_id)).fetchone()
-            if old:
-                if old["request_hash"] != digest(request) or old["run_id"] != claim.run_id:
-                    raise Conflict("logical operation reused with different request")
-                return {"call_id": call_id, "state": old["state"], "dispatch": False}
-            db.execute("INSERT INTO effects VALUES (?,?,?,?,?,?,?,?)",
-                       (claim.tenant_id, call_id, claim.run_id, claim.task_id, claim.epoch, digest(request), "intent", None))
-            result = {"call_id": call_id, "task_id": claim.task_id, "request_hash": digest(request), "state": "intent"}
-            self._event(db, claim.tenant_id, claim.run_id, "tool.intent", result, "gateway")
-            return {**result, "dispatch": True}
+            old = db.execute("SELECT 1 FROM reservations WHERE tenant=? AND id=?",
+                             (claim.tenant_id, reservation_id)).fetchone()
+            reserved = self._reserve(db, claim, reservation_id, max_cost=max_cost, max_tokens=max_tokens)
+            grant = self._begin_effect(db, claim, operation_id, request)
+            if not grant["dispatch"] and old is None:
+                raise Conflict("existing effect cannot acquire a different reservation")
+            if grant["dispatch"] and reserved["state"] != "reserved":
+                raise Conflict("settled budget cannot authorize a new effect")
+            return grant
 
     def finish_effect(self, claim: Claim, call_id: str, result: dict) -> dict:
         with self.transaction() as db:

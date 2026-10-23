@@ -1,9 +1,9 @@
 {
-  "version": "0.4.0",
-  "stage": "human-control-alpha",
+  "version": "0.5.0",
+  "stage": "bounded-repair-alpha",
   "date": "2026-10-23",
-  "generated_at": "2026-10-23T14:23:23.887945+08:00",
-  "source_file_count_excluding_manifest": 124,
+  "generated_at": "2026-10-23T15:43:18.611248+08:00",
+  "source_file_count_excluding_manifest": 136,
   "files": [
     {
       "path": ".gitignore",
@@ -12,8 +12,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "8e5b782c372d60d4fb0e7f76e78cd7c90e62c42c390ca9ece6b59dd7a23891c7",
-      "bytes": 16170
+      "sha256": "c02cf38c006b6a971fb6ab669dc8e41a0db31104b92f835102f6dd96c1aace63",
+      "bytes": 16718
     },
     {
       "path": "configs/models.example.json",
@@ -24,6 +24,11 @@
       "path": "configs/python-task.example.json",
       "sha256": "39cef96c1caf1c2fb0c5c361e2d9c2b28191ae87c86ca3fa748b48f21b29ec1b",
       "bytes": 983
+    },
+    {
+      "path": "configs/python-task.repair.example.json",
+      "sha256": "8c5c98e8e1f12eeda8b5abed1e2da5f0fbbe3bfe247c85c632228cc92af275b2",
+      "bytes": 1639
     },
     {
       "path": "configs/python-task.runs.example.json",
@@ -37,13 +42,18 @@
     },
     {
       "path": "docs/api/README.md",
-      "sha256": "3ff9385490f1ad951a4b5993e23fd76e3f0d7bdf2ea0d9c9ce63d5babbff2c7a",
-      "bytes": 8622
+      "sha256": "b2c21731d56ada59b330b1d96eaf60963fc10b803b85dfc952c25120e8e58425",
+      "bytes": 8727
     },
     {
       "path": "docs/api/openapi.json",
-      "sha256": "fe57aa21b215ac261eb5f7b1bdfac888d4fbdf8ee2aed29144c61bf0ef1152af",
-      "bytes": 38934
+      "sha256": "7e6ba7548a7bfb9476f5b57e17e2a2288de07f94ef4a98261be18fc57b3d1a18",
+      "bytes": 41213
+    },
+    {
+      "path": "docs/bounded-repair.md",
+      "sha256": "415ff5259addf052aa3b6a9245c766e0de7e188cd7d84e004cf464666f760e3f",
+      "bytes": 4999
     },
     {
       "path": "docs/checkpoints.md",
@@ -52,8 +62,8 @@
     },
     {
       "path": "docs/console.md",
-      "sha256": "b17fd9dc2dc0ec947a20ef5a6f1ca91cbfb7df8dbcc1a0523536576eefcdce26",
-      "bytes": 4261
+      "sha256": "5012531dd974bfa46270959f269fb260b4977fd97e9835b2927c2b88cfe69a10",
+      "bytes": 4859
     },
     {
       "path": "docs/coverage-s2.json",
@@ -72,8 +82,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "sha256": "7e9b988820badd446e2eaf54e4bd50ad81ee9faa21fefee470ab86a9131fca25",
-      "bytes": 23561
+      "sha256": "79e706e86171b5db249dfa3a6e92e241fa035c91afa6b4f7070d9960f264356c",
+      "bytes": 24096
     },
     {
       "path": "docs/local-auth.md",
@@ -82,8 +92,8 @@
     },
     {
       "path": "docs/local-execution.md",
-      "sha256": "5ed5c866c8c9bac9348b662778a527e18b372acea9db06554ca4e5422c8089b6",
-      "bytes": 11316
+      "sha256": "208f1866ac469b78d9762c9b50babfd6a3f7461c8e2f2a252ee0abcd5baa80e7",
+      "bytes": 11777
     },
     {
       "path": "docs/local-sandbox.md",
@@ -131,9 +141,14 @@
       "bytes": 4056
     },
     {
-      "path": "docs/validation.md",
+      "path": "docs/validation-0.4.md",
       "sha256": "09f373ee99393bf4b11f95ed97726265ecd0a95ee7e34aefdb54befea7256f3e",
       "bytes": 4993
+    },
+    {
+      "path": "docs/validation.md",
+      "sha256": "ca3b7f3539f7c44dbd95db7e37d2bcc3a15871974c098951ef5f9aff39b28c17",
+      "bytes": 4187
     },
     {
       "path": "docs/workflow.md",
@@ -157,7 +172,7 @@
     },
     {
       "path": "pyproject.toml",
-      "sha256": "e68a07fce69579ed20b4e0d3c84a0b309f3c3fde3221a80cc59dc515630770d8",
+      "sha256": "1605ea160de32f191bc8995dfd54eafa2ecf68348de53a22cf16ec5d0f1d980a",
       "bytes": 771
     },
     {
@@ -201,9 +216,14 @@
       "bytes": 1485
     },
     {
+      "path": "scripts/check_repair.py",
+      "sha256": "2e8a1740217c96f1930b9501cef16176fb19efae6603a14deb1488d64c448e5a",
+      "bytes": 3590
+    },
+    {
       "path": "scripts/check_s2.py",
-      "sha256": "c4c229aff8fcaf41776f68f4e6f927c08415d5aca54e92d1fcaa9f7f39398742",
-      "bytes": 5621
+      "sha256": "4c71dc8195a15d5ee052506348e95b3eb732032f4723c271774a80ddbd594106",
+      "bytes": 5622
     },
     {
       "path": "scripts/check_sandbox.py",
@@ -222,12 +242,12 @@
     },
     {
       "path": "scripts/run_local_task.py",
-      "sha256": "56371351eea4b314b75013593fa07a1bf6e47245f07a660cb1bf803a0da0f4c6",
-      "bytes": 7445
+      "sha256": "77f032f20b9c6d71844488d61f24a7ab72f94d92da1c808e690b969e3bb97c56",
+      "bytes": 9212
     },
     {
       "path": "src/loom/__init__.py",
-      "sha256": "47286b46239ecf184029c0d2a7b3613c2b8bbd9682075617084902f2bdf90b0e",
+      "sha256": "74ca712cd9ffe14c4db870876cac71201f6bd5c80a1ac5b5d9457a2f361bb050",
       "bytes": 73
     },
     {
@@ -237,8 +257,13 @@
     },
     {
       "path": "src/loom/api.py",
-      "sha256": "4cb89be0302cf6d839c8f20bf0737a864efcbdc59a8395ca9925c1a071815454",
-      "bytes": 15310
+      "sha256": "d32b87613bf6b6e98b2306fa67efe8c1eb4276c614e970088961208d7daf1914",
+      "bytes": 15672
+    },
+    {
+      "path": "src/loom/attempts.py",
+      "sha256": "102181b21a19d398c51cd91c55bb954be684611bfa4dafeb26e9830770b65941",
+      "bytes": 1398
     },
     {
       "path": "src/loom/auth.py",
@@ -262,8 +287,13 @@
     },
     {
       "path": "src/loom/execution.py",
-      "sha256": "4cbc31c610213f8e9452230dcaa22708a6e353569d71173a7874e74bdf8d7cd1",
-      "bytes": 16795
+      "sha256": "acd369ab0c903f376e48a0199f6aa38b6128308f46e856447059e47bc3cf2c7f",
+      "bytes": 32794
+    },
+    {
+      "path": "src/loom/failures.py",
+      "sha256": "83c30fad94785f6227cc9b1eda0947939877661f00944e51c4a7b8376bc9a48b",
+      "bytes": 1642
     },
     {
       "path": "src/loom/jetstream.py",
@@ -291,14 +321,19 @@
       "bytes": 14644
     },
     {
+      "path": "src/loom/repair.py",
+      "sha256": "fd99afb730128597f69f512d18a0d7e7fce9df3227f91b3cba8033384c287b41",
+      "bytes": 13109
+    },
+    {
       "path": "src/loom/sandbox.py",
       "sha256": "6e9d0a627da20324f11ab6c63c0aafd642c5aac5efaa2300b0b696169a4a0a4d",
       "bytes": 22272
     },
     {
       "path": "src/loom/store.py",
-      "sha256": "eb00be3fe7875a1368efad0f0464638fce833be2a2632096d66547bc7f1ee985",
-      "bytes": 41492
+      "sha256": "914183b42e5442704e089bc7054aefdc349fb5bd535dc18dea468dda22872422",
+      "bytes": 42773
     },
     {
       "path": "src/loom/web/console.css",
@@ -307,8 +342,8 @@
     },
     {
       "path": "src/loom/web/console.js",
-      "sha256": "e2609d3ce04be7669df931f64080b45fa8d8e81879c3dd3f1e52c563e4102b39",
-      "bytes": 29459
+      "sha256": "aace904f745758281a7c021ab2a4ed5d8b298e67e1a08f060b2b1722c7f9fde8",
+      "bytes": 33673
     },
     {
       "path": "src/loom/web/index.html",
@@ -317,8 +352,8 @@
     },
     {
       "path": "src/loom/workflow.py",
-      "sha256": "43ca38bc6f78b4136403cccdd64cc1688130840d98372141f9445f10323a9e4a",
-      "bytes": 20943
+      "sha256": "7a7291f605e621807d25716844edd4d17ccf83cd978fc50708a787e4eb047381",
+      "bytes": 22068
     },
     {
       "path": "tests/__init__.py",
@@ -351,6 +386,11 @@
       "bytes": 23941
     },
     {
+      "path": "tests/integration/test_repair_live.py",
+      "sha256": "ef8a3f63bc313e362d7ff66fccab76c4b829f1c0857b99c0c32b77ef511b1398",
+      "bytes": 17253
+    },
+    {
       "path": "tests/integration/test_sandbox_live.py",
       "sha256": "a6a71c6a761aedfca641beba10c1f8b3b7f7c1a19cf9bde4ef94cd71b1c907c0",
       "bytes": 5668
@@ -359,6 +399,11 @@
       "path": "tests/test_api.py",
       "sha256": "d3ea4792e6ce11d0b2244aa04d04756661753c635052cb09b28ff0797b8bf347",
       "bytes": 4931
+    },
+    {
+      "path": "tests/test_attempt_api.py",
+      "sha256": "3d4265708a2cfa8000d0ef4cbab7822ae4d156fc102a2616992a97d1d42b5417",
+      "bytes": 4660
     },
     {
       "path": "tests/test_auth.py",
@@ -387,8 +432,8 @@
     },
     {
       "path": "tests/test_execution.py",
-      "sha256": "bb2b54867f18636d044128533e4f4c2445308c2e1c1f8613e88c1b59e9b576c4",
-      "bytes": 31065
+      "sha256": "bd5761fb3ccc73aa8389ffb54bf8421d4b64ba2b90fd2459de8674d3b1d854b8",
+      "bytes": 31077
     },
     {
       "path": "tests/test_goal_api.py",
@@ -421,6 +466,11 @@
       "bytes": 11230
     },
     {
+      "path": "tests/test_repair.py",
+      "sha256": "ab2603c03246c7caf112ca8a8bb2107021e96a6962b6d8eba5790682cc0502f6",
+      "bytes": 29288
+    },
+    {
       "path": "tests/test_sandbox.py",
       "sha256": "41fc49be971592570c4b8fd7e49e703a9eea5363b9d20861ff68bb4aa031515c",
       "bytes": 13596
@@ -431,9 +481,19 @@
       "bytes": 11745
     },
     {
+      "path": "tests/test_store_admission.py",
+      "sha256": "908357bf137ec1811ace14f57c727596221ab1151a7df8914dfb038870e212ff",
+      "bytes": 4813
+    },
+    {
       "path": "tests/test_store_review.py",
       "sha256": "9171296e0327c655796cd0da7b10871f09189e623032f9c09e3474a3122aa140",
       "bytes": 7293
+    },
+    {
+      "path": "tests/test_task_script.py",
+      "sha256": "48e1c73e8cb064bd488315fde8ffee3125b82ccc68dbb52495e2b6763764212a",
+      "bytes": 4956
     },
     {
       "path": "tests/test_workflow.py",
@@ -627,15 +687,16 @@
     }
   ],
   "validation": {
-    "main_tests_passed": 368,
-    "subtests_passed": 265,
+    "main_tests_passed": 432,
+    "subtests_passed": 267,
     "skipped": 0,
-    "api_smoke_checks": 52,
-    "browser_acceptance_categories": 14,
-    "real_docker_main_tests_included": 9,
-    "live_model_frozen_cases": 5,
-    "live_model_tokens": 452,
-    "live_model_cost_upper_microusd": 262,
+    "api_smoke_checks": 69,
+    "browser_assertions_passed": 34,
+    "real_docker_main_tests_included": 13,
+    "repair_cycle_main_tests": 4,
+    "repair_cycle_real_container_cases": 6,
+    "repair_cycle_mock_http_requests": 6,
+    "new_paid_model_requests": 0,
     "billed_currency_verified": false
   },
   "runtime": {
@@ -646,15 +707,15 @@
     "postgresql": "16.15"
   },
   "production_ready": false,
-  "real_models_used": true,
+  "real_models_used": false,
   "full_workflow_completed": false,
   "notes": [
-    "Live model probe is separate from mocked model tests; finite tests submit only, independent review remains pending configuration.",
+    "New repair cycles use mock model HTTP and real Docker; no new paid provider requests. Historical Flash probes remain separate; finite tests submit only, independent review pending configuration.",
     "Named local identities are route permissions, not production OIDC or proof of independent people.",
     "API/Store use SQLite; PostgreSQL integration tests validate separate DDL/roles/constraints.",
     "Docker startup was restored by backed-up runtime socket directories; Desktop 4.70.0 was not upgraded and the upstream defect may recur.",
     "The sandbox image is local, not published or embedded in this archive.",
-    "Local checkpoints are not external WORM/HSM. Seven-role execution and repair workflow remain incomplete.",
+    "Local checkpoints are not external WORM/HSM. Bounded same-node Rebind is implemented; seven-role execution and all six graph repair primitives remain incomplete.",
     "Manifest excludes itself; archive hash is delivered separately.",
     "No credentials, databases, private keys, venvs, runtime images or native server binaries are included."
   ]

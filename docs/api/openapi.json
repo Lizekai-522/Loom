@@ -3,7 +3,7 @@
   "info": {
     "title": "Loom local kernel",
     "description": "Local S1 development API. No real model or external write execution.",
-    "version": "0.4.0"
+    "version": "0.5.0"
   },
   "paths": {
     "/v1/me": {
@@ -627,6 +627,48 @@
         }
       }
     },
+    "/v1/runs/{run_id}/attempts": {
+      "get": {
+        "summary": "Read Attempts",
+        "operationId": "read_attempts_v1_runs__run_id__attempts_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/runs/{run_id}/tasks": {
       "post": {
         "summary": "Add Task",
@@ -1172,6 +1214,40 @@
         ],
         "title": "PlanInput"
       },
+      "RebindPolicy": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "loom.rebind/v1",
+            "title": "Schema Version"
+          },
+          "development_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Development Digest"
+          },
+          "max_repairs": {
+            "type": "integer",
+            "maximum": 2.0,
+            "minimum": 1.0,
+            "title": "Max Repairs"
+          },
+          "stop_on_duplicate_source": {
+            "type": "boolean",
+            "const": true,
+            "title": "Stop On Duplicate Source",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "development_digest",
+          "max_repairs"
+        ],
+        "title": "RebindPolicy"
+      },
       "ReconciliationEvidence": {
         "properties": {
           "reference": {
@@ -1414,6 +1490,16 @@
               }
             ],
             "title": "Evaluation Digest"
+          },
+          "repair": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RebindPolicy"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,

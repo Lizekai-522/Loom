@@ -1,0 +1,13 @@
+{
+  "title": "Keep the first record for each identifier",
+  "description": "Implement a Python JSON program using only the standard library. Input is an object with an items array of records. Each record has a string id and may have other JSON fields. Output an object with an items array containing only the first record for each distinct id, preserving original order and every field of the retained records. IDs are case-sensitive and must not be normalized. Empty input produces an empty array. Read one JSON value from stdin and write one JSON value to stdout.",
+  "development_tests": [
+    {"name": "public-empty", "input": {"items": []}, "expected": {"items": []}},
+    {"name": "public-first-wins", "input": {"items": [{"id": "a", "value": 1}, {"id": "a", "value": 2}]}, "expected": {"items": [{"id": "a", "value": 1}]}}
+  ],
+  "tests": [
+    {"name": "ordered-interleaving", "input": {"items": [{"id": "x", "value": 3}, {"id": "y", "value": 4}, {"id": "x", "value": 5}, {"id": "z", "value": 6}]}, "expected": {"items": [{"id": "x", "value": 3}, {"id": "y", "value": 4}, {"id": "z", "value": 6}]}},
+    {"name": "unicode-and-case", "input": {"items": [{"id": "中", "nested": {"ok": true}}, {"id": "A", "value": null}, {"id": "a", "value": [1, 2]}, {"id": "中", "extra": "later"}]}, "expected": {"items": [{"id": "中", "nested": {"ok": true}}, {"id": "A", "value": null}, {"id": "a", "value": [1, 2]}]}},
+    {"name": "empty-string-id", "input": {"items": [{"id": "", "value": 0}, {"id": "", "value": 1}, {"id": "other", "value": false}]}, "expected": {"items": [{"id": "", "value": 0}, {"id": "other", "value": false}]}}
+  ]
+}

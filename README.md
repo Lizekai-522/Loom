@@ -1,8 +1,8 @@
 # Loom
 
-基于 Loom v2.1 修订方案的 Agent 编排项目，当前包版本 **0.4.0，human-control-alpha**。在已有 Goal/Plan 和 Flash → Docker 受限执行链路上，本轮增加本机具名 operator/worker/viewer、中文操作控制台、持久暂停/恢复/终止和未知模型调用人工核对。API 与任务内核继续使用单实例 SQLite；完整七角色执行及真实修复循环仍在推进。
+基于 Loom v2.1 修订方案的 Agent 编排项目，当前包版本 **0.5.0，bounded-repair-alpha**。在已有 Goal/Plan、具名权限、中文控制台和 Flash → Docker 链路上，新增公开开发检查、有界Rebind修复重验、失败分类及安全尝试摘要；同时修复慢网络误控制、待办错误显示与暂停事务边界。API 与任务内核继续使用单实例 SQLite；完整七角色及全部修复原语仍在推进。
 
-Docker启动故障修复后，完整回归 **368主测试、265子测试通过，0跳过**；另有52项实际HTTP及14类浏览器检查通过，详见 [验证记录](docs/validation.md)。0.3.0 的历史记录为 **252 项主测试、247 个子测试通过、0 跳过**；0.2.0 为 135 主测试和 33 子测试。常规分阶段套件使用真实 Docker/NATS/独立 PostgreSQL，模型网关使用 Mock，真实模型探针另存，历史数量不挪作 0.4.0 最新总数。
+完整回归 **432主测试、267子测试通过，0失败、0跳过**；另69项实际HTTP和34项真实浏览器断言通过，详见 [验证记录](docs/validation.md)。0.4历史为368主/265子、0.3为252主/247子、0.2为135主/33子。常规分阶段套件使用真实Docker/NATS/独立PostgreSQL，模型网关使用Mock；新增修复路径明确使用模拟模型HTTP与真实Docker，真实模型探针分别登记。
 
 0.4.0新增Unicode任务通过 **5个冻结用例**，提供方返回 **452 tokens**，保守费用记账上界 **262µUSD**，并与工作台证据对账。0.3.0历史探针为4个用例、417 tokens、247µUSD。费用均为上界记账，非供应商账单。用户确认本阶段先使用 Flash，双签保持待配置；任务仍为 `submitted`，人工核对或操作控制都不代替独立验证，也不将完整 run 标为成功。[真实执行方式与边界](docs/local-execution.md)
 
@@ -25,6 +25,8 @@ Docker启动故障修复后，完整回归 **368主测试、265子测试通过�
 - 在独立 PostgreSQL 16.15 测试库验证 21 表 DDL、两租户业务/审计 RLS、事件及 claim 约束；默认 API 尚未切换数据库。
 - 使用真实 Ed25519 签署事件快照，并以独立配置的公钥白名单、事件前缀和高水位离线核验；本地密钥/文件不是 WORM 锚定。
 - 通过私有配置接入 Flash JSON 模式，严格校验唯一 source 字段；只有获准的 developer/fixer 节点可由本机执行器运行 Python JSON 候选。宿主冻结黄金用例，Docker 无网络、只读根、非 root 且有资源/时间/输出限额，不传入密钥或宿主目录。
+- 按批准的repair策略运行公开开发检查→有界Rebind→冻结终验；新epoch与输入版本原子交接，重复源码/预算/次数耗尽或未知调用时停止。隐藏验收失败不回流修复提示，通过仍只submitted。[修复入口与边界](docs/bounded-repair.md)
+- 模型预算预留与发起意图同事务，暂停不再留下无effect预留；隐藏失败证据与挂起状态一并保存。工作台提供按租户过滤的尝试/修复安全摘要。
 
 ## 安装与验证
 
@@ -70,7 +72,7 @@ API 只绑定回环地址。`/health`、静态控制台和接口文档可无认�
 
 通过 `POST /v1/goals` 创建，再用 `PUT /v1/goals/{run_id}/plan` 保存定义及 expected_revision，最后以当前 revision/digest 批准。创建 Goal、保存/批准计划、控制/核对及旧 run/task/提交命令需要 `Idempotency-Key`。注册判据、计划审批与权限见 [API 契约](docs/api/README.md)。已实现本机动作角色边界，**尚未完成生产 OIDC、人员身份认证、双人审批或独立验证服务身份**；同一 Windows 用户管理多个 token 不证明多个独立人员。
 
-0.3.0 的历史实际服务检查为原 9 项 API + 12 项 Goal/Plan 检查通过；本轮新增控制/权限及浏览器验证以最新验证记录为准。旧 fixture 检查继续使用原私有会话，可在服务运行时复现，不必输出或重新生成 token：
+本轮实际服务为原API9 + Goal/Plan12 + 具名控制31 + 新增摘要/旧真实任务兼容17 = 69项；浏览器另34项。旧fixture检查继续使用原私有会话，可在服务运行时复现，不必输出或重新生成token：
 
 ```powershell
 $firstRoundSession = (Resolve-Path '../../work/loom-first-round-session.json').Path
@@ -127,7 +129,7 @@ $image = (Get-Content '../../work/loom-sandbox-image.id' -Raw).Trim()
 | `migrations/postgres/` | 已在隔离 PostgreSQL 16.15 执行的 DDL；完整 Store 适配尚未实现 |
 | `scripts/check_s2.py` | 强制四项基础设施配置、分阶段且拒绝 skip 的检查入口 |
 
-[实施计划](docs/implementation-plan.md) · [控制台](docs/console.md) · [本机身份](docs/local-auth.md) · [本机真实执行](docs/local-execution.md) · [Docker](docs/local-sandbox.md) · [GitHub 复用选型](docs/github-reuse.md) · [第三方声明](docs/third-party-notices.md) · [PostgreSQL](docs/postgres-integration.md) · [NATS](docs/nats-integration.md) · [检查点](docs/checkpoints.md)
+[实施计划](docs/implementation-plan.md) · [有界修复](docs/bounded-repair.md) · [控制台](docs/console.md) · [本机身份](docs/local-auth.md) · [本机真实执行](docs/local-execution.md) · [Docker](docs/local-sandbox.md) · [GitHub 复用选型](docs/github-reuse.md) · [第三方声明](docs/third-party-notices.md) · [PostgreSQL](docs/postgres-integration.md) · [NATS](docs/nats-integration.md) · [检查点](docs/checkpoints.md)
 
 ## 当前边界
 
@@ -136,12 +138,12 @@ $image = (Get-Content '../../work/loom-sandbox-image.id' -Raw).Trim()
 3. 事件检查点使用真实密码学验签；Docker 黄金用例由宿主判定，但真实模型产物仍未取得独立双模型签名。固定演示中的认证标志不是实测模型身份，检查点签名也不证明模型结论或测试指标为真。当前七角色配置路由到同一 Flash，不能视为两个独立模型。
 4. `complete`、`finish_run` 等 Python 入口属于可信验证/验收进程；不能把不可信 Worker 作为同进程插件导入。HTTP Worker 只有提交入口。
 5. NATS 已实现并在真实单节点验证至少一次传输、durable 消费和进程重启去重。尚未完成生产 accounts/TLS、R3 集群、物理断电耐久与多节点分区验证；强杀后 broker ACK 进度可能回退，本地 inbox 负责防重复效果。
-6. Flash 请求使用固定费率版本、保守输入上下文上界和输出上限预留，按有效 usage 结算；本轮262µUSD为上界记账而非账单。取消、超时和不确定响应可能仍计费，须保留预算与待核对状态，不能宣称账户级计费硬封顶。
+6. Flash 请求使用固定费率版本、保守输入上下文上界和输出上限预留，按有效usage结算；0.4真实探针262µUSD是历史上界记账，0.5本轮没有新增付费请求。取消、超时和不确定响应可能仍计费，须保留预算与待核对状态，不能宣称账户级计费硬封顶。
 7. 真实模型调用已经接入受控发起/未知态流程；业务外部写及跨灾备窗口恢复尚未完成，不承诺真实零重复。
 8. 当前回放重建已实现的业务投影；全量快照恢复、跨版本事件升级、全部生产投影和外部效果补偿仍待实现。
-9. 六种修复原语目前仅实现本地 `Rebind/Substitute` 记录及验证失败重跑；已有薄操作控制台，完整图编辑、动态改图、模板库和经验库仍在后续计划。
+9. 已实现批准的同节点有界Rebind真实执行路径；Substitute仍只有本地fixture记录。完整图RepairPlan、六种原语、工具/模型替代、动态改图、模板库和经验库尚未全通。
 10. 事件接口暂为本地整链读取；分页、SSE、生产限流和大规模性能测试尚未实现。
-11. 当前脚本创建 implement → independent_review 两节点计划，仅真实执行开发节点；执行器支持获准的 developer/fixer。人工控制已覆盖暂停/恢复/终止/未知核对，真实七角色协作、修复循环与人工流程联动、任意仓库和依赖安装仍未全通，完整 FR001–062 尚未验收。
+11. 当前脚本创建implement → independent_review两节点计划，仅执行获准developer/fixer节点。公开开发检查可驱动同节点有界修复；人工控制覆盖暂停/恢复/终止/未知核对。真实七角色协作、全部修复循环、任意仓库与依赖安装、生产部署及完整FR001–062仍未验收。
 
 ## 复用与授权
 

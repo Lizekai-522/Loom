@@ -4,11 +4,13 @@
 
 ## 当前实现到哪里
 
+**0.5扩展：** 下面的原单次执行命令继续兼容；新增可选development_tests和显式--max-repairs 1或2，在同一冻结节点内运行公开检查驱动的有界Rebind。冻结终验不回流修复，仍不最终成功；入口与限制见[有界修复](bounded-repair.md)。0.5本轮新增验证是Mock模型HTTP+真实Docker，不把历史Flash探针冒充本轮真实自动修复证据。
+
 `src/loom/execution.py` 的 `LocalTaskRunner` 读取已经批准的工作流合同，只接受 developer/fixer 且同时获准 workspace.write、tests.run 的节点。宿主侧 `freeze_tests` 固定用例和摘要；该摘要必须等于批准节点的 evaluation_digest，None 或不匹配均拒绝。`WorkflowService.get_task_spec` 重新验证批准定义摘要，按冻结 node/role 重建完整合同并核对缓存，防止指令、路由、工具、依赖、预算或判据被单独替换。
 
 当前程序协议很小：候选只能提交 `{"source":"...main.py 内容..."}`；main.py 从标准输入读取一个 JSON 值，并向标准输出写一个 JSON 值。只支持 Python 标准库，不安装候选依赖、不执行任意仓库 pytest，也不把模型输出的 shell 命令直接交给宿主。
 
-模型 prompt 只含平台的固定协议，以及 Goal description 和节点 instruction 这两项任务数据。测试的黄金 expected 值保留在宿主，不进入模型 prompt，也不进入候选容器。容器每次只收到该用例输入；宿主严格解析候选 stdout 并与黄金 JSON 比较，候选不能用打印“通过”替代受信判断。
+默认单次模型prompt包含固定协议及Goal description/节点instruction；启用Rebind时另加入获准的公开修复上下文。测试的黄金 expected 值保留在宿主，不进入模型 prompt，也不进入候选容器。容器每次只收到该用例输入；宿主严格解析候选 stdout 并与黄金 JSON 比较，候选不能用打印“通过”替代受信判断。
 
 调用 `generate(..., json_mode=True)` 会发送 `response_format={"type":"json_object"}`，平台 prompt 同时给出 JSON 格式示例。收到响应后仍检查严格 JSON、唯一 source 字段、字符串类型和源码字节上限；Markdown 代码围栏、额外字段、重复字段、空源码或截断输出均不能进入执行。模式开关本身不等于响应已经验证。[DeepSeek 官方 JSON Output](https://api-docs.deepseek.com/guides/json_mode/)
 
@@ -41,7 +43,7 @@ $image = 'sha256:19d840be00b00dd952e065969de532fd28670b8c9e99c7c597408d195f67ac7
 
 `--approve` 表示本机操作器确认本次任务计划，可能由自动化测试显式传入。审计 actor 为 operator:local，不冒充真实个人审批主体，也不等于 Gate-V 已经通过。脚本每次带 approve 运行都会建立新的 Goal；重复运行可能产生新的付费请求，不能把它当作免费的重试或对先前不确定调用的自动恢复。
 
-任务文件严格包含 title、description、tests；每项测试包含 name、input、expected。可以参考 `configs/python-task.example.json` 换成新的同类 JSON 程序任务。黄金 expected 属于宿主测试数据，不要另外拼入 description。单文件最多 256KiB；测试数量为 1–32，每项 input/expected 各最多 16KiB。该脚本构造“implement 开发节点 + 依赖它的 independent_review 验证节点”，沿用完整七角色注册，但本轮只执行开发节点。
+任务文件需要title、description、tests，可选公开development_tests；每项测试包含 name、input、expected。可以参考 `configs/python-task.example.json` 换成新的同类 JSON 程序任务。黄金 expected 属于宿主测试数据，不要另外拼入 description。单文件最多 256KiB；测试数量为 1–32，每项 input/expected 各最多 16KiB。该脚本构造“implement 开发节点 + 依赖它的 independent_review 验证节点”，沿用完整七角色注册，但本轮只执行开发节点。
 
 单独检查连通性可用 `scripts/check_model.py --secrets-file <私有文件路径>`；它同样可能产生一次真实付费请求，不执行生成代码。网关 readiness 只做本地路由和密钥格式检查，不证明网络、余额或远端可用。完整 HTTP 边界、错误脱敏和模型身份说明见 [模型网关文档](model-gateway.md)。
 
