@@ -1,8 +1,8 @@
 # Loom
 
-基于 Loom v2.1 修订方案的 Agent 编排项目，当前包版本 **0.5.0，bounded-repair-alpha**。在已有 Goal/Plan、具名权限、中文控制台和 Flash → Docker 链路上，新增公开开发检查、有界Rebind修复重验、失败分类及安全尝试摘要；同时修复慢网络误控制、待办错误显示与暂停事务边界。API 与任务内核继续使用单实例 SQLite；完整七角色及全部修复原语仍在推进。
+基于 Loom v2.1 修订方案的 Agent 编排项目，当前包版本 **0.6.0，artifact-preview-alpha**。在 Goal/Plan、具名权限、中文控制台和 Flash → Docker 有界修复链路上，增加需求、设计、公开开发检查的结构化候选注册、精确辅助输入批准和只读预览。API 与任务内核继续使用单实例 SQLite；候选预览尚未接入模型执行，完整七角色及全部修复原语仍在推进。
 
-完整回归 **432主测试、267子测试通过，0失败、0跳过**；另69项实际HTTP和34项真实浏览器断言通过，详见 [验证记录](docs/validation.md)。0.4历史为368主/265子、0.3为252主/247子、0.2为135主/33子。常规分阶段套件使用真实Docker/NATS/独立PostgreSQL，模型网关使用Mock；新增修复路径明确使用模拟模型HTTP与真实Docker，真实模型探针分别登记。
+完整回归 **469主测试、302子测试通过，0失败、0跳过；另100项实际HTTP和46项真实浏览器断言通过**，详见 [验证记录](docs/validation.md)。0.5历史为432主/267子、0.4为368主/265子。完整套件使用真实Docker/NATS/独立PostgreSQL，模型网关使用Mock；新增产物HTTP由测试Worker提交，无新增付费调用。真实模型探针分别登记。
 
 0.4.0新增Unicode任务通过 **5个冻结用例**，提供方返回 **452 tokens**，保守费用记账上界 **262µUSD**，并与工作台证据对账。0.3.0历史探针为4个用例、417 tokens、247µUSD。费用均为上界记账，非供应商账单。用户确认本阶段先使用 Flash，双签保持待配置；任务仍为 `submitted`，人工核对或操作控制都不代替独立验证，也不将完整 run 标为成功。[真实执行方式与边界](docs/local-execution.md)
 
@@ -27,6 +27,9 @@
 - 通过私有配置接入 Flash JSON 模式，严格校验唯一 source 字段；只有获准的 developer/fixer 节点可由本机执行器运行 Python JSON 候选。宿主冻结黄金用例，Docker 无网络、只读根、非 root 且有资源/时间/输出限额，不传入密钥或宿主目录。
 - 按批准的repair策略运行公开开发检查→有界Rebind→冻结终验；新epoch与输入版本原子交接，重复源码/预算/次数耗尽或未知调用时停止。隐藏验收失败不回流修复提示，通过仍只submitted。[修复入口与边界](docs/bounded-repair.md)
 - 模型预算预留与发起意图同事务，暂停不再留下无effect预留；隐藏失败证据与挂起状态一并保存。工作台提供按租户过滤的尝试/修复安全摘要。
+- 保存三类结构化候选，将来源具名 Worker、任务 epoch、批准计划、schema、内容摘要与源事件绑定；历史版本不可覆盖，旧版本保留并标 stale。
+- operator 可按计划声明，将精确候选版本批准为辅助读取输入，同时绑定来源与目标 epoch；更新候选或换代后须重新审阅批准。
+- 预览有效辅助数据与缺失项，标注未验证，最终规范化 UTF-8 响应限制为65536字节；不改变硬依赖、预算、签名或任务完成状态。[候选与预览](docs/artifacts.md)
 
 ## 安装与验证
 
@@ -72,7 +75,7 @@ API 只绑定回环地址。`/health`、静态控制台和接口文档可无认�
 
 通过 `POST /v1/goals` 创建，再用 `PUT /v1/goals/{run_id}/plan` 保存定义及 expected_revision，最后以当前 revision/digest 批准。创建 Goal、保存/批准计划、控制/核对及旧 run/task/提交命令需要 `Idempotency-Key`。注册判据、计划审批与权限见 [API 契约](docs/api/README.md)。已实现本机动作角色边界，**尚未完成生产 OIDC、人员身份认证、双人审批或独立验证服务身份**；同一 Windows 用户管理多个 token 不证明多个独立人员。
 
-本轮实际服务为原API9 + Goal/Plan12 + 具名控制31 + 新增摘要/旧真实任务兼容17 = 69项；浏览器另34项。旧fixture检查继续使用原私有会话，可在服务运行时复现，不必输出或重新生成token：
+本轮实际服务为原API9 + Goal/Plan12 + 具名控制31 + 旧真实任务兼容17 + 候选交接31 = 100项；浏览器另46项。旧fixture检查继续使用原私有会话，可在服务运行时复现，不必输出或重新生成token：
 
 ```powershell
 $firstRoundSession = (Resolve-Path '../../work/loom-first-round-session.json').Path
@@ -117,6 +120,7 @@ $image = (Get-Content '../../work/loom-sandbox-image.id' -Raw).Trim()
 | `src/loom/auth.py`、`src/loom/operator.py` | 本机主体/角色、持久人工控制及未知模型调用核对 |
 | `src/loom/web/` | 无外部依赖的中文控制台、内存凭据与纯文本证据呈现 |
 | `src/loom/workflow.py` | Goal 草案、版本化 DAG、审批与七角色冻结合同 |
+| `src/loom/artifact_schemas.py`、`src/loom/artifacts.py` | 结构化候选、精确辅助读取批准、只读预览与静态字节限制 |
 | `src/loom/model_gateway.py` | 私有配置、Flash JSON 模式、用量及受控错误边界 |
 | `src/loom/execution.py` | 获准 developer/fixer 节点的真实模型与隔离执行适配 |
 | `src/loom/sandbox.py`、`sandbox/Dockerfile` | Docker Linux 预检、有限 Python 工作区及宿主黄金用例判定 |
@@ -133,12 +137,14 @@ $image = (Get-Content '../../work/loom-sandbox-image.id' -Raw).Trim()
 
 ## 当前边界
 
+候选来源为认证 Worker 提交，内容及模型来源未验证；人工批准只授予辅助读取，`execution_connected=false`。预览尚未进入模型提示、执行派发或Gate-V，静态字节限额不等于token裁剪；FR-051/052仍部分实现。
+
 1. API 和任务内核仍由 SQLite 通过数据库事务在**单主机**协调。独立 PostgreSQL DDL/RLS 检查已通过，不代表完整 PostgreSQL Store、多主机调度或主备灾备完成。
 2. Ed25519 检查点可以发现与独立受信快照不一致的截断、改写和历史分叉；必须保护公钥白名单和高水位。相同本机账号能同时改 DB、密钥与高水位时没有独立安全边界；本地文件不是 WORM、HSM 或远端不可回滚锚定。
 3. 事件检查点使用真实密码学验签；Docker 黄金用例由宿主判定，但真实模型产物仍未取得独立双模型签名。固定演示中的认证标志不是实测模型身份，检查点签名也不证明模型结论或测试指标为真。当前七角色配置路由到同一 Flash，不能视为两个独立模型。
 4. `complete`、`finish_run` 等 Python 入口属于可信验证/验收进程；不能把不可信 Worker 作为同进程插件导入。HTTP Worker 只有提交入口。
 5. NATS 已实现并在真实单节点验证至少一次传输、durable 消费和进程重启去重。尚未完成生产 accounts/TLS、R3 集群、物理断电耐久与多节点分区验证；强杀后 broker ACK 进度可能回退，本地 inbox 负责防重复效果。
-6. Flash 请求使用固定费率版本、保守输入上下文上界和输出上限预留，按有效usage结算；0.4真实探针262µUSD是历史上界记账，0.5本轮没有新增付费请求。取消、超时和不确定响应可能仍计费，须保留预算与待核对状态，不能宣称账户级计费硬封顶。
+6. Flash 请求使用固定费率版本、保守输入上下文上界和输出上限预留，按有效usage结算；0.4真实探针262µUSD是历史上界记账，0.5/0.6轮次均没有新增付费请求。取消、超时和不确定响应可能仍计费，须保留预算与待核对状态，不能宣称账户级计费硬封顶。
 7. 真实模型调用已经接入受控发起/未知态流程；业务外部写及跨灾备窗口恢复尚未完成，不承诺真实零重复。
 8. 当前回放重建已实现的业务投影；全量快照恢复、跨版本事件升级、全部生产投影和外部效果补偿仍待实现。
 9. 已实现批准的同节点有界Rebind真实执行路径；Substitute仍只有本地fixture记录。完整图RepairPlan、六种原语、工具/模型替代、动态改图、模板库和经验库尚未全通。

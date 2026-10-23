@@ -1,19 +1,24 @@
 {
-  "version": "0.5.0",
-  "stage": "bounded-repair-alpha",
+  "version": "0.6.0",
+  "stage": "artifact-preview-alpha",
   "date": "2026-10-23",
-  "generated_at": "2026-10-23T15:43:18.611248+08:00",
-  "source_file_count_excluding_manifest": 136,
+  "generated_at": "2026-10-23T16:55:40.727014+08:00",
+  "source_file_count_excluding_manifest": 147,
   "files": [
     {
       "path": ".gitignore",
-      "sha256": "9a1a2d12c3ea7a62defb5fd80ee4f48444e1f32c58d46d8cf7e8905f0463def7",
-      "bytes": 110
+      "sha256": "83e792bcd56332b84f190c6e47fe284df55367f517b89b1aa243b9bcc05f19de",
+      "bytes": 127
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "d38e92960c861ee2e9bf3d17c705c4c83b1d7a58e08fa249f1f09ebc13eeede5",
+      "bytes": 1796
     },
     {
       "path": "README.md",
-      "sha256": "c02cf38c006b6a971fb6ab669dc8e41a0db31104b92f835102f6dd96c1aace63",
-      "bytes": 16718
+      "sha256": "a36756fa8d9f22a389f594234556fde30b46ee7cafcd7265a8659bf7a82dcd26",
+      "bytes": 17663
     },
     {
       "path": "configs/models.example.json",
@@ -36,19 +41,29 @@
       "bytes": 1334
     },
     {
+      "path": "configs/workflow.artifacts.example.json",
+      "sha256": "2f1108a0010f1ebbac53a80bc23e34ed406001c81d9cc54b65385df314c560b8",
+      "bytes": 2985
+    },
+    {
       "path": "docs/Loom.md",
       "sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
       "bytes": 189731
     },
     {
       "path": "docs/api/README.md",
-      "sha256": "b2c21731d56ada59b330b1d96eaf60963fc10b803b85dfc952c25120e8e58425",
-      "bytes": 8727
+      "sha256": "99e458d2587769981c6128d647a574c65c52b89515f8708cde917af25a0797ff",
+      "bytes": 10044
     },
     {
       "path": "docs/api/openapi.json",
-      "sha256": "7e6ba7548a7bfb9476f5b57e17e2a2288de07f94ef4a98261be18fc57b3d1a18",
-      "bytes": 41213
+      "sha256": "f4a52461cd0a3eda272e59cffefdca077e1a0e32a678298b8debf5867cf3c035",
+      "bytes": 52962
+    },
+    {
+      "path": "docs/artifacts.md",
+      "sha256": "1fb1d03db4903e590b814cd7b9e5853b63c4284b8f503119436944a999b2512a",
+      "bytes": 8223
     },
     {
       "path": "docs/bounded-repair.md",
@@ -62,8 +77,8 @@
     },
     {
       "path": "docs/console.md",
-      "sha256": "5012531dd974bfa46270959f269fb260b4977fd97e9835b2927c2b88cfe69a10",
-      "bytes": 4859
+      "sha256": "adf7ce01fbbbdd38bbf1acaac2dc8b4ec6b7d214807f65bd7f5ecd157889011e",
+      "bytes": 6943
     },
     {
       "path": "docs/coverage-s2.json",
@@ -82,8 +97,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "sha256": "79e706e86171b5db249dfa3a6e92e241fa035c91afa6b4f7070d9960f264356c",
-      "bytes": 24096
+      "sha256": "af0749413be6d8f309eef2da754fcb12d0dad3de165fcc84b65908e1364fdf43",
+      "bytes": 24862
     },
     {
       "path": "docs/local-auth.md",
@@ -121,6 +136,11 @@
       "bytes": 19538
     },
     {
+      "path": "docs/progress-cycle.md",
+      "sha256": "9fce293a8487f088d57e87bb0decdcecfe5c568568f51817106bddc29f8a619a",
+      "bytes": 2354
+    },
+    {
       "path": "docs/review-resolution.md",
       "sha256": "c1ab2b7ad8c12766fc6931b7dfe5c6d8c4ebcd71601246cbf05045a4c8b72c14",
       "bytes": 11008
@@ -146,14 +166,19 @@
       "bytes": 4993
     },
     {
-      "path": "docs/validation.md",
+      "path": "docs/validation-0.5.md",
       "sha256": "ca3b7f3539f7c44dbd95db7e37d2bcc3a15871974c098951ef5f9aff39b28c17",
       "bytes": 4187
     },
     {
+      "path": "docs/validation.md",
+      "sha256": "d8ceac43916a9af39a390f5963abd804a58195c76b27ecc884f9178cd158d576",
+      "bytes": 3091
+    },
+    {
       "path": "docs/workflow.md",
-      "sha256": "4780ed678ef6eaa236b64ac5fbbd24bc1ba6bde0355d4f69ef992c6bede0615f",
-      "bytes": 6283
+      "sha256": "a6af4d4aad8387ffc32dbf640771193eae46ac9541be07e94a369da2c1a533a0",
+      "bytes": 6939
     },
     {
       "path": "migrations/postgres/001_core.sql",
@@ -172,7 +197,7 @@
     },
     {
       "path": "pyproject.toml",
-      "sha256": "1605ea160de32f191bc8995dfd54eafa2ecf68348de53a22cf16ec5d0f1d980a",
+      "sha256": "76c7d493aa17070f23f37a0a6bdc307710da18df9b9cb345dfe5a2bc33b53bd6",
       "bytes": 771
     },
     {
@@ -194,6 +219,11 @@
       "path": "scripts/check_api.py",
       "sha256": "d38ee70eb0e4c0e458aba53f334ede099a82c00cba53e2f73c396893beda2a7c",
       "bytes": 5728
+    },
+    {
+      "path": "scripts/check_artifact_api.py",
+      "sha256": "0a0f5656d00dd7947c937e10a51bf50f0fa0b19ac0a0754f30d651bee7633d88",
+      "bytes": 12559
     },
     {
       "path": "scripts/check_goal_api.py",
@@ -222,8 +252,8 @@
     },
     {
       "path": "scripts/check_s2.py",
-      "sha256": "4c71dc8195a15d5ee052506348e95b3eb732032f4723c271774a80ddbd594106",
-      "bytes": 5622
+      "sha256": "1778a5ddc5fb130ee8ae34cfa5c3260dd50fe0d90e1654643413a1a40e7e9c57",
+      "bytes": 5624
     },
     {
       "path": "scripts/check_sandbox.py",
@@ -247,7 +277,7 @@
     },
     {
       "path": "src/loom/__init__.py",
-      "sha256": "74ca712cd9ffe14c4db870876cac71201f6bd5c80a1ac5b5d9457a2f361bb050",
+      "sha256": "fa265239dbea298934271290a86dd280959abbe9c34a77af3f20eff6a0bc256a",
       "bytes": 73
     },
     {
@@ -257,8 +287,18 @@
     },
     {
       "path": "src/loom/api.py",
-      "sha256": "d32b87613bf6b6e98b2306fa67efe8c1eb4276c614e970088961208d7daf1914",
-      "bytes": 15672
+      "sha256": "b44a7531e394060e62b00f2e2eec75b098540f09e71f05759d9d53ddd6163fb2",
+      "bytes": 18681
+    },
+    {
+      "path": "src/loom/artifact_schemas.py",
+      "sha256": "242f2dec8e7d82b200534f9ee2f667644d2364aa7c81f3d56c46a141bee7ede6",
+      "bytes": 4603
+    },
+    {
+      "path": "src/loom/artifacts.py",
+      "sha256": "cef2de33d0394c4df166b20e5a1ce3fac46d6cd3517d5152a3426844e680532e",
+      "bytes": 22424
     },
     {
       "path": "src/loom/attempts.py",
@@ -337,23 +377,23 @@
     },
     {
       "path": "src/loom/web/console.css",
-      "sha256": "af37264141585bfdd8d8f88f63c06378cd8b61b76f1669a00526099414764cb6",
-      "bytes": 12155
+      "sha256": "bac2a155f637a1c7d4c08168c52fd1828b79ac9f103b63d7a76448bd32742a65",
+      "bytes": 13153
     },
     {
       "path": "src/loom/web/console.js",
-      "sha256": "aace904f745758281a7c021ab2a4ed5d8b298e67e1a08f060b2b1722c7f9fde8",
-      "bytes": 33673
+      "sha256": "6fbde3227957db8d63f8c0c8f813a50f45e21c1aadceb20699e678ddabc8e56e",
+      "bytes": 49962
     },
     {
       "path": "src/loom/web/index.html",
-      "sha256": "e992b9c6244f778644322cd967d9303bfacba545c7e0a86ab10dee35949303e4",
-      "bytes": 10708
+      "sha256": "54f0101ca76a9698e949b7b130bd18fdff88753963095760c86e17ffa02cb92f",
+      "bytes": 12727
     },
     {
       "path": "src/loom/workflow.py",
-      "sha256": "7a7291f605e621807d25716844edd4d17ccf83cd978fc50708a787e4eb047381",
-      "bytes": 22068
+      "sha256": "73db71364737e2e8b8cbd79f25974550afb18eaa0c2bbe1fc467d8f9ab06f7da",
+      "bytes": 22945
     },
     {
       "path": "tests/__init__.py",
@@ -399,6 +439,16 @@
       "path": "tests/test_api.py",
       "sha256": "d3ea4792e6ce11d0b2244aa04d04756661753c635052cb09b28ff0797b8bf347",
       "bytes": 4931
+    },
+    {
+      "path": "tests/test_artifact_api.py",
+      "sha256": "46406360d8f708741c295b8ea2a0bcc2b933b7712f018c3b1ac1476eaa9d317d",
+      "bytes": 11076
+    },
+    {
+      "path": "tests/test_artifacts.py",
+      "sha256": "2936baa3f8c58cfad61249a919d94c37338122d2344c9d5551cdcf2b49919386",
+      "bytes": 23400
     },
     {
       "path": "tests/test_attempt_api.py",
@@ -499,6 +549,11 @@
       "path": "tests/test_workflow.py",
       "sha256": "5f13027752226698248e5851404e0617398a3f12ebfb3f9b24b761c8309c9339",
       "bytes": 17493
+    },
+    {
+      "path": "tests/test_workflow_artifacts.py",
+      "sha256": "8106720cb5e2177752109a6ae0cb1b9541ae5961b1ec40e8603de8ab72c888e1",
+      "bytes": 3114
     },
     {
       "path": "third_party/licenses/annotated-doc-0.0.5/LICENSE",
@@ -687,17 +742,15 @@
     }
   ],
   "validation": {
-    "main_tests_passed": 432,
-    "subtests_passed": 267,
+    "main_tests_passed": 469,
+    "subtests_passed": 302,
     "skipped": 0,
-    "api_smoke_checks": 69,
-    "browser_assertions_passed": 34,
+    "api_smoke_checks": 100,
+    "browser_assertions_passed": 46,
     "real_docker_main_tests_included": 13,
-    "repair_cycle_main_tests": 4,
-    "repair_cycle_real_container_cases": 6,
-    "repair_cycle_mock_http_requests": 6,
     "new_paid_model_requests": 0,
-    "billed_currency_verified": false
+    "billed_currency_verified": false,
+    "auxiliary_context_execution_connected": false
   },
   "runtime": {
     "python": "3.13.12",
@@ -706,17 +759,19 @@
     "nats_server": "2.15.1",
     "postgresql": "16.15"
   },
+  "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
   "production_ready": false,
   "real_models_used": false,
   "full_workflow_completed": false,
   "notes": [
-    "New repair cycles use mock model HTTP and real Docker; no new paid provider requests. Historical Flash probes remain separate; finite tests submit only, independent review pending configuration.",
+    "Typed candidates originate from authenticated Workers; schema and auxiliary read approval do not verify content or model provenance.",
+    "Auxiliary preview is read-only and disconnected from prompts, execution dispatch and Gate-V. Hard dependencies remain unchanged.",
+    "No new paid provider requests; historical Flash probes remain separate. Independent second model remains pending configuration.",
     "Named local identities are route permissions, not production OIDC or proof of independent people.",
     "API/Store use SQLite; PostgreSQL integration tests validate separate DDL/roles/constraints.",
-    "Docker startup was restored by backed-up runtime socket directories; Desktop 4.70.0 was not upgraded and the upstream defect may recur.",
-    "The sandbox image is local, not published or embedded in this archive.",
-    "Local checkpoints are not external WORM/HSM. Bounded same-node Rebind is implemented; seven-role execution and all six graph repair primitives remain incomplete.",
-    "Manifest excludes itself; archive hash is delivered separately.",
+    "Real Docker isolation/repair tests use mock model HTTP. The local sandbox image is not published or embedded.",
+    "Desktop 4.70.0 runtime socket workaround is unchanged; production identity, full workflow, recovery and scale validation remain incomplete.",
+    "Manifest excludes itself; archive hash is delivered separately. Browser-generated temporary logs are excluded.",
     "No credentials, databases, private keys, venvs, runtime images or native server binaries are included."
   ]
 }

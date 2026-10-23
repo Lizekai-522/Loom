@@ -6,7 +6,9 @@
 
 `WorkflowDefinition` 固定 `pack=software-dev`、`scope=local-workspace`，严格拒绝未知字段和隐式类型转换。`AgentRole` 定义七角色：analyst、architect、tester、developer、reviewer、fixer、validator，每个角色配置 skills、tools 和 model_alias。代码中的注册表限定角色能力上限；角色或计划不能自行授权 shell、任意宿主路径、平台管理或其他角色的写权限。tools 是执行器的能力需求，不是已执行工具的证据。model_alias 只是服务端路由别名，实际模型身份必须由模型网关确认。
 
-每个 `TaskNode` 包含 id、title、instruction、role、depends、priority、channel、limits 和可选 evaluation_digest。validator 使用 verification 通道，其余角色使用 business。依赖必须引用本定义中的节点；重复 ID、自依赖、缺失依赖、循环、跨 run 形式的引用均拒绝。当前没有路径输入字段，scope 只接受平台命名的受控本地工作区。Goal、说明、instruction 和上游产物始终是任务数据，不能提升为平台系统指令。
+每个 `TaskNode` 包含 id、title、instruction、role、depends、priority、channel、limits 和可选 evaluation_digest、repair、input_artifacts。validator 使用 verification 通道，其余角色使用 business。依赖必须引用本定义中的节点；重复 ID、自依赖、缺失依赖、循环、跨 run 形式的引用均拒绝。当前没有路径输入字段，scope 只接受平台命名的受控本地工作区。Goal、说明、instruction 和上游产物始终是任务数据，不能提升为平台系统指令。
+
+`input_artifacts` 最多声明8个辅助读取来源，逐项绑定 source_node、kind、schema_version 和 required；来源角色必须能产生该类型，禁止自身/未知来源和重复选择器。该字段参与批准摘要与合同，未填写时省略这一新增字段，保持旧合同摘要；旧 evaluation_digest:null 语义不变。它不修改 `depends`，不产生派发边。operator 仍须批准精确候选版本，0.6只提供只读预览，尚未接入模型或执行器。[候选合同与批准](artifacts.md)
 
 `evaluation_digest` 如有值必须是 64 位小写十六进制摘要，并纳入完整计划摘要、冻结合同及独立投影列。真实代码执行器必须要求宿主侧 FrozenTest suite 的摘要与已批准值一致；None 表示没有授权的执行判据，不能当作“跳过校验”。黄金 expected 值保留在宿主侧，不放入模型 prompt。当前示例七节点均未绑定实际 suite，因此只是可批准的规划模板，不凭此授权真实生成代码执行。旧本地数据库会新增可空列，旧合同不会自动获得判据绑定。
 
@@ -35,7 +37,7 @@ workflow_goals、workflow_tasks 和现有 runs/tasks 位于同一 SQLite 数据�
 
 实际 task_id 为 `run_id:node_id`，防止同租户不同 Goal 的同名节点冲突；depends_on 改为这些实际任务 ID。`get_task_spec` 重新验证 approved definition 的完整摘要，按冻结 node/role 重建合同，并逐字段对比合同投影；指令、模型别名、能力、依赖、预算和判据绑定中的任何差异均拒绝。它忽略缓存中的 status 并返回重建的冻结合同；实时状态仍由 Store 管理。任务创建事件包含全部合同，可追溯至 plan_digest。
 
-本机创建、保存和批准事件统一使用 `operator:local`。这只标识调用可信本机操作器的行为，自动化 CLI 也可能调用；不能据此声称某位真人完成了审批。HTTP 当前仍是租户 key 的开发模式，真实个人主体、OIDC 与职责分离需要后续接入。
+具名 HTTP 创建、保存和批准事件使用认证 `subject:<id>`；本机可信调用未传 actor 时保留 `operator:local` 兼容标记。HTTP 已按 operator/worker/viewer 区分动作并绑定 Worker 主体，旧共享租户 key 仅保留 legacy developer 兼容面。本机 token 和 actor 不证明真人或多人职责分离，生产 OIDC、人员与独立验证服务身份仍需接入。
 
 每项 limits 的 cost_limit_microusd/token_limit 是逻辑任务包含全部尝试的累计上限，max_attempts 限定重试次数。批准时所有任务上限的总和必须不超过 Goal 冻结预算；这只是计划准入。执行器仍须在实际调用前预留，并根据真实使用结算、维护每任务累计用量和尝试次数；此模块不执行模型、代码或自动重试，也不能替代 Store 的全 run 预算强制与 Gate-V。
 

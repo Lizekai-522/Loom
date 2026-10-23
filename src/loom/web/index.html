@@ -44,7 +44,7 @@
         <dl class="budget-strip"><div><dt>已记账费用</dt><dd id="cost-spent">—</dd></div><div><dt>当前预留</dt><dd id="cost-reserved">—</dd></div><div><dt>已用 tokens</dt><dd id="tokens-spent">—</dd></div><div><dt>任务进度</dt><dd id="task-count">—</dd></div></dl>
         <p class="field-help">费用为平台记账，不能代替供应商账单。测试通过的候选仍需独立复核。</p>
         <nav class="tabs" aria-label="运行内容">
-          <button class="tab active" data-tab="tasks" aria-current="page">任务</button><button class="tab" data-tab="plan">计划</button><button class="tab" data-tab="events">事件</button><button class="tab" data-tab="interventions">人工待办</button>
+          <button class="tab active" data-tab="tasks" aria-current="page">任务</button><button class="tab" data-tab="plan">计划</button><button class="tab" data-tab="artifacts">产物 / 输入预览</button><button class="tab" data-tab="events">事件</button><button class="tab" data-tab="interventions">人工待办</button>
         </nav>
         <section id="tab-tasks" class="tab-panel" aria-label="任务列表"><div class="section-heading"><h2>执行状态</h2><span id="tasks-hint" class="muted"></span></div><div id="task-list" class="task-list"></div></section>
         <section id="tab-plan" class="tab-panel" aria-label="计划审阅" hidden>
@@ -58,6 +58,22 @@
             <button id="save-plan-button" type="submit" data-cap="goal.write">保存新修订</button>
           </form>
           <form id="approve-plan-form" class="approval-form"><label class="check-label"><input id="plan-reviewed" type="checkbox" required>我已审阅上方修订、摘要及任务定义</label><button id="approve-plan-button" type="submit" class="primary" data-cap="plan.approve">批准当前计划</button></form>
+        </section>
+        <section id="tab-artifacts" class="tab-panel" aria-label="产物和辅助输入预览" hidden>
+          <div class="section-heading"><h2>候选产物</h2><button id="artifacts-refresh" type="button">重新读取</button></div>
+          <p class="field-help">候选来自已认证 Worker 提交，尚未独立验证。批准辅助输入只供目标节点参考，不验证产物、不放行父任务或依赖；当前未接入模型执行。</p>
+          <p id="artifacts-state" class="muted" role="status" aria-live="polite"></p><div id="artifact-list" class="artifact-list"></div><div id="artifact-detail"></div>
+          <div class="input-preview-panel">
+            <h2>目标节点的辅助输入</h2><label for="input-target">目标任务</label><select id="input-target" aria-describedby="input-selectors"></select><p id="input-selectors" class="field-help"></p>
+            <form id="auxiliary-form" class="approval-form">
+              <p id="auxiliary-binding" class="mono break-word"></p>
+              <label class="check-label"><input id="auxiliary-reviewed" type="checkbox" required>我已核对候选正文、源与目标 epoch、修订、内容摘要及计划摘要，仅批准作为不可信辅助输入</label>
+              <button id="auxiliary-approve" type="submit" class="primary" data-cap="control">批准为辅助输入</button><p id="auxiliary-help" class="field-help"></p>
+            </form>
+            <div class="section-heading preview-heading"><h3>只读上下文预览</h3><button id="context-refresh" type="button">刷新预览</button></div>
+            <p id="context-state" class="muted" role="status" aria-live="polite"></p><div id="context-preview"></div>
+            <p class="field-help">正文上限 32 KiB，完整预览上限 64 KiB。这是静态 UTF-8 字节限制，不是精确 token 预算；数据齐备不表示任务可执行或验收通过。</p>
+          </div>
         </section>
         <section id="tab-events" class="tab-panel" aria-label="事件记录" hidden><div class="section-heading"><h2>事件记录</h2><span id="integrity-label" class="muted"></span></div><p id="events-state" class="muted"></p><ol id="event-list" class="event-list"></ol><p class="field-help">页面最多展示最近 200 条。完整事件仍保存在本机台账。</p></section>
         <section id="tab-interventions" class="tab-panel" aria-label="人工待办" hidden><div class="section-heading"><h2>人工待办</h2><span class="muted">核对后再推进</span></div><div id="intervention-list"></div><div id="review-summary"></div></section>

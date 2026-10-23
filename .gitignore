@@ -10,4 +10,5 @@ dist/
 *.db-shm
 *.db-wal
 artifacts/
+.playwright-cli/
 

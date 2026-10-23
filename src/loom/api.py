@@ -2,7 +2,7 @@
 from dataclasses import asdict
 import json
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.exceptions import RequestValidationError
@@ -14,6 +14,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from . import __version__
 from .attempts import attempt_summaries
 from .auth import AuthRegistry, LocalIdentity, Principal
+from .artifacts import ArtifactService
+from .artifact_schemas import MAX_BODY_BYTES
 from .operator import OperatorService
 from .store import Claim, Conflict, InvalidInput, LoomError, NotFound, Store, canonical, digest
 from .workflow import WorkflowDefinition, WorkflowService
@@ -91,12 +93,37 @@ class CompleteInput(Input):
         return value
 
 
+
+class CandidateArtifactInput(Input):
+    worker_id: str = Field(min_length=1, max_length=128)
+    epoch: int = Field(ge=1)
+    kind: Literal["requirements", "design", "public-checks"]
+    body: dict[str, Any]
+
+    @field_validator("body")
+    @classmethod
+    def bounded_candidate(cls, value):
+        if len(canonical(value).encode("utf-8")) > MAX_BODY_BYTES:
+            raise ValueError("candidate body exceeds 32 KiB")
+        return value
+
+
+class AuxiliaryInputApproval(Input):
+    artifact_id: str = Field(min_length=1, max_length=200)
+    expected_plan_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_source_epoch: int = Field(ge=1)
+    expected_target_epoch: int = Field(ge=0)
+    expected_revision: int = Field(ge=1)
+    expected_content_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[LocalIdentity, ...] = ()) -> FastAPI:
     registry = AuthRegistry(tenant_keys, identities)
     app = FastAPI(title="Loom local kernel", version=__version__,
                   description="Local S1 development API. No real model or external write execution.")
     workflows = WorkflowService(store)
     operators = OperatorService(store)
+    artifacts = ArtifactService(store)
     security = HTTPBearer(auto_error=False)
 
     def principal(credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)]) -> Principal:
@@ -237,6 +264,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
                 if contract:
                     spec = workflows.get_task_spec(tenant, run_id, row["id"])
                     item.update({key: spec[key] for key in ("role", "model_alias", "evaluation_digest", "limits")})
+                    item["input_artifacts"] = spec.get("input_artifacts") or []
                 if row["output"] is not None:
                     output = json.loads(row["output"])
                     identity = digest(output)
@@ -258,6 +286,35 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
             return {"run": run, "tasks": tasks, "effects": effects, "reservations": reservations,
                     "attempts": attempt_summaries(store, tenant, run_id),
                     "verification": "pending_configuration", "counts_as_success": False}
+
+    @app.get("/v1/runs/{run_id}/artifacts")
+    def list_artifacts(run_id: str, tenant: Tenant, task_id: str | None = None):
+        return {"items": artifacts.list_artifacts(tenant, run_id, task_id=task_id),
+                "producer_verified": False, "counts_as_success": False}
+
+    @app.get("/v1/runs/{run_id}/artifacts/{artifact_id}")
+    def get_artifact(run_id: str, artifact_id: str, tenant: Tenant):
+        return artifacts.get_artifact(tenant, run_id, artifact_id)
+
+    @app.post("/v1/runs/{run_id}/tasks/{task_id}/artifacts", status_code=201)
+    def save_candidate(run_id: str, task_id: str, body: CandidateArtifactInput, identity: Submitter, idempotency_key: Key):
+        if "worker" not in identity.roles or body.worker_id != identity.subject_id:
+            raise HTTPException(403, "candidate publication requires the authenticated named worker")
+        claim = Claim(identity.tenant_id, run_id, task_id, identity.subject_id, body.epoch, 0)
+        return artifacts.save_candidate(claim, idempotency_key, body.kind, body.body,
+                                        actor="subject:" + identity.subject_id)
+
+    @app.post("/v1/runs/{run_id}/tasks/{task_id}/auxiliary-inputs")
+    def approve_auxiliary_input(run_id: str, task_id: str, body: AuxiliaryInputApproval,
+                               identity: Controller, idempotency_key: Key):
+        return artifacts.approve_input(identity.tenant_id, run_id, task_id, body.artifact_id, idempotency_key,
+            actor="subject:" + identity.subject_id, expected_plan_digest=body.expected_plan_digest,
+            expected_source_epoch=body.expected_source_epoch, expected_revision=body.expected_revision,
+            expected_content_hash=body.expected_content_hash, expected_target_epoch=body.expected_target_epoch)
+
+    @app.get("/v1/runs/{run_id}/tasks/{task_id}/context-preview")
+    def preview_context(run_id: str, task_id: str, tenant: Tenant):
+        return artifacts.preview_context(tenant, run_id, task_id)
 
     @app.get("/v1/runs/{run_id}/attempts")
     def read_attempts(run_id: str, tenant: Tenant):

@@ -7,6 +7,10 @@
     goal: null, snapshot: null, plan: null, review: null, tab: "tasks",
     busy: false, loading: false, pendingRunId: null, loadedSelection: 0,
     interventionsError: false, noticeKind: null, session: 0, selection: 0, controllers: new Set(), keys: new Map(),
+    artifacts: [], artifactStatus: "idle", artifactError: "", artifactId: "", artifactDetail: null,
+    detailStatus: "idle", detailError: "", targetId: "", context: null, contextStatus: "idle", contextError: "",
+    artifactVersion: 0, detailVersion: 0, contextVersion: 0, artifactsSelection: 0,
+    contextBindingChanged: false,
   };
   const statusNames = {
     draft: "草案", open: "运行开放", paused: "已暂停", awaiting_human: "待人工处理",
@@ -130,6 +134,7 @@
     $("reconcile-button").disabled = state.busy || unchecked || !has("control") || effects.length === 0;
     $("refresh-button").disabled = state.busy;
     document.querySelectorAll(".goal-button, .intervention-item button").forEach((button) => { button.disabled = state.busy; });
+    refreshArtifactControls();
     return effects;
   }
 
@@ -150,6 +155,7 @@
     state.pendingRunId = null;
     state.loadedSelection = 0;
     state.interventionsError = false;
+    resetArtifacts();
     $("access-token").value = "";
     $("login-panel").hidden = false;
     $("workspace").hidden = true;
@@ -306,6 +312,193 @@
     renderTasks(); renderPlan(); renderInterventions(); refreshControls();
   }
 
+  const hashPattern = /^[0-9a-f]{64}$/;
+  const artifactFields = ["artifact_id", "revision", "kind", "schema_version", "source_task_id", "source_node", "source_epoch", "plan_digest", "content_hash", "source_event_hash"];
+  const runChecked = () => Boolean(state.runId && state.snapshot && !state.loading
+    && state.loadedSelection === state.selection && (state.snapshot.id || state.snapshot.run_id) === state.runId);
+  const targetTask = () => state.review?.tasks?.find((task) => task.id === state.targetId);
+  const sameArtifact = (left, right) => Boolean(left && right && artifactFields.every((key) => left[key] === right[key]));
+
+  function resetArtifacts() {
+    state.artifactVersion += 1; state.detailVersion += 1; state.contextVersion += 1;
+    state.artifacts = []; state.artifactStatus = "idle"; state.artifactError = "";
+    state.artifactId = ""; state.artifactDetail = null; state.detailStatus = "idle"; state.detailError = "";
+    state.targetId = ""; state.context = null; state.contextStatus = "idle"; state.contextError = "";
+    state.contextBindingChanged = false;
+    state.artifactsSelection = 0;
+    $("auxiliary-reviewed").checked = false;
+    renderArtifacts();
+  }
+
+  function approvalBody() {
+    const item = state.artifactDetail, task = targetTask();
+    const listed = state.artifacts.find((candidate) => candidate.artifact_id === state.artifactId);
+    if (!runChecked() || state.busy || !has("control") || !state.principal.roles.includes("operator")
+        || state.snapshot.status !== "open" || state.artifactStatus !== "ready" || state.detailStatus !== "ready"
+        || state.contextStatus === "loading" || state.contextBindingChanged || state.artifactsSelection !== state.selection
+        || !sameArtifact(item, listed) || item.stale !== false || listed.stale !== false
+        || item.origin !== "authenticated-worker-submission" || item.producer_verified !== false || item.counts_as_success !== false
+        || !task || !integer(task.epoch) || ["stale", "cancelled", "done", "indeterminate"].includes(task.status)
+        || !Number.isSafeInteger(item.revision) || item.revision < 1 || !Number.isSafeInteger(item.source_epoch) || item.source_epoch < 1
+        || !hashPattern.test(item.content_hash) || !hashPattern.test(item.plan_digest) || item.plan_digest !== state.plan?.digest
+        || !(task.input_artifacts || []).some((selector) => selector.source_node === item.source_node
+          && selector.kind === item.kind && selector.schema_version === item.schema_version)) return null;
+    return {artifact_id: item.artifact_id, expected_plan_digest: item.plan_digest, expected_source_epoch: item.source_epoch,
+      expected_target_epoch: task.epoch, expected_revision: item.revision, expected_content_hash: item.content_hash};
+  }
+
+  function refreshArtifactControls() {
+    const locked = state.busy || !runChecked();
+    $("artifacts-refresh").disabled = locked || state.artifactStatus === "loading";
+    $("input-target").disabled = locked || state.artifactStatus !== "ready" || !state.review;
+    $("context-refresh").disabled = locked || !targetTask() || state.contextStatus === "loading";
+    document.querySelectorAll(".artifact-select").forEach((button) => { button.disabled = locked || state.artifactStatus !== "ready"; });
+    const allowed = Boolean(approvalBody());
+    $("auxiliary-form").hidden = !has("control") || !state.principal?.roles?.includes("operator");
+    $("auxiliary-reviewed").disabled = !allowed;
+    $("auxiliary-approve").disabled = !allowed || !$("auxiliary-reviewed").checked;
+    $("auxiliary-help").textContent = allowed ? "本次批准不会验证候选、恢复任务或修改依赖。服务端将再次核对绑定版本。"
+      : "选择已读取的当前候选与允许该类型的目标，核对版本后方可批准。失效、读取中或状态变化时须重新读取。";
+  }
+
+  function boundedBody(body) {
+    const details = node("details", "artifact-body");
+    details.append(node("summary", "", "展开不可信 typed 正文（纯文本）"));
+    const text = JSON.stringify(body, null, 2) || "";
+    details.append(node("pre", "", text.slice(0, 32768)));
+    if (text.length > 32768) details.append(node("p", "field-help", "页面显示已截断至 32768 个字符，摘要仍对应服务端完整正文。"));
+    return details;
+  }
+
+  function artifactMetadata(item) {
+    const block = node("div", "artifact-metadata");
+    block.append(node("p", "muted", `${str(item.kind)} · ${str(item.schema_version)} · 节点 ${str(item.source_node)} · 源 epoch ${str(item.source_epoch)} · 修订 ${str(item.revision)}`));
+    for (const [key, label] of [["artifact_id", "候选"], ["source_task_id", "源任务"], ["content_hash", "内容摘要"], ["plan_digest", "计划摘要"], ["source_event_hash", "来源事件"]]) {
+      block.append(node("p", "mono break-word", `${label} ${str(item[key])}`));
+    }
+    return block;
+  }
+
+  function renderArtifacts() {
+    const status = state.artifactStatus;
+    $("artifacts-state").textContent = status === "loading" ? "正在读取候选产物…"
+      : status === "error" ? `候选产物读取失败，当前数量未知。${state.artifactError}`
+      : status === "ready" ? `${state.artifacts.length} 个候选${state.artifacts.length > 100 ? "，页面展示最新 100 个" : ""}。候选均不计成功。`
+      : "选择目标并打开此页读取候选。";
+    const list = $("artifact-list"); list.replaceChildren();
+    if (status === "ready" && !state.artifacts.length) list.append(node("p", "inline-empty", "当前运行尚无候选产物。"));
+    if (status === "ready") for (const item of state.artifacts.slice(-100).reverse()) {
+      const article = node("article", "artifact-card");
+      article.append(node("strong", "", `${str(item.kind)} · 修订 ${str(item.revision)}`), node("span", "badge attention-state", item.stale ? "已失效 · 未验证" : "候选 · 未验证"));
+      article.append(node("p", "muted", `已认证 Worker 提交 · 节点 ${str(item.source_node)} · 源 epoch ${str(item.source_epoch)}`));
+      article.append(node("p", "mono break-word", `内容摘要 ${str(item.content_hash)}`));
+      const button = node("button", "artifact-select", item.artifact_id === state.artifactId ? "已选候选 · 重新读取" : "查看并选择候选");
+      button.type = "button"; button.dataset.artifactId = item.artifact_id;
+      if (item.artifact_id === state.artifactId) button.setAttribute("aria-current", "true");
+      button.addEventListener("click", () => loadArtifactDetail(item.artifact_id)); article.append(button); list.append(article);
+    }
+    const detail = $("artifact-detail"); detail.replaceChildren();
+    if (state.detailStatus === "loading") detail.append(node("p", "muted", "正在读取所选候选正文…"));
+    else if (state.detailStatus === "error") detail.append(node("p", "inline-error", `候选详情读取失败，不能批准。${state.detailError}`));
+    else if (state.artifactDetail && state.detailStatus === "ready") {
+      detail.append(node("h3", "", "所选候选 · 未独立验证"), artifactMetadata(state.artifactDetail));
+      if (state.artifactDetail.stale) detail.append(node("p", "inline-error", "此候选已失效，不能新批准。请重新读取并审阅新版本。"));
+      detail.append(boundedBody(state.artifactDetail.body));
+    }
+    const tasks = Array.isArray(state.review?.tasks) ? state.review.tasks : [];
+    $("input-target").replaceChildren(...tasks.map((task) => {
+      const option = node("option", "", `${task.title || task.id} · epoch ${str(task.epoch)}`); option.value = task.id; return option;
+    }));
+    $("input-target").value = state.targetId;
+    const task = targetTask(), selectors = task?.input_artifacts || [];
+    $("input-selectors").textContent = !state.review ? "任务合同读取失败，允许输入未知。请刷新运行后重试。"
+      : !task ? "暂无目标任务。" : !selectors.length ? "此目标未声明辅助输入选择器，不能批准候选给它。"
+      : selectors.map((selector) => `${selector.source_node} / ${selector.kind} / ${selector.schema_version} · ${selector.required ? "必需" : "可选"}`).join("；");
+    const item = state.artifactDetail;
+    $("auxiliary-binding").textContent = item && task ? `目标 ${task.id} · 目标 epoch ${task.epoch}\n源 epoch ${item.source_epoch} · 修订 ${item.revision}\n内容 ${item.content_hash}\n计划 ${item.plan_digest}` : "先读取候选并选择目标任务。";
+    renderContext(); refreshArtifactControls();
+  }
+
+  function renderContext() {
+    const status = state.contextStatus, preview = state.context;
+    $("context-state").textContent = status === "loading" ? "正在读取目标辅助输入预览…"
+      : status === "error" ? `预览读取失败，输入状态未知。${state.contextError}`
+      : status === "ready" ? `${preview.ready ? "辅助数据齐备" : "仍缺必需辅助输入"} · 目标 epoch ${preview.target_epoch} · ${preview.bytes} / ${preview.max_bytes} UTF-8 字节 · 未接入执行`
+      : "选择目标任务后读取预览。";
+    const panel = $("context-preview"); panel.replaceChildren();
+    if (status !== "ready") return;
+    panel.append(node("p", "mono break-word", `上下文摘要 ${preview.context_digest}`));
+    for (const missing of preview.missing_inputs.slice(0, 64)) panel.append(node("p", "field-help", `缺少${missing.required ? "必需" : "可选"}输入：${str(missing.source_node)} / ${str(missing.kind)} / ${str(missing.schema_version)}`));
+    if (!preview.items.length) panel.append(node("p", "muted", "尚无已批准的辅助输入。"));
+    for (const item of preview.items.slice(0, 64)) {
+      const article = node("article", "artifact-card");
+      article.append(node("h3", "", "辅助数据 · 不可信 · 未验证"), artifactMetadata(item), boundedBody(item.body)); panel.append(article);
+    }
+  }
+
+  async function loadArtifacts(preferredId = "", preferredTarget = "") {
+    if (!runChecked()) return;
+    const session = state.session, generation = state.selection, runId = state.runId;
+    resetArtifacts();
+    const version = state.artifactVersion;
+    state.artifactStatus = "loading"; renderArtifacts();
+    const current = () => session === state.session && generation === state.selection && runId === state.runId && version === state.artifactVersion;
+    try {
+      const result = await request("GET", `${pathForRun()}/artifacts`);
+      if (!current()) return;
+      if (!Array.isArray(result.items) || result.items.some((item) => !item || typeof item.artifact_id !== "string" || item.run_id !== runId)) throw Object.assign(new Error(), {code: "BAD_JSON"});
+      state.artifacts = result.items; state.artifactStatus = "ready"; state.artifactsSelection = generation;
+      const tasks = state.review?.tasks || [];
+      state.targetId = tasks.find((task) => task.id === preferredTarget)?.id || tasks.find((task) => task.input_artifacts?.length)?.id || tasks[0]?.id || "";
+      renderArtifacts();
+      if (state.targetId) loadContext();
+      if (preferredId && state.artifacts.some((item) => item.artifact_id === preferredId)) loadArtifactDetail(preferredId);
+    } catch (error) {
+      if (!current() || error.code === "SESSION_CHANGED") return;
+      state.artifactStatus = "error"; state.artifactError = publicError(error); renderArtifacts();
+    }
+  }
+
+  async function loadArtifactDetail(id) {
+    if (!runChecked() || state.artifactStatus !== "ready" || !state.artifacts.some((item) => item.artifact_id === id)) return;
+    const session = state.session, generation = state.selection, runId = state.runId, version = ++state.detailVersion;
+    state.artifactId = id; state.artifactDetail = null; state.detailStatus = "loading"; $("auxiliary-reviewed").checked = false; renderArtifacts();
+    const current = () => session === state.session && generation === state.selection && runId === state.runId && version === state.detailVersion && id === state.artifactId;
+    try {
+      const result = await request("GET", `${pathForRun()}/artifacts/${encodeURIComponent(id)}`);
+      if (!current()) return;
+      if (!sameArtifact(result, state.artifacts.find((item) => item.artifact_id === id)) || result.run_id !== runId || !result.body || typeof result.body !== "object") throw Object.assign(new Error(), {code: "BAD_JSON"});
+      state.artifactDetail = result; state.detailStatus = "ready"; renderArtifacts();
+    } catch (error) {
+      if (!current() || error.code === "SESSION_CHANGED") return;
+      state.detailStatus = "error"; state.detailError = publicError(error); renderArtifacts();
+    }
+  }
+
+  async function loadContext() {
+    if (!runChecked() || !targetTask()) return;
+    const session = state.session, generation = state.selection, runId = state.runId, targetId = state.targetId, version = ++state.contextVersion;
+    state.context = null; state.contextStatus = "loading"; state.contextBindingChanged = false; $("auxiliary-reviewed").checked = false; renderContext(); refreshArtifactControls();
+    const current = () => session === state.session && generation === state.selection && runId === state.runId && targetId === state.targetId && version === state.contextVersion;
+    try {
+      const result = await request("GET", `${pathForRun()}/tasks/${encodeURIComponent(targetId)}/context-preview`);
+      if (!current()) return;
+      if (result.target_epoch !== targetTask()?.epoch || result.plan_digest !== state.plan?.digest) {
+        state.contextBindingChanged = true;
+        throw Object.assign(new Error(), {code: "CONTEXT_BINDING_CHANGED"});
+      }
+      if (result.run_id !== runId || result.task_id !== targetId || !Array.isArray(result.items) || !Array.isArray(result.missing_inputs)
+          || !hashPattern.test(result.context_digest) || typeof result.ready !== "boolean" || result.untrusted_data !== true || result.execution_connected !== false
+          || !integer(result.bytes) || result.max_bytes !== 65536 || result.bytes > result.max_bytes) throw Object.assign(new Error(), {code: "BAD_JSON"});
+      state.context = result; state.contextStatus = "ready"; renderContext(); refreshArtifactControls();
+    } catch (error) {
+      if (!current() || error.code === "SESSION_CHANGED") return;
+      state.contextStatus = "error"; state.contextError = error.code === "CONTEXT_BINDING_CHANGED"
+        ? "目标 epoch 或计划摘要已改变，批准已停用。请点击工作台“刷新”重新读取运行和合同后再审阅。" : publicError(error);
+      renderContext(); refreshArtifactControls();
+    }
+  }
+
   async function loadEvents() {
     if (!state.runId) return;
     const generation = state.selection;
@@ -342,12 +535,14 @@
     }
     for (const panel of document.querySelectorAll(".tab-panel")) panel.hidden = panel.id !== `tab-${name}`;
     if (name === "events") loadEvents();
+    if (name === "artifacts" && state.artifactStatus === "idle") loadArtifacts();
   }
 
   async function selectRun(runId, tab = state.tab) {
     const generation = ++state.selection;
     state.pendingRunId = runId;
     state.loading = true;
+    resetArtifacts();
     refreshControls();
     $("run-content").classList.add("loading");
     $("control-reason").value = "";
@@ -384,6 +579,7 @@
         $("run-content").classList.remove("loading");
         renderGoals();
         refreshControls();
+        if (state.tab === "artifacts" && state.artifactStatus === "idle") loadArtifacts();
       }
     }
   }
@@ -392,6 +588,7 @@
     const session = state.session;
     const generation = ++state.selection;
     state.loading = true;
+    resetArtifacts();
     refreshControls();
     $("goals-state").textContent = "正在读取目标…";
     try {
@@ -481,6 +678,21 @@
   $("logout-button").addEventListener("click", () => logout());
   $("refresh-button").addEventListener("click", () => refreshAll());
   $("goal-search").addEventListener("input", renderGoals);
+  $("artifacts-refresh").addEventListener("click", () => { if (!state.busy) loadArtifacts(); });
+  $("context-refresh").addEventListener("click", () => { if (!state.busy) loadContext(); });
+  $("input-target").addEventListener("change", () => {
+    if (state.busy || !runChecked()) return;
+    state.targetId = $("input-target").value;
+    $("auxiliary-reviewed").checked = false; renderArtifacts(); loadContext();
+  });
+  $("auxiliary-reviewed").addEventListener("change", refreshArtifactControls);
+  $("auxiliary-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const body = approvalBody();
+    if (!body || !$("auxiliary-reviewed").checked) { notify("候选、目标或读取版本尚未核对，未发送辅助输入批准。请重新读取并审阅。", true); return; }
+    mutate("POST", `${pathForRun()}/tasks/${encodeURIComponent(state.targetId)}/auxiliary-inputs`, body,
+      "辅助输入批准已记录，仅作为不可信数据参考；未验证候选、未放行依赖，也未接入模型执行。");
+  });
   document.querySelectorAll("[data-tab]").forEach((button) => button.addEventListener("click", () => switchTab(button.dataset.tab)));
   $("show-interventions").addEventListener("click", () => {
     if (state.interventionsError) { notify("人工待办读取失败，当前数量未知。请点击工作台“刷新”重新读取。", true, "interventions"); return; }

@@ -12,6 +12,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
+from .artifact_schemas import ARTIFACT_ROLES, ArtifactInput
 from .policy import GateRules, TaskContract, gate_p
 from .store import BudgetExceeded, Conflict, InvalidInput, NotFound, Store, canonical, digest
 
@@ -91,6 +92,9 @@ class TaskNode(StrictModel):
     # Omit only the new optional field. Existing evaluation_digest:null remains
     # in old canonical plans, so their approved digests are not rewritten.
     repair: RebindPolicy | None = Field(default=None, exclude_if=lambda value: value is None)
+    # Auxiliary data permission only: scheduling still uses depends exclusively.
+    input_artifacts: list[ArtifactInput] | None = Field(default=None, max_length=8,
+                                                      exclude_if=lambda value: value is None)
 
     @field_validator("title", "instruction")
     @classmethod
@@ -128,6 +132,15 @@ class WorkflowDefinition(StrictModel):
         nodes = {node.id: node for node in self.nodes}
         if len(nodes) != len(self.nodes):
             raise ValueError("duplicate task node ID")
+        for node in self.nodes:
+            selectors = node.input_artifacts or []
+            keys = [(item.source_node, item.kind) for item in selectors]
+            if len(keys) != len(set(keys)):
+                raise ValueError("duplicate artifact input selector")
+            for item in selectors:
+                source = nodes.get(item.source_node)
+                if source is None or source.id == node.id or source.role != ARTIFACT_ROLES[item.kind]:
+                    raise ValueError("artifact input source does not match its registered type")
         remaining = {node.id: set(node.depends) for node in self.nodes}
         if any(not dependencies <= nodes.keys() for dependencies in remaining.values()):
             raise ValueError("dependencies must refer to nodes in this workflow")
