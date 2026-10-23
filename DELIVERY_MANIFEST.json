@@ -1,19 +1,19 @@
 {
-  "version": "0.3.0",
-  "stage": "local-execution-alpha",
+  "version": "0.4.0",
+  "stage": "human-control-alpha",
   "date": "2026-10-23",
-  "generated_at": "2026-10-23T09:57:24.742271+08:00",
-  "source_file_count_excluding_manifest": 110,
+  "generated_at": "2026-10-23T14:23:23.887945+08:00",
+  "source_file_count_excluding_manifest": 124,
   "files": [
     {
       "path": ".gitignore",
-      "sha256": "25b7518373e9b65def16023f188027246199575bdfe7821c9ce3bfee6281e008",
-      "bytes": 97
+      "sha256": "9a1a2d12c3ea7a62defb5fd80ee4f48444e1f32c58d46d8cf7e8905f0463def7",
+      "bytes": 110
     },
     {
       "path": "README.md",
-      "sha256": "dd72248f874c55be264bd8d0814e7bc21ffa1c7fd1b6ca9f6c75d74bd2a6809a",
-      "bytes": 14084
+      "sha256": "8e5b782c372d60d4fb0e7f76e78cd7c90e62c42c390ca9ece6b59dd7a23891c7",
+      "bytes": 16170
     },
     {
       "path": "configs/models.example.json",
@@ -26,24 +26,34 @@
       "bytes": 983
     },
     {
+      "path": "configs/python-task.runs.example.json",
+      "sha256": "d839d5ee07322986aa02e7f28c8051c350634246d24d0c57dcf84b0d2d4ceb79",
+      "bytes": 1334
+    },
+    {
       "path": "docs/Loom.md",
       "sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
       "bytes": 189731
     },
     {
       "path": "docs/api/README.md",
-      "sha256": "50013966ac15d4756c2d194043a30e5afe734fb0f4c09488237b9241fd9eea28",
-      "bytes": 5247
+      "sha256": "3ff9385490f1ad951a4b5993e23fd76e3f0d7bdf2ea0d9c9ce63d5babbff2c7a",
+      "bytes": 8622
     },
     {
       "path": "docs/api/openapi.json",
-      "sha256": "890a86eb35b99c888daabbd85f2075247726bf618ee86680833f8920f9594462",
-      "bytes": 31229
+      "sha256": "fe57aa21b215ac261eb5f7b1bdfac888d4fbdf8ee2aed29144c61bf0ef1152af",
+      "bytes": 38934
     },
     {
       "path": "docs/checkpoints.md",
       "sha256": "889942aa151e82ef3b317b4ee98a7c59910f267ef597f7634cdb973dca4c059f",
       "bytes": 13800
+    },
+    {
+      "path": "docs/console.md",
+      "sha256": "b17fd9dc2dc0ec947a20ef5a6f1ca91cbfb7df8dbcc1a0523536576eefcdce26",
+      "bytes": 4261
     },
     {
       "path": "docs/coverage-s2.json",
@@ -62,8 +72,13 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "sha256": "badc0f2f62d47ad669c8e5b546a125f2bac5a13bf330d6869cdd1eb0e8fa55d9",
-      "bytes": 21946
+      "sha256": "7e9b988820badd446e2eaf54e4bd50ad81ee9faa21fefee470ab86a9131fca25",
+      "bytes": 23561
+    },
+    {
+      "path": "docs/local-auth.md",
+      "sha256": "2ddc89accccd534c48163dd76edc98c7900efb97d524b3c9737955f1138ef2d3",
+      "bytes": 4828
     },
     {
       "path": "docs/local-execution.md",
@@ -86,6 +101,11 @@
       "bytes": 14799
     },
     {
+      "path": "docs/operator-controls.md",
+      "sha256": "5be002033eda8fad9068bef3d957a2499e99765465057623aeceb975b5a5e2e0",
+      "bytes": 6648
+    },
+    {
       "path": "docs/postgres-integration.md",
       "sha256": "6fee3266393a9ae0df5fb697eac6d719b5f62e98f071e9f76500e5c81966b3d8",
       "bytes": 19538
@@ -106,9 +126,14 @@
       "bytes": 9095
     },
     {
-      "path": "docs/validation.md",
+      "path": "docs/validation-0.3.md",
       "sha256": "95b8e50c114e15ebe4405559a3bb84cb64bab6c958e75f7332f37a688554e023",
       "bytes": 4056
+    },
+    {
+      "path": "docs/validation.md",
+      "sha256": "09f373ee99393bf4b11f95ed97726265ecd0a95ee7e34aefdb54befea7256f3e",
+      "bytes": 4993
     },
     {
       "path": "docs/workflow.md",
@@ -132,8 +157,8 @@
     },
     {
       "path": "pyproject.toml",
-      "sha256": "59587852bf2cb1bcb58f509b0c5069eafcf30ee213d7a4d1b7f27a87bb51f974",
-      "bytes": 692
+      "sha256": "e68a07fce69579ed20b4e0d3c84a0b309f3c3fde3221a80cc59dc515630770d8",
+      "bytes": 771
     },
     {
       "path": "requirements.lock",
@@ -166,14 +191,19 @@
       "bytes": 3643
     },
     {
+      "path": "scripts/check_operator_api.py",
+      "sha256": "c6b34b4b1fccba32efa26af9de5d1ad75d10d52d0e2154ffb63ea13fed620f83",
+      "bytes": 14724
+    },
+    {
       "path": "scripts/check_postgres.py",
       "sha256": "57e83cc599bf71cf41b7cf2a76649acbbd11345a1ecfee501811645bbfeaa58b",
       "bytes": 1485
     },
     {
       "path": "scripts/check_s2.py",
-      "sha256": "a0d940bbb3e46afb330ee35df4a1102f8820355ddda947bc6fe215ecdd780f8d",
-      "bytes": 5623
+      "sha256": "c4c229aff8fcaf41776f68f4e6f927c08415d5aca54e92d1fcaa9f7f39398742",
+      "bytes": 5621
     },
     {
       "path": "scripts/check_sandbox.py",
@@ -192,12 +222,12 @@
     },
     {
       "path": "scripts/run_local_task.py",
-      "sha256": "ccda39ce7d16753ecace20691f09fb3a264de1cfc3e35e594933d43b7ae9f240",
-      "bytes": 7366
+      "sha256": "56371351eea4b314b75013593fa07a1bf6e47245f07a660cb1bf803a0da0f4c6",
+      "bytes": 7445
     },
     {
       "path": "src/loom/__init__.py",
-      "sha256": "77f15f14cf4395da83ee6756b6a7c4262bdab20f7cd01f2183a577d532902618",
+      "sha256": "47286b46239ecf184029c0d2a7b3613c2b8bbd9682075617084902f2bdf90b0e",
       "bytes": 73
     },
     {
@@ -207,8 +237,13 @@
     },
     {
       "path": "src/loom/api.py",
-      "sha256": "6dd6740783124d2dc4bb19c17e21b710b7da0c74adb698238499f4cdb91a92f2",
-      "bytes": 7773
+      "sha256": "4cb89be0302cf6d839c8f20bf0737a864efcbdc59a8395ca9925c1a071815454",
+      "bytes": 15310
+    },
+    {
+      "path": "src/loom/auth.py",
+      "sha256": "0550826795a35ad7fd0279d7dc6b10d1bf20bde00181228ccd7a14cf4b5427c0",
+      "bytes": 7666
     },
     {
       "path": "src/loom/checkpoints.py",
@@ -217,8 +252,8 @@
     },
     {
       "path": "src/loom/cli.py",
-      "sha256": "1086e7e2a7a3e19c1b9248cbd8a0b0f4b9bc727966a7b81b355fe1ecbc0704a1",
-      "bytes": 3034
+      "sha256": "95007b507dfadd92913acca5be3629b50e8eed7320862dfde7420dc718480db3",
+      "bytes": 3363
     },
     {
       "path": "src/loom/demo.py",
@@ -227,8 +262,8 @@
     },
     {
       "path": "src/loom/execution.py",
-      "sha256": "fe71a627351643c2ac1a821409dcd49a18b6337e0ce44153eec1daaae6d1c59f",
-      "bytes": 16582
+      "sha256": "4cbc31c610213f8e9452230dcaa22708a6e353569d71173a7874e74bdf8d7cd1",
+      "bytes": 16795
     },
     {
       "path": "src/loom/jetstream.py",
@@ -246,6 +281,11 @@
       "bytes": 15643
     },
     {
+      "path": "src/loom/operator.py",
+      "sha256": "cbf3e26c8badd1e102c941c59089abe36e2d5531121be7433f4276f082133ef2",
+      "bytes": 16085
+    },
+    {
       "path": "src/loom/policy.py",
       "sha256": "27c08526dd8e14a30ef2b14bc325ce373d2aa3d4d4366c0744da8ac312ae3137",
       "bytes": 14644
@@ -257,13 +297,28 @@
     },
     {
       "path": "src/loom/store.py",
-      "sha256": "4f40ff017de41e5528d7b668b5ae678cb5829f53af6e9eed51c6d59bb96d5fe1",
-      "bytes": 40860
+      "sha256": "eb00be3fe7875a1368efad0f0464638fce833be2a2632096d66547bc7f1ee985",
+      "bytes": 41492
+    },
+    {
+      "path": "src/loom/web/console.css",
+      "sha256": "af37264141585bfdd8d8f88f63c06378cd8b61b76f1669a00526099414764cb6",
+      "bytes": 12155
+    },
+    {
+      "path": "src/loom/web/console.js",
+      "sha256": "e2609d3ce04be7669df931f64080b45fa8d8e81879c3dd3f1e52c563e4102b39",
+      "bytes": 29459
+    },
+    {
+      "path": "src/loom/web/index.html",
+      "sha256": "e992b9c6244f778644322cd967d9303bfacba545c7e0a86ab10dee35949303e4",
+      "bytes": 10708
     },
     {
       "path": "src/loom/workflow.py",
-      "sha256": "d8625d0fa2fe7a67907acd8826f4d2ff1240c1168ebc5a9f59e87a7c5a610e08",
-      "bytes": 20536
+      "sha256": "43ca38bc6f78b4136403cccdd64cc1688130840d98372141f9445f10323a9e4a",
+      "bytes": 20943
     },
     {
       "path": "tests/__init__.py",
@@ -306,6 +361,11 @@
       "bytes": 4931
     },
     {
+      "path": "tests/test_auth.py",
+      "sha256": "7b887f66a6f2243a228390985a1d8224b5e4c855050a3f6c0359e02b9bfdc9f1",
+      "bytes": 10867
+    },
+    {
       "path": "tests/test_checkpoints.py",
       "sha256": "abd01e30fe81b85d8b3bfd9c3fb43cbf87cb4d5d0958f589c2fb964ed9cab11a",
       "bytes": 17645
@@ -316,14 +376,19 @@
       "bytes": 2260
     },
     {
+      "path": "tests/test_control_api.py",
+      "sha256": "8e98026f606c64e6e01003cfeedd992fd22798dcabbdff37337e808d10a0807f",
+      "bytes": 20093
+    },
+    {
       "path": "tests/test_demo.py",
       "sha256": "6c5be5b1382ae6e5fd9ea14dcc084a08631f11796b5727de31cf55b563f5a1d9",
       "bytes": 1364
     },
     {
       "path": "tests/test_execution.py",
-      "sha256": "6aa413d8acda1c17406d0e8357cb932c9cfbbd5f368d71481428ab4299287c69",
-      "bytes": 28595
+      "sha256": "bb2b54867f18636d044128533e4f4c2445308c2e1c1f8613e88c1b59e9b576c4",
+      "bytes": 31065
     },
     {
       "path": "tests/test_goal_api.py",
@@ -344,6 +409,11 @@
       "path": "tests/test_model_gateway.py",
       "sha256": "66fc12a00e0f7a7e8156645adf3bb308e048892df45c40839f513998211cab11",
       "bytes": 19673
+    },
+    {
+      "path": "tests/test_operator.py",
+      "sha256": "d68b8382986fb4c3c03a7d959fef0141bd2f7fd96202652d980aac1d698d43eb",
+      "bytes": 27459
     },
     {
       "path": "tests/test_policy.py",
@@ -557,16 +627,21 @@
     }
   ],
   "validation": {
-    "main_tests_passed": 252,
-    "subtests_passed": 247,
+    "main_tests_passed": 368,
+    "subtests_passed": 265,
     "skipped": 0,
-    "api_smoke_checks": 21,
+    "api_smoke_checks": 52,
+    "browser_acceptance_categories": 14,
     "real_docker_main_tests_included": 9,
-    "live_model_frozen_cases": 4
+    "live_model_frozen_cases": 5,
+    "live_model_tokens": 452,
+    "live_model_cost_upper_microusd": 262,
+    "billed_currency_verified": false
   },
   "runtime": {
     "python": "3.13.12",
     "docker": "29.4.0",
+    "docker_desktop": "4.70.0",
     "nats_server": "2.15.1",
     "postgresql": "16.15"
   },
@@ -574,10 +649,12 @@
   "real_models_used": true,
   "full_workflow_completed": false,
   "notes": [
-    "Live model probe is separate from mocked model tests; finite tests submit only, no independent-model signatures.",
+    "Live model probe is separate from mocked model tests; finite tests submit only, independent review remains pending configuration.",
+    "Named local identities are route permissions, not production OIDC or proof of independent people.",
     "API/Store use SQLite; PostgreSQL integration tests validate separate DDL/roles/constraints.",
+    "Docker startup was restored by backed-up runtime socket directories; Desktop 4.70.0 was not upgraded and the upstream defect may recur.",
     "The sandbox image is local, not published or embedded in this archive.",
-    "Local checkpoints are not external WORM/HSM.",
+    "Local checkpoints are not external WORM/HSM. Seven-role execution and repair workflow remain incomplete.",
     "Manifest excludes itself; archive hash is delivered separately.",
     "No credentials, databases, private keys, venvs, runtime images or native server binaries are included."
   ]

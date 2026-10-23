@@ -1,45 +1,48 @@
-# 0.3.0 验证记录
+# 0.4.0 验证记录
 
-日期：2026-10-23（Asia/Shanghai）。Windows / Python 3.13.12。范围为单机 local-execution-alpha，S2 及完整软件研发闭环仍在推进，非生产就绪。
+日期：2026-10-23（Asia/Shanghai）。Windows / Python 3.13.12。阶段 human-control-alpha，非生产就绪。
 
-## 最终完整回归
+## 当前验证结论
 
-`scripts/check_s2.py` 显式配置 NATS、原生 broker、可丢弃 PostgreSQL 和 immutable Docker image 后执行，最终 **252 项主测试、247 个子测试通过，0 失败、0 跳过**。
+新增目标控制台、具名角色与人工控制链路已通过本地、真实 HTTP 和浏览器验证。**Docker启动故障恢复后，完整回归门槛已通过：368主测试、265子测试，0失败、0跳过。** 修复前9项setup错误另存历史报告，没有转为skip或删除。
 
-| 阶段 | 主测试 | 参数子测试 | 内容 |
-|---|---:|---:|---|
-| unit-and-local | 220 | 233 | 策略/SQLite/API/消息/检查点，以及工作流、网关、私有配置、沙箱协议和执行器状态机 |
-| real-infrastructure | 32 | 14 | PG 14 + NATS live 8 + NATS 强杀恢复 1 + Docker Linux 隔离 9 |
-| 合计 | 252 | 247 | 不重复计入下述独立探针 |
-
-JUnit 中 testsuite@tests 含子测试，testcase 元素为主用例；分阶段脚本分别登记，不能混加。任一 skip、零用例、缺失/损坏报告或非零退出均失败，执行前删除该阶段旧 JUnit。
-
-真实 Docker 9 项覆盖网络、宿主凭据/挂载、非 root/只读根/capability、PID/内存/时间/输出限额及候选不可自证。NATS 与 PG 仍是既定本机隔离试点：PG 测的是独立 DDL/RLS，不是已完成 PostgreSQL Store。
-
-模型网关/执行器常规测试使用 MockTransport/FakeSandbox，完整回归本身不调用付费模型。真实模型结果另存，不把模拟和真实调用混在一起。Starlette TestClient 有一条 httpx 兼容层弃用提示，未造成测试失败；后续依赖升级单独验证。
-
-## 独立实测
-
-| 检查 | 结果 | 边界 |
+| 阶段 | 实际结果 | 范围 |
 |---|---|---|
-| 既有 HTTP API | 9 项通过，实际 0.3.0 服务 | 认证、幂等、提交屏障、事件链 |
-| 新 Goal/Plan HTTP | 12 项通过 | 草案、审批摘要/修订、冻结、禁止计划外任务、七任务回放 |
-| Flash 连通 | 1 请求，28 tokens | 不执行代码，无自动重试 |
-| 首次源码生成 | 1 请求，389 tokens，格式拒绝 | Markdown 不满足 JSON source；未执行候选，记账保留 |
-| JSON 模式源码生成与 Docker | 1 请求，417 tokens；4 冻结用例通过 | submitted/verified=false，等待独立模型，不是完整 Goal 成功 |
-| 无 approve 的 CLI 预览 | 0 网络请求 | 不读取 key、不启动 Docker、不创建 DB |
-| 私有配置 | 项目目录之外、受本机 ACL 保护 | 不设置全局环境变量，映射 repr 脱敏，无中央密钥管理承诺 |
+| unit-and-local | 336 主测试、251 子测试通过 | 核心、API、工作流、认证、人工控制、执行器及模拟网关/沙箱 |
+| real-infrastructure | 32主测试、14子测试通过 | NATS live 8、强杀恢复1、PostgreSQL14、Docker9 |
+| 合计 | 368主测试、265子测试通过，0失败/跳过 | 完整门槛passed=true |
+| 实际HTTP（另计） | 9 + 12 + 31 = 52 个检查通过 | 旧API、Goal/Plan、具名角色/控制/审阅/审计 |
+| 真实浏览器（另计） | 14类检查通过 | 浏览器操作及网络故障注入，非真实模型工作流 |
 
-三次真实请求共 834 tokens，均仅用于本项目；无自动付费重试。417-token 成功探针按本轮峰值价目保守记账 247µUSD；首次格式失败仍记账 250µUSD。以上不是独立查询的供应商账单，也不能证明账户级费用硬封顶。
+机器结果见同级输出目录的 Loom_0.4_分阶段测试结果_2026-10-23.json。JUnit的主testcase元素与testsuite统计中的子测试分开登记。完整runner在每阶段删除旧报告，任一失败、缺失/损坏报告、零用例或skip均失败。
 
-## 失败记录与修复
+## 新能力专项
 
-保留首次 Markdown 拒绝和首次 PG 连接失败报告。PG 测试进程停止后恢复原隔离 cluster；失败诊断曾显示测试库凭据，已轮换测试账户、清理旧 XML，并以受控连接包装/短堆栈避免后续控制台/JUnit 泄漏。用户模型密钥未包含于该日志。
+- auth 55 项：具名 operator/worker/viewer、角色矩阵、不可混合 operator+worker、重复身份/token、配置私有路径/大小/schema、错误脱敏与并发读取。
+- control API 25 项：主体绑定 worker_id、跨租户/跨角色拒绝、具名审批actor与幂等、伪造测试标记不可信、当前epoch/content_hash绑定、控制/核对。
+- operator 33 项及18子测试：暂停保留未知效果、恢复前核对/预算/尝试检查、终止fence、核对不双记账、not_sent不自动重发、原始响应保留、事务回滚与回放。
+- execution 26 项及9子测试：增加人工暂停后阻止新沙箱、终止后旧owner不能提交、迟到超支结算不复活cancelled。
 
-执行器专项 23 主测试/9 子测试涵盖审批绑定、错误测试摘要、权限、预算、先预检再付费、无自动重发、取消/失租/调度先过期/暂停门禁及 submitted 依赖屏障。工作流专项 21 主测试/14 子测试覆盖原子批准、并发幂等和完整合同防漂移。
+这些专项均已包含336项，不重复相加。MockTransport/FakeSandbox不算真实模型或真实隔离。
 
-本轮没有重做旧 0.2.0 覆盖率采集；原 S2 的 135 主测试/33 子测试和相应覆盖率属于历史证据，不挪作 0.3.0 覆盖率。新版本结果以同级输出目录的 Loom_0.3_分阶段测试结果_2026-10-23.json 及独立探针报告核对。
+## 浏览器证据
 
-## 尚未证明
+使用单独loopback临时API、公开测试哨兵凭据和真实浏览器；没有向浏览器自动化提供项目模型密钥或实际操作员token。实测创建草案、上传JSON计划、修订/摘要审批、七任务显示、暂停/恢复/终止、事件链显示、viewer写入受限、凭据不进入本地/会话存储、重载退出、390px无横向溢出。
 
-用户确认先接 Flash，双签保持待配置。七角色合同存在并不等于七角色真实全链已执行；独立复核、真实修复/人工恢复、业务控制台、生产角色授权、完整仓库测试工具及部署验收仍待推进。未开放公网，未证明 PG Store/R3/高可用、WORM/HSM、任意外部写零重复、生产容量/SLO 或完整 62 FR 已通过。
+另注入服务器已创建Goal但回执丢失：同页面重提沿用同一幂等键，返回同一Goal，只创建一次。恶意HTML样式标题显示为纯文本。一次预期的网络错误属于故障注入；普通操作时没有浏览器错误。桌面和手机截图单独保存。
+
+## Docker修复与新的真实任务
+
+Docker Desktop 4.70在Windows26200遇到AF_UNIX残留socket导致Inference manager启动失败。停止核对路径的残留Docker进程后，保留并重建两个仅有socket的运行目录；secrets-engine目录通过Docker WSL内单一shell验证绝对路径/白名单后改名，并恢复新目录原ACL。镜像、卷及WSL数据未删除，未注销发行版或修改全局AI设置。Linux engine29.4.0与原镜像/runner摘要预检恢复；随后9项真实Docker回归通过。详细步骤、备份及旧版本复发风险见同级输出的Loom_Docker_修复记录_2026-10-23.md。
+
+新Unicode连续字符分组任务通过5个宿主冻结用例：312输入+140输出=452tokens，上界记账262微美元，账单未独立核验。本轮仅1次真实模型请求，修复前预检失败未发出请求。CLI使用--tenant first-round与主API共享DB；实际HTTP审阅对账核实当前epoch产物摘要、可信测试、5个case、预算及事件链一致。任务保持submitted/verified=false，双签继续待配置，full_workflow_completed=false。
+
+0.3.0的真实Flash4用例/417tokens/247微美元上界和完整252主测试/247子测试证据保留为历史，见 [0.3验证记录](validation-0.3.md)。双签按用户决定继续待配置，人工核对不产生模型签名，也不能通过有限测试直接验收Goal。
+
+## 安装与后续
+
+0.4.0 editable安装与pip check通过；wheel构建并核对包含3个控制台静态文件和auth/operator模块。无新增应用第三方依赖，现有Starlette TestClient的httpx弃用提示仍保留。
+
+完整复跑命令仍为README中的check_s2.py，显式提供不可变镜像、NATS/native broker和私有PG配置。本次Docker恢复、完整门槛与新任务已经复跑通过；同页面HTTP重提的幂等验证不表示跨浏览器重载/进程重启的exactly-once。
+
+七角色真实协作、修复循环、完整人工裁决/例外接受、生产OIDC/双人授权、PG Store/高可用与上线验收尚未完成。操作控制台本身不会发起模型或执行候选。

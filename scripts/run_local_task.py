@@ -61,18 +61,19 @@ async def run(args):
         store = Store(args.db)
         workflows = WorkflowService(store)
         prefix = "local-execution:" + uuid4().hex
-        goal = workflows.create_goal("local-execution", prefix, title=job["title"], description=job["description"],
+        tenant = args.tenant
+        goal = workflows.create_goal(tenant, prefix, title=job["title"], description=job["description"],
                                      acceptance=["schema.valid", "tests.pass", "report.traceable"],
                                      cost_limit=1000000, token_limit=2000000)
         run_id = goal["run_id"]
-        plan = workflows.save_plan("local-execution", run_id, prefix + ":plan", definition, 0)
-        workflows.approve_plan("local-execution", run_id, prefix + ":approve", plan["revision"], plan["digest"])
-        claim = store.claim_next("local-execution", run_id, "local-python-worker", lease_seconds=90)
+        plan = workflows.save_plan(tenant, run_id, prefix + ":plan", definition, 0)
+        workflows.approve_plan(tenant, run_id, prefix + ":approve", plan["revision"], plan["digest"])
+        claim = store.claim_next(tenant, run_id, "local-python-worker", lease_seconds=90)
         result = await LocalTaskRunner(store, gateway, sandbox).run_python(claim, tests, max_output_tokens=args.max_output_tokens)
-        child = store.claim_next("local-execution", run_id, "review-check", channel="verification") if result["status"] == "submitted" else None
-        chain = store.events("local-execution", run_id)
-        snapshot = store.snapshot("local-execution", run_id)
-        replay = store.replay("local-execution", run_id)
+        child = store.claim_next(tenant, run_id, "review-check", channel="verification") if result["status"] == "submitted" else None
+        chain = store.events(tenant, run_id)
+        snapshot = store.snapshot(tenant, run_id)
+        replay = store.replay(tenant, run_id)
         passed = result.get("hard_criteria_passed") is True and result["status"] == "submitted" and child is None and store.verify_events(chain)
         return {"date": datetime.now(timezone(timedelta(hours=8))).isoformat(),
                 "mode": "real-model-and-docker-local-integration", "passed": passed,
@@ -89,6 +90,7 @@ async def run(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", required=True)
+    parser.add_argument("--tenant", default="local-execution", help="tenant owning this approved local task; match the console identity")
     parser.add_argument("--task-file", type=Path, default=Path("configs/python-task.example.json"))
     parser.add_argument("--model-config", type=Path, default=Path("configs/models.example.json"))
     parser.add_argument("--secrets-file", type=Path, required=True)

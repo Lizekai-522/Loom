@@ -1,10 +1,10 @@
 # Loom
 
-基于 Loom v2.1 修订方案的 Agent 编排项目，当前包版本 **0.3.0，local-execution-alpha**。本轮增加可审批的 Goal/Plan、七角色冻结合同，以及真实 **DeepSeek 4.1 Flash → Python JSON 候选 → Docker 冻结用例 → submitted** 的受限执行链路。API 与任务内核继续使用单实例 SQLite；S2 及完整 software-dev 工作流仍在推进。
+基于 Loom v2.1 修订方案的 Agent 编排项目，当前包版本 **0.4.0，human-control-alpha**。在已有 Goal/Plan 和 Flash → Docker 受限执行链路上，本轮增加本机具名 operator/worker/viewer、中文操作控制台、持久暂停/恢复/终止和未知模型调用人工核对。API 与任务内核继续使用单实例 SQLite；完整七角色执行及真实修复循环仍在推进。
 
-本轮完整回归 **252 项主测试、247 个子测试通过，0 跳过**；常规分阶段套件使用真实 Docker/NATS/独立 PostgreSQL，模型网关使用 Mock，真实模型探针另存。0.2.0 的历史记录为 112 项单元/本地 + 23 项基础设施 = 135 项通过、0 跳过，另有 33 个参数子测试；这些不是 0.3.0 的最新总数。[验证记录](docs/validation.md)
+Docker启动故障修复后，完整回归 **368主测试、265子测试通过，0跳过**；另有52项实际HTTP及14类浏览器检查通过，详见 [验证记录](docs/validation.md)。0.3.0 的历史记录为 **252 项主测试、247 个子测试通过、0 跳过**；0.2.0 为 135 主测试和 33 子测试。常规分阶段套件使用真实 Docker/NATS/独立 PostgreSQL，模型网关使用 Mock，真实模型探针另存，历史数量不挪作 0.4.0 最新总数。
 
-本轮真实探针的 4 个黄金用例全部通过，提供方返回 **417 tokens**，保守费用记账上界 **247µUSD**，并非供应商账单。任务保持 `submitted`，等待独立模型验证，未伪造双签或将完整 run 标为成功。[真实执行方式与边界](docs/local-execution.md)
+0.4.0新增Unicode任务通过 **5个冻结用例**，提供方返回 **452 tokens**，保守费用记账上界 **262µUSD**，并与工作台证据对账。0.3.0历史探针为4个用例、417 tokens、247µUSD。费用均为上界记账，非供应商账单。用户确认本阶段先使用 Flash，双签保持待配置；任务仍为 `submitted`，人工核对或操作控制都不代替独立验证，也不将完整 run 标为成功。[真实执行方式与边界](docs/local-execution.md)
 
 ## 当前可以做什么
 
@@ -14,6 +14,9 @@
 - 按依赖和优先级派发任务，原子预占共享容量，保留验证通道，拒绝旧 epoch 提交。
 - Gate-P 使用受信范围、Anchor 和判据注册表；Gate-V 校验明确的双签成功状态与内容/规则/证据版本绑定。
 - Worker HTTP 提交仅进入 `submitted`，无法直接置 `done` 或放行下游。可信验证入口不作为外部 HTTP 路由开放。
+- 以具名本地主体区分 operator、worker、viewer；operator 不能认领/提交任务，worker 不能批准计划或人工控制，具名 Worker 的 worker_id 必须匹配认证主体。旧租户 key 仍作为 legacy developer 兼容本地 fixture，但没有 control 权限。
+- 在 `/console` 创建目标、导入/保存/批准计划、查看任务和人工待办；查看证据时只将匹配当前 task/epoch/content hash 的真实事件作为执行证据，不信任候选自报通过。
+- 用事务、幂等回执与审计事件持久化暂停/恢复/终止和有依据的未知模型调用核对；未知调用及未核对预留不会自动退款，终止不计成功。核对后也不会自动发起模型或放行依赖。
 - 按 run 原子预留金额/token 上界，结算可幂等；实际用量超过预留时记录超支并挂起，避免隐藏账单。
 - 以固定逻辑操作 ID 管理副作用发起记录；未知结果阻止自动再次发起。真实模型请求已接入这一流程，业务外部写仍使用本地桩。
 - 图失效传播到下游并撤销旧 claim；已发生的外部效果保留，记录需补偿事项。
@@ -42,20 +45,22 @@ python -m venv .venv
 
 ## 启动本地 API
 
-本次工作区已有服务已升级到 0.3.0，继续沿用原启动器、SQLite 测试库和租户 token，无需重配身份或模型密钥。服务已运行时不重复启动；原启动器可在前台运行：
+本次工作区继续沿用原启动器、SQLite 测试库和旧租户 token，并通过私有身份文件增加独立具名 token；已有模型密钥无需重配。服务已运行时不重复启动；原启动器可在前台运行：
 
 ```powershell
 & '../../work/loom-venv/Scripts/python.exe' '../../work/launch_loom_first_round.py'
 ```
 
-详见同一输出目录中的 [首轮测试指南](../Loom_首轮测试指南.md) 及 [本机执行文档](docs/local-execution.md)。以下是独立安装后的通用启动方式，API health 的 stage 仍为 S1-local，表示 SQLite 本机内核边界：
+控制台入口为 <http://127.0.0.1:8796/console>，接口文档为 <http://127.0.0.1:8796/docs>。控制台使用 Loom 本地访问凭据，不接收模型 API 密钥。凭据只保存在页面内存，静态资源无 CDN，服务使用 CSP 禁止外部及内联脚本。重载或退出会清除内存中的待确认幂等键，须先核对列表再重发。[控制台](docs/console.md) · [本机身份](docs/local-auth.md)
+
+以下是独立安装后的通用启动方式，私有身份文件须按文档预先创建，路径位于源码及公开 outputs 之外；示例路径需替换为自己的私有文件。API health 的 stage 仍为 S1-local，表示 SQLite 本机内核边界：
 
 ```powershell
-$env:LOOM_TENANT_KEYS = '{"demo":"replace-with-a-random-local-token-at-least-16-characters"}'
-.\.venv\Scripts\python.exe -m loom serve --port 8796
+$identities = 'C:\private\loom\local-identities.json'
+.\.venv\Scripts\python.exe -m loom serve --port 8796 --identities-file $identities
 ```
 
-浏览器打开 <http://127.0.0.1:8796/docs>，在 Authorize 中填入设置的 token。API 只绑定回环地址。`/health` 和接口文档可公开读取；业务接口按 token 解析租户，不接受请求自行指定租户。不同租户使用不同 token。
+API 只绑定回环地址。`/health`、静态控制台和接口文档可无认证读取；业务接口按 token 解析主体、角色与租户，不接受请求自行指定租户。不同主体使用不同 token；`LOOM_TENANT_KEYS` 仍可选保留旧本地开发身份，但它不能取得新增 control 权限。
 
 示例 Goal 请求（创建后仍为不可执行草案）：
 
@@ -63,9 +68,9 @@ $env:LOOM_TENANT_KEYS = '{"demo":"replace-with-a-random-local-token-at-least-16-
 {"title":"修复本地程序","description":"实现并验证已授权的变更","acceptance":["schema.valid","tests.pass","report.traceable"],"cost_limit_microusd":1000000,"token_limit":10000}
 ```
 
-通过 `POST /v1/goals` 创建，再用 `PUT /v1/goals/{run_id}/plan` 保存定义及 expected_revision，最后以当前 revision/digest 批准。创建 Goal、保存/批准计划及旧 run/task/提交命令需要 `Idempotency-Key`。注册判据、计划审批及租户边界见 [API 契约](docs/api/README.md)。API 当前面向本机可信开发者，**尚未实现 OIDC、RBAC、operator/worker/verifier 职责隔离及生产认证**。
+通过 `POST /v1/goals` 创建，再用 `PUT /v1/goals/{run_id}/plan` 保存定义及 expected_revision，最后以当前 revision/digest 批准。创建 Goal、保存/批准计划、控制/核对及旧 run/task/提交命令需要 `Idempotency-Key`。注册判据、计划审批与权限见 [API 契约](docs/api/README.md)。已实现本机动作角色边界，**尚未完成生产 OIDC、人员身份认证、双人审批或独立验证服务身份**；同一 Windows 用户管理多个 token 不证明多个独立人员。
 
-本轮保留原会话重启到 0.3.0 后，原 9 项 HTTP 检查与新增 12 项 Goal/Plan HTTP 检查均通过。服务运行时可复现，不必输出或重新生成 token：
+0.3.0 的历史实际服务检查为原 9 项 API + 12 项 Goal/Plan 检查通过；本轮新增控制/权限及浏览器验证以最新验证记录为准。旧 fixture 检查继续使用原私有会话，可在服务运行时复现，不必输出或重新生成 token：
 
 ```powershell
 $firstRoundSession = (Resolve-Path '../../work/loom-first-round-session.json').Path
@@ -107,6 +112,8 @@ $image = (Get-Content '../../work/loom-sandbox-image.id' -Raw).Trim()
 | `src/loom/store.py` | SQLite 事务适配、事件、outbox/inbox、租约、预算、副作用状态 |
 | `src/loom/policy.py` | 确定性门禁、人工例外、进展判断、任务/Agent 选择与上下文预算 |
 | `src/loom/api.py` | FastAPI/Pydantic 本地认证 API |
+| `src/loom/auth.py`、`src/loom/operator.py` | 本机主体/角色、持久人工控制及未知模型调用核对 |
+| `src/loom/web/` | 无外部依赖的中文控制台、内存凭据与纯文本证据呈现 |
 | `src/loom/workflow.py` | Goal 草案、版本化 DAG、审批与七角色冻结合同 |
 | `src/loom/model_gateway.py` | 私有配置、Flash JSON 模式、用量及受控错误边界 |
 | `src/loom/execution.py` | 获准 developer/fixer 节点的真实模型与隔离执行适配 |
@@ -120,7 +127,7 @@ $image = (Get-Content '../../work/loom-sandbox-image.id' -Raw).Trim()
 | `migrations/postgres/` | 已在隔离 PostgreSQL 16.15 执行的 DDL；完整 Store 适配尚未实现 |
 | `scripts/check_s2.py` | 强制四项基础设施配置、分阶段且拒绝 skip 的检查入口 |
 
-[实施计划](docs/implementation-plan.md) · [本机真实执行](docs/local-execution.md) · [Docker](docs/local-sandbox.md) · [GitHub 复用选型](docs/github-reuse.md) · [第三方声明](docs/third-party-notices.md) · [PostgreSQL](docs/postgres-integration.md) · [NATS](docs/nats-integration.md) · [检查点](docs/checkpoints.md)
+[实施计划](docs/implementation-plan.md) · [控制台](docs/console.md) · [本机身份](docs/local-auth.md) · [本机真实执行](docs/local-execution.md) · [Docker](docs/local-sandbox.md) · [GitHub 复用选型](docs/github-reuse.md) · [第三方声明](docs/third-party-notices.md) · [PostgreSQL](docs/postgres-integration.md) · [NATS](docs/nats-integration.md) · [检查点](docs/checkpoints.md)
 
 ## 当前边界
 
@@ -129,12 +136,12 @@ $image = (Get-Content '../../work/loom-sandbox-image.id' -Raw).Trim()
 3. 事件检查点使用真实密码学验签；Docker 黄金用例由宿主判定，但真实模型产物仍未取得独立双模型签名。固定演示中的认证标志不是实测模型身份，检查点签名也不证明模型结论或测试指标为真。当前七角色配置路由到同一 Flash，不能视为两个独立模型。
 4. `complete`、`finish_run` 等 Python 入口属于可信验证/验收进程；不能把不可信 Worker 作为同进程插件导入。HTTP Worker 只有提交入口。
 5. NATS 已实现并在真实单节点验证至少一次传输、durable 消费和进程重启去重。尚未完成生产 accounts/TLS、R3 集群、物理断电耐久与多节点分区验证；强杀后 broker ACK 进度可能回退，本地 inbox 负责防重复效果。
-6. Flash 请求使用固定费率版本、保守输入上下文上界和输出上限预留，按有效 usage 结算；本次 247µUSD 为上界记账而非账单。取消、超时和不确定响应可能仍计费，须保留预算与待核对状态，不能宣称账户级计费硬封顶。
+6. Flash 请求使用固定费率版本、保守输入上下文上界和输出上限预留，按有效 usage 结算；本轮262µUSD为上界记账而非账单。取消、超时和不确定响应可能仍计费，须保留预算与待核对状态，不能宣称账户级计费硬封顶。
 7. 真实模型调用已经接入受控发起/未知态流程；业务外部写及跨灾备窗口恢复尚未完成，不承诺真实零重复。
 8. 当前回放重建已实现的业务投影；全量快照恢复、跨版本事件升级、全部生产投影和外部效果补偿仍待实现。
-9. 六种修复原语目前仅实现本地 `Rebind/Substitute` 记录及验证失败重跑；动态改图、模板库、经验库和可视化前端仍在后续计划。
+9. 六种修复原语目前仅实现本地 `Rebind/Substitute` 记录及验证失败重跑；已有薄操作控制台，完整图编辑、动态改图、模板库和经验库仍在后续计划。
 10. 事件接口暂为本地整链读取；分页、SSE、生产限流和大规模性能测试尚未实现。
-11. 当前脚本创建 implement → independent_review 两节点计划，仅真实执行开发节点；执行器支持获准的 developer/fixer，任意仓库、依赖安装、完整七角色协作、独立双模型、人工闭环及完整 FR001–062 尚未验收。
+11. 当前脚本创建 implement → independent_review 两节点计划，仅真实执行开发节点；执行器支持获准的 developer/fixer。人工控制已覆盖暂停/恢复/终止/未知核对，真实七角色协作、修复循环与人工流程联动、任意仓库和依赖安装仍未全通，完整 FR001–062 尚未验收。
 
 ## 复用与授权
 

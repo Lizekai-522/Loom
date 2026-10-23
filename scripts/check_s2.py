@@ -82,7 +82,7 @@ def main():
         if not success:
             break
     success = len(stages) == 2 and all(stage["passed"] for stage in stages)
-    report = {"date": datetime.now(timezone(timedelta(hours=8))).isoformat(), "timezone": "Asia/Shanghai", "milestone": "0.3.0-local-execution-alpha", "passed": success,
+    report = {"date": datetime.now(timezone(timedelta(hours=8))).isoformat(), "timezone": "Asia/Shanghai", "milestone": "0.4.0-human-control-alpha", "passed": success,
               "stages": stages, "real_models_used": False, "production_ready": False,
               "sandbox_image": args.sandbox_image,
               "scope": "Single-host SQLite local execution alpha; real Docker Linux isolation and JetStream, separate PostgreSQL schema/RLS checks; model gateway tests use mocks, no real model calls. Real model probe reports are separate; no PostgreSQL Store adapter or production readiness claim"}

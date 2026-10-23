@@ -186,7 +186,7 @@ class WorkflowService:
                 "anchor_digest": run["anchor"], "plan_digest": goal["plan_digest"], "status": "pending"}
 
     def create_goal(self, tenant, key, *, title, description, acceptance,
-                    cost_limit=1_000_000, token_limit=10000):
+                    cost_limit=1_000_000, token_limit=10000, actor=None):
         _text(tenant, "tenant", 200)
         _text(key, "idempotency key", 200)
         _text(title, "title", 500)
@@ -200,6 +200,10 @@ class WorkflowService:
             raise InvalidInput("goal budgets must be bounded nonnegative integers")
         args = dict(title=title, description=description, acceptance=acceptance,
                     cost_limit=cost_limit, token_limit=token_limit, ruleset="kernel-v1", scope="local-workspace")
+        if actor is not None:
+            _text(actor, "actor", 200)
+            args["actor"] = actor
+        audit_actor = actor or "operator:local"
 
         def apply(db):
             run_id, goal_id, intent_id = str(uuid4()), str(uuid4()), str(uuid4())
@@ -210,15 +214,15 @@ class WorkflowService:
                        (tenant, run_id, goal_id, intent_id, title, description, canonical(acceptance), "local-workspace"))
             result = {"run_id": run_id, "goal_id": goal_id, "intent_id": intent_id, "anchor_digest": anchor,
                       "ruleset": "kernel-v1", "status": "draft", "plan_revision": 0}
-            self.store._event(db, tenant, run_id, "run.created", {**result, **args, "managed_workflow": True}, "operator:local", key)
+            self.store._event(db, tenant, run_id, "run.created", {**result, **args, "managed_workflow": True}, audit_actor, key)
             self.store._event(db, tenant, run_id, "goal.created", {"goal_id": goal_id, "anchor": anchor,
-                              "title": title, "description": description}, "operator:local")
+                              "title": title, "description": description}, audit_actor)
             self.store._event(db, tenant, run_id, "intent.created", {"intent_id": intent_id, "goal_id": goal_id,
                               "from_facts": [{"kind": "anchor", "id": anchor}]}, "system")
             return result
         return self.store._command(tenant, key, "workflow.create_goal", args, apply)
 
-    def save_plan(self, tenant, run_id, key, definition, expected_revision):
+    def save_plan(self, tenant, run_id, key, definition, expected_revision, *, actor=None):
         _text(tenant, "tenant", 200)
         _text(run_id, "run ID", 100)
         _text(key, "idempotency key", 200)
@@ -231,6 +235,9 @@ class WorkflowService:
             raise InvalidInput("invalid workflow definition") from None
         body, plan_digest = definition.model_dump(mode="json"), definition.execution_digest
         args = dict(run_id=run_id, definition=body, expected_revision=expected_revision)
+        if actor is not None:
+            _text(actor, "actor", 200)
+            args["actor"] = actor
 
         def apply(db):
             goal = self._goal(db, tenant, run_id)
@@ -243,11 +250,11 @@ class WorkflowService:
                        (revision, plan_digest, canonical(body), tenant, run_id))
             result = {"run_id": run_id, "status": "draft", "revision": revision, "digest": plan_digest,
                       "definition": body, "task_ids": {}}
-            self.store._event(db, tenant, run_id, "workflow.plan_saved", result, "operator:local", key)
+            self.store._event(db, tenant, run_id, "workflow.plan_saved", result, actor or "operator:local", key)
             return result
         return self.store._command(tenant, key, "workflow.save_plan", args, apply)
 
-    def approve_plan(self, tenant, run_id, key, expected_revision, expected_digest):
+    def approve_plan(self, tenant, run_id, key, expected_revision, expected_digest, *, actor=None):
         _text(tenant, "tenant", 200)
         _text(run_id, "run ID", 100)
         _text(key, "idempotency key", 200)
@@ -255,6 +262,9 @@ class WorkflowService:
         if not isinstance(expected_digest, str) or len(expected_digest) != 64:
             raise InvalidInput("expected_digest must identify the reviewed plan")
         args = dict(run_id=run_id, expected_revision=expected_revision, expected_digest=expected_digest)
+        if actor is not None:
+            _text(actor, "actor", 200)
+            args["actor"] = actor
 
         def apply(db):
             goal, run = self._goal(db, tenant, run_id), self.store._run(db, tenant, run_id)
@@ -295,7 +305,7 @@ class WorkflowService:
             db.execute("UPDATE runs SET status='open' WHERE tenant=? AND id=?", (tenant, run_id))
             result = {"run_id": run_id, "status": "open", "revision": expected_revision, "digest": expected_digest,
                       "tasks": tasks, "task_ids": ids}
-            self.store._event(db, tenant, run_id, "workflow.plan_approved", result, "operator:local", key)
+            self.store._event(db, tenant, run_id, "workflow.plan_approved", result, actor or "operator:local", key)
             return result
         return self.store._command(tenant, key, "workflow.approve_plan", args, apply)
 

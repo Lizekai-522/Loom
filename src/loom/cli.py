@@ -18,6 +18,7 @@ def main():
     serve = commands.add_parser("serve", help="serve a local authenticated development API")
     serve.add_argument("--db", default="artifacts/dev.db")
     serve.add_argument("--port", type=int, default=8796)
+    serve.add_argument("--identities-file", type=Path, help="private named local identities; never put tokens in command arguments")
     relay = commands.add_parser("queue-drain", help="publish pending events to a dedicated JetStream stream")
     relay.add_argument("--db", required=True)
     relay.add_argument("--server", default="nats://127.0.0.1:4223")
@@ -49,10 +50,12 @@ def main():
         if not isinstance(keys, dict) or any(not isinstance(k, str) or not isinstance(v, str) for k, v in keys.items()):
             parser.error("LOOM_TENANT_KEYS must be a JSON object mapping tenant IDs to local API tokens")
         from .api import create_app
+        from .auth import AuthConfigError, load_identities
         import uvicorn
         try:
-            app = create_app(Store(args.db), keys)
-        except ValueError as exc:
+            identities = load_identities(args.identities_file) if args.identities_file else ()
+            app = create_app(Store(args.db), keys, identities=identities)
+        except (ValueError, AuthConfigError) as exc:
             parser.error(str(exc))
         # Bind exclusively to loopback. Internet/production serving is out of scope.
         uvicorn.run(app, host="127.0.0.1", port=args.port)

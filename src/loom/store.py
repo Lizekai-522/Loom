@@ -445,10 +445,11 @@ class Store:
             state = "overrun" if overrun else "settled"
             db.execute("UPDATE reservations SET state=?,actual_cost=?,actual_tokens=? WHERE tenant=? AND id=?",
                        (state, actual_cost, actual_tokens, tenant, reservation_id))
-            db.execute("UPDATE runs SET reserved=reserved-?,tokens_reserved=tokens_reserved-?,spent=spent+?,tokens_spent=tokens_spent+?,status=CASE WHEN ? THEN 'awaiting_human' ELSE status END WHERE tenant=? AND id=?",
+            db.execute("UPDATE runs SET reserved=reserved-?,tokens_reserved=tokens_reserved-?,spent=spent+?,tokens_spent=tokens_spent+?,status=CASE WHEN ? AND status NOT IN ('cancelled','succeeded') THEN 'awaiting_human' ELSE status END WHERE tenant=? AND id=?",
                        (r["cost"], r["tokens"], actual_cost, actual_tokens, overrun, tenant, r["run_id"]))
             result = {"reservation_id": reservation_id, "state": state, "actual_cost": actual_cost, "actual_tokens": actual_tokens}
-            self._event(db, tenant, r["run_id"], "budget." + state, result, "gateway")
+            self._event(db, tenant, r["run_id"], "budget." + state,
+                        {**result, "run_status": self._run(db, tenant, r["run_id"])["status"]}, "gateway")
             return result
 
     def begin_effect(self, claim: Claim, operation_id: str, request: dict) -> dict:
@@ -576,8 +577,12 @@ class Store:
             elif kind == "workflow.plan_approved":
                 state["status"] = "open"
             elif kind == "execution.blocked":
-                state["status"] = "awaiting_human"
+                state["status"] = payload.get("run_status", "awaiting_human")
                 state["tasks"][payload["task_id"]]["status"] = "awaiting_human"
+            elif kind in {"run.paused", "run.resumed", "run.cancelled"}:
+                state["status"] = payload["status"]
+                for task in payload.get("task_updates", []):
+                    state["tasks"][task["task_id"]].update(status=task["status"], epoch=task["epoch"])
             elif kind == "task.created":
                 state["tasks"][payload["task_id"]] = {"status": "pending", "depends_on": payload["depends_on"], "priority": payload["priority"], "channel": payload["channel"], "epoch": 0}
             elif kind in {"task.claimed", "task.completed", "task.output_submitted", "task.invalidated", "task.lease_expired", "task.verification_failed"}:
@@ -586,8 +591,10 @@ class Store:
                     state["tasks"][payload["task_id"]]["output"] = payload["output"]
                 if "epoch" in payload:
                     state["tasks"][payload["task_id"]]["epoch"] = payload["epoch"]
-            elif kind in {"tool.intent", "tool.done", "tool.indeterminate"}:
+            elif kind in {"tool.intent", "tool.done", "tool.indeterminate", "effect.reconciled"}:
                 state["effects"][payload["call_id"]] = payload["state"]
+                if kind == "effect.reconciled" and "run_status" in payload:
+                    state["status"] = payload["run_status"]
             elif kind == "budget.reserved":
                 state["reservations"][payload["reservation_id"]] = dict(payload)
                 state["reserved"] += payload["cost"]
@@ -600,7 +607,7 @@ class Store:
                 state["tokens_spent"] += payload["actual_tokens"]
                 reservation.update(payload)
                 if kind == "budget.overrun":
-                    state["status"] = "awaiting_human"
+                    state["status"] = payload.get("run_status", "awaiting_human")
             elif kind == "run.completed":
                 state["status"] = payload["status"]
             state["last_seq"] = event["seq"]

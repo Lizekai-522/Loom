@@ -14,6 +14,7 @@ import httpx
 
 from loom.execution import FLASH_CONTEXT_LIMIT, LocalTaskRunner, cost_upper_microusd, freeze_tests
 from loom.model_gateway import ModelGateway, ModelRoute
+from loom.operator import OperatorService
 from loom.policy import ArtifactSubmission
 from loom.sandbox import CaseResult, FrozenTest, RUNNER_SHA256, SandboxResult, SandboxUnavailable
 from loom.store import BudgetExceeded, Conflict, InvalidInput, StaleClaim, Store, canonical, digest
@@ -58,6 +59,39 @@ class FakeSandbox:
 
 
 class ExecutionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_operator_pause_during_response_stays_paused_in_replay(self):
+        claim, _ = self.make_claim()
+        self.http_callback = lambda: OperatorService(self.store).pause("tenant", claim.run_id, "pause-response", "subject:operator", "Pause before next action")
+        result = await self.runner.run_python(claim, self.suite, max_output_tokens=128)
+        self.assertEqual(result["run_status"], "paused")
+        self.assertEqual(self.sandbox.execution_calls, 0)
+        self.assertEqual(self.rows("effects", claim.run_id)[0]["state"], "done")
+        self.assertEqual(self.rows("reservations", claim.run_id)[0]["state"], "settled")
+        self.assertEqual(self.store.snapshot("tenant", claim.run_id)["status"], "paused")
+        self.assertEqual(self.store.replay("tenant", claim.run_id)["status"], "paused")
+
+    async def test_operator_terminate_during_response_fences_old_candidate(self):
+        claim, _ = self.make_claim()
+        self.http_callback = lambda: OperatorService(self.store).terminate("tenant", claim.run_id, "cancel-response", "subject:operator", "Cancel in-flight attempt")
+        result = await self.runner.run_python(claim, self.suite, max_output_tokens=128)
+        self.assertFalse(result["verified"])
+        self.assertTrue(result["billing_uncertain"])
+        self.assertEqual(self.sandbox.execution_calls, 0)
+        self.assertEqual(self.rows("effects", claim.run_id)[0]["state"], "indeterminate")
+        self.assertEqual(self.rows("reservations", claim.run_id)[0]["state"], "reserved")
+        self.assertEqual(self.store.snapshot("tenant", claim.run_id)["status"], "cancelled")
+        self.assertEqual(self.store.replay("tenant", claim.run_id)["status"], "cancelled")
+        with self.assertRaises(StaleClaim):
+            self.store.submit_output(claim, "late-output", {"verified": True})
+
+    async def test_late_overrun_settlement_cannot_revive_cancelled_run(self):
+        claim, _ = self.make_claim()
+        self.store.reserve(claim, "late-bill", max_cost=10, max_tokens=10)
+        OperatorService(self.store).terminate("tenant", claim.run_id, "cancel-late-bill", "subject:operator", "Stop task")
+        self.store.settle("tenant", "late-bill", actual_cost=11, actual_tokens=12)
+        self.assertEqual(self.store.snapshot("tenant", claim.run_id)["status"], "cancelled")
+        self.assertEqual(self.store.replay("tenant", claim.run_id)["status"], "cancelled")
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

@@ -98,10 +98,11 @@ class LocalTaskRunner:
                            (claim.tenant_id, effect["id"]))
                 self.store._event(db, claim.tenant_id, claim.run_id, "tool.indeterminate",
                                   {"call_id": effect["id"], "state": "indeterminate", "reason": reason}, "local-executor")
-            db.execute("UPDATE runs SET status='awaiting_human' WHERE tenant=? AND id=?", (claim.tenant_id, claim.run_id))
+            db.execute("UPDATE runs SET status='awaiting_human' WHERE tenant=? AND id=? AND status='open'", (claim.tenant_id, claim.run_id))
             db.execute("UPDATE tasks SET status='awaiting_human',lease_until=NULL WHERE tenant=? AND id=?",
                        (claim.tenant_id, claim.task_id))
             result = {"run_id": claim.run_id, "task_id": claim.task_id, "status": "awaiting_human",
+                      "run_status": self.store._run(db, claim.tenant_id, claim.run_id)["status"],
                       "reason": reason, "verified": False, "billing_uncertain": bool(unknown)}
             self.store._event(db, claim.tenant_id, claim.run_id, "execution.blocked", result, "local-executor")
             return result
@@ -126,7 +127,8 @@ class LocalTaskRunner:
                 db.execute("UPDATE runs SET status='awaiting_human' WHERE tenant=? AND id=? AND status='open'",
                            (claim.tenant_id, claim.run_id))
                 self.store._event(db, claim.tenant_id, claim.run_id, "execution.blocked",
-                    {"task_id": claim.task_id, "epoch": claim.epoch, "reason": "EXECUTION_LEASE_LOST"}, "local-executor")
+                    {"task_id": claim.task_id, "epoch": claim.epoch, "reason": "EXECUTION_LEASE_LOST",
+                     "run_status": self.store._run(db, claim.tenant_id, claim.run_id)["status"]}, "local-executor")
             return {"task_id": claim.task_id, "status": "awaiting_human", "verified": False,
                     "reason": "EXECUTION_LEASE_LOST", "billing_uncertain": bool(uncertain)}
 

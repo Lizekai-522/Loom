@@ -1,16 +1,20 @@
-"""Tenant-key authenticated LOCAL API; OIDC and worker role separation are future work."""
+"""Loopback API with named local roles; production OIDC remains future work."""
 from dataclasses import asdict
-from hmac import compare_digest
+import json
+from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from . import __version__
-from .store import Claim, Conflict, InvalidInput, LoomError, NotFound, Store, canonical
+from .auth import AuthRegistry, LocalIdentity, Principal
+from .operator import OperatorService
+from .store import Claim, Conflict, InvalidInput, LoomError, NotFound, Store, canonical, digest
 from .workflow import WorkflowDefinition, WorkflowService
 
 
@@ -52,13 +56,29 @@ class PlanApprovalInput(Input):
 
 
 class ClaimInput(Input):
-    worker_id: str = Field(min_length=1, max_length=100)
+    worker_id: str = Field(min_length=1, max_length=128)
     channel: str = "business"
     lease_seconds: float = Field(default=30, gt=0, le=3600)
 
 
+class ControlInput(Input):
+    reason: str = Field(min_length=1, max_length=2000)
+
+
+class ReconciliationEvidence(Input):
+    reference: str = Field(min_length=1, max_length=500)
+    summary: str = Field(min_length=1, max_length=2000)
+
+
+class ReconciliationInput(Input):
+    decision: str = Field(pattern=r"^(completed|not_sent)$")
+    evidence: ReconciliationEvidence
+    actual_cost_microusd: int = Field(ge=0, le=1_000_000_000_000)
+    actual_tokens: int = Field(ge=0, le=1_000_000_000)
+
+
 class CompleteInput(Input):
-    worker_id: str = Field(min_length=1, max_length=100)
+    worker_id: str = Field(min_length=1, max_length=128)
     epoch: int = Field(ge=1)
     output: dict[str, Any]
 
@@ -70,25 +90,68 @@ class CompleteInput(Input):
         return value
 
 
-def create_app(store: Store, tenant_keys: dict[str, str]) -> FastAPI:
-    if not tenant_keys or any(not t or len(k) < 16 for t, k in tenant_keys.items()):
-        raise ValueError("configure tenant keys with at least 16 characters")
-    if len(set(tenant_keys.values())) != len(tenant_keys):
-        raise ValueError("tenant keys must be unique")
+def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[LocalIdentity, ...] = ()) -> FastAPI:
+    registry = AuthRegistry(tenant_keys, identities)
     app = FastAPI(title="Loom local kernel", version=__version__,
                   description="Local S1 development API. No real model or external write execution.")
     workflows = WorkflowService(store)
+    operators = OperatorService(store)
     security = HTTPBearer(auto_error=False)
 
-    def principal(credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)]) -> str:
+    def principal(credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)]) -> Principal:
         if credentials is not None:
-            for tenant, token in tenant_keys.items():
-                if compare_digest(credentials.credentials.encode("utf-8"), token.encode("utf-8")):
-                    return tenant
+            identity = registry.authenticate(credentials.credentials)
+            if identity is not None:
+                return identity
         raise HTTPException(401, "valid tenant bearer token required", headers={"WWW-Authenticate": "Bearer"})
 
-    Tenant = Annotated[str, Depends(principal)]
+    def permitted(action):
+        def resolve(identity: Annotated[Principal, Depends(principal)]) -> Principal:
+            if not registry.authorize(identity, action):
+                raise HTTPException(403, "this identity cannot perform the requested action")
+            return identity
+        return resolve
+
+    def tenant_for(action):
+        def resolve(identity: Annotated[Principal, Depends(permitted(action))]) -> str:
+            return identity.tenant_id
+        return resolve
+
+    def audit(identity):
+        return {} if "developer" in identity.roles else {"actor": "subject:" + identity.subject_id}
+
+    Tenant = Annotated[str, Depends(tenant_for("read"))]
+    WriteTenant = Annotated[str, Depends(tenant_for("goal.write"))]
+    Writer = Annotated[Principal, Depends(permitted("goal.write"))]
+    Approver = Annotated[Principal, Depends(permitted("plan.approve"))]
+    Controller = Annotated[Principal, Depends(permitted("control"))]
+    Claimer = Annotated[Principal, Depends(permitted("task.claim"))]
+    Submitter = Annotated[Principal, Depends(permitted("task.submit"))]
     Key = Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=200)]
+
+    @app.middleware("http")
+    async def response_policy(request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        if request.url.path.startswith("/console"):
+            response.headers["Content-Security-Policy"] = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+        return response
+
+    web = Path(__file__).with_name("web")
+    app.mount("/console/assets", StaticFiles(directory=web, check_dir=False), name="console-assets")
+
+    @app.get("/console", include_in_schema=False)
+    @app.get("/console/", include_in_schema=False)
+    def console():
+        return FileResponse(web / "index.html")
+
+    @app.get("/v1/me")
+    def me(identity: Annotated[Principal, Depends(principal)]):
+        return {"tenant_id": identity.tenant_id, "subject_id": identity.subject_id,
+                "roles": sorted(identity.roles), "capabilities": registry.capabilities(identity),
+                "authentication": "local-bearer", "production_identity": False}
 
     @app.exception_handler(LoomError)
     async def loom_error(_, exc: LoomError):
@@ -107,10 +170,10 @@ def create_app(store: Store, tenant_keys: dict[str, str]) -> FastAPI:
         return {"status": "ok", "version": __version__, "stage": "S1-local", "external_writes_enabled": False}
 
     @app.post("/v1/goals", status_code=201)
-    def create_goal(body: GoalInput, tenant: Tenant, idempotency_key: Key):
-        return workflows.create_goal(tenant, idempotency_key, title=body.title, description=body.description,
+    def create_goal(body: GoalInput, identity: Writer, idempotency_key: Key):
+        return workflows.create_goal(identity.tenant_id, idempotency_key, title=body.title, description=body.description,
                                      acceptance=body.acceptance, cost_limit=body.cost_limit_microusd,
-                                     token_limit=body.token_limit)
+                                     token_limit=body.token_limit, **audit(identity))
 
     @app.get("/v1/goals")
     def list_goals(tenant: Tenant):
@@ -125,15 +188,30 @@ def create_app(store: Store, tenant_keys: dict[str, str]) -> FastAPI:
         return workflows.get_plan(tenant, run_id)
 
     @app.put("/v1/goals/{run_id}/plan")
-    def save_plan(run_id: str, body: PlanInput, tenant: Tenant, idempotency_key: Key):
-        return workflows.save_plan(tenant, run_id, idempotency_key, body.definition, body.expected_revision)
+    def save_plan(run_id: str, body: PlanInput, identity: Writer, idempotency_key: Key):
+        return workflows.save_plan(identity.tenant_id, run_id, idempotency_key, body.definition, body.expected_revision, **audit(identity))
 
     @app.post("/v1/goals/{run_id}/plan/approve")
-    def approve_plan(run_id: str, body: PlanApprovalInput, tenant: Tenant, idempotency_key: Key):
-        return workflows.approve_plan(tenant, run_id, idempotency_key, body.expected_revision, body.expected_digest)
+    def approve_plan(run_id: str, body: PlanApprovalInput, identity: Approver, idempotency_key: Key):
+        return workflows.approve_plan(identity.tenant_id, run_id, idempotency_key, body.expected_revision, body.expected_digest, **audit(identity))
+
+    @app.get("/v1/interventions")
+    def interventions(tenant: Tenant):
+        return {"items": operators.list_interventions(tenant)}
+
+    @app.post("/v1/runs/{run_id}/control/{action}")
+    def control(run_id: str, action: str, body: ControlInput, identity: Controller, idempotency_key: Key):
+        if action not in {"pause", "resume", "terminate"}:
+            raise HTTPException(404, "unknown control action")
+        return getattr(operators, action)(identity.tenant_id, run_id, idempotency_key, "subject:" + identity.subject_id, body.reason)
+
+    @app.post("/v1/runs/{run_id}/effects/{call_id}/reconcile")
+    def reconcile(run_id: str, call_id: str, body: ReconciliationInput, identity: Controller, idempotency_key: Key):
+        return operators.reconcile_effect(identity.tenant_id, run_id, call_id, idempotency_key,
+            "subject:" + identity.subject_id, body.decision, body.evidence.model_dump(), body.actual_cost_microusd, body.actual_tokens)
 
     @app.post("/v1/runs", status_code=201)
-    def create_run(body: RunInput, tenant: Tenant, idempotency_key: Key):
+    def create_run(body: RunInput, tenant: WriteTenant, idempotency_key: Key):
         return store.create_run(tenant, idempotency_key, acceptance=body.acceptance,
                                 cost_limit=body.cost_limit_microusd, token_limit=body.token_limit, ruleset=body.ruleset)
 
@@ -141,18 +219,60 @@ def create_app(store: Store, tenant_keys: dict[str, str]) -> FastAPI:
     def get_run(run_id: str, tenant: Tenant):
         return store.snapshot(tenant, run_id)
 
+    @app.get("/v1/runs/{run_id}/review")
+    def review_run(run_id: str, tenant: Tenant):
+        # Display submitted data separately from a trusted executor event.
+        # A worker's own tests.passed flag is never trusted evaluation evidence.
+        with store.connect() as db:
+            run = dict(store._run(db, tenant, run_id))
+            evaluations = {}
+            for event in db.execute("SELECT envelope FROM events WHERE tenant=? AND run_id=? AND json_extract(envelope,'$.type')='execution.evaluated' ORDER BY seq", (tenant, run_id)):
+                data = json.loads(event[0])["payload"]
+                evaluations[(data["task_id"], data["epoch"], data["content_hash"])] = data
+            tasks = []
+            for row in db.execute("SELECT * FROM tasks WHERE tenant=? AND run_id=? ORDER BY rowid", (tenant, run_id)):
+                item = {key: row[key] for key in ("id", "title", "status", "channel", "priority", "epoch")}
+                contract = db.execute("SELECT contract FROM workflow_tasks WHERE tenant=? AND run_id=? AND task_id=?", (tenant, run_id, row["id"])).fetchone()
+                if contract:
+                    spec = workflows.get_task_spec(tenant, run_id, row["id"])
+                    item.update({key: spec[key] for key in ("role", "model_alias", "evaluation_digest", "limits")})
+                if row["output"] is not None:
+                    output = json.loads(row["output"])
+                    identity = digest(output)
+                    evidence = evaluations.get((row["id"], row["epoch"], identity))
+                    item["artifact"] = {"content_hash": identity, "kind": output.get("kind", "submitted-data"),
+                        "trusted_evaluation": evidence is not None,
+                        "hard_criteria_passed": evidence.get("hard_criteria_passed") if evidence else None,
+                        "verification": "awaiting_independent_models" if row["status"] == "submitted" else row["status"],
+                        "cases": []}
+                    tests = output.get("tests", {})
+                    if evidence and isinstance(tests, dict) and isinstance(tests.get("cases"), list):
+                        item["artifact"]["cases"] = [{key: case.get(key) for key in ("name", "passed", "status")} for case in tests["cases"][:32] if isinstance(case, dict)]
+                tasks.append(item)
+            effects = []
+            for row in db.execute("SELECT id,task_id,epoch,state FROM effects WHERE tenant=? AND run_id=? ORDER BY rowid", (tenant, run_id)):
+                effects.append({"call_id": row["id"], "task_id": row["task_id"], "epoch": row["epoch"], "state": row["state"],
+                    "model_generation": row["id"] == digest({"tenant_id": tenant, "run_id": run_id, "task_id": row["task_id"], "operation_id": f"model-generation:{row['epoch']}"})})
+            reservations = [{"reservation_id": row["id"], **{key: row[key] for key in ("task_id", "epoch", "state", "cost", "tokens", "actual_cost", "actual_tokens")}} for row in db.execute("SELECT * FROM reservations WHERE tenant=? AND run_id=? ORDER BY rowid", (tenant, run_id))]
+            return {"run": run, "tasks": tasks, "effects": effects, "reservations": reservations,
+                    "verification": "pending_configuration", "counts_as_success": False}
+
     @app.post("/v1/runs/{run_id}/tasks", status_code=201)
-    def add_task(run_id: str, body: TaskInput, tenant: Tenant, idempotency_key: Key):
+    def add_task(run_id: str, body: TaskInput, tenant: WriteTenant, idempotency_key: Key):
         return store.add_task(tenant, run_id, idempotency_key, **body.model_dump())
 
     @app.post("/v1/runs/{run_id}/claim")
-    def claim(run_id: str, body: ClaimInput, tenant: Tenant):
-        result = store.claim_next(tenant, run_id, body.worker_id, channel=body.channel, lease_seconds=body.lease_seconds)
+    def claim(run_id: str, body: ClaimInput, identity: Claimer):
+        if "developer" not in identity.roles and body.worker_id != identity.subject_id:
+            raise HTTPException(403, "worker identity must match the authenticated subject")
+        result = store.claim_next(identity.tenant_id, run_id, body.worker_id, channel=body.channel, lease_seconds=body.lease_seconds)
         return {"claim": asdict(result) if result else None}
 
     @app.post("/v1/runs/{run_id}/tasks/{task_id}/submit")
-    def submit(run_id: str, task_id: str, body: CompleteInput, tenant: Tenant, idempotency_key: Key):
-        current = Claim(tenant, run_id, task_id, body.worker_id, body.epoch, 0)
+    def submit(run_id: str, task_id: str, body: CompleteInput, identity: Submitter, idempotency_key: Key):
+        if "developer" not in identity.roles and body.worker_id != identity.subject_id:
+            raise HTTPException(403, "worker identity must match the authenticated subject")
+        current = Claim(identity.tenant_id, run_id, task_id, body.worker_id, body.epoch, 0)
         return store.submit_output(current, idempotency_key, body.output)
 
     @app.get("/v1/runs/{run_id}/events")
