@@ -3,7 +3,7 @@
   "info": {
     "title": "Loom local kernel",
     "description": "Local S1 development API. No real model or external write execution.",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "paths": {
     "/health": {
@@ -16,6 +16,287 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/goals": {
+      "post": {
+        "summary": "Create Goal",
+        "operationId": "create_goal_v1_goals_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoalInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List Goals",
+        "operationId": "list_goals_v1_goals_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/goals/{run_id}": {
+      "get": {
+        "summary": "Get Goal",
+        "operationId": "get_goal_v1_goals__run_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/goals/{run_id}/plan": {
+      "get": {
+        "summary": "Get Plan",
+        "operationId": "get_plan_v1_goals__run_id__plan_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Save Plan",
+        "operationId": "save_plan_v1_goals__run_id__plan_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/goals/{run_id}/plan/approve": {
+      "post": {
+        "summary": "Approve Plan",
+        "operationId": "approve_plan_v1_goals__run_id__plan_approve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanApprovalInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
@@ -434,6 +715,63 @@
   },
   "components": {
     "schemas": {
+      "AgentRole": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "analyst",
+              "architect",
+              "tester",
+              "developer",
+              "reviewer",
+              "fixer",
+              "validator"
+            ],
+            "title": "Id"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Skills"
+          },
+          "tools": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "workspace.read",
+                "workspace.write",
+                "tests.run",
+                "artifacts.read",
+                "artifacts.write"
+              ]
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Tools"
+          },
+          "model_alias": {
+            "type": "string",
+            "maxLength": 48,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "title": "Model Alias"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "skills",
+          "tools",
+          "model_alias"
+        ],
+        "title": "AgentRole"
+      },
       "ClaimInput": {
         "properties": {
           "worker_id": {
@@ -490,6 +828,53 @@
         ],
         "title": "CompleteInput"
       },
+      "GoalInput": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 32000,
+            "minLength": 1,
+            "title": "Description"
+          },
+          "acceptance": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Acceptance"
+          },
+          "cost_limit_microusd": {
+            "type": "integer",
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Cost Limit Microusd",
+            "default": 1000000
+          },
+          "token_limit": {
+            "type": "integer",
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "title": "Token Limit",
+            "default": 10000
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "description",
+          "acceptance"
+        ],
+        "title": "GoalInput"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -502,6 +887,46 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "PlanApprovalInput": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "expected_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Expected Digest"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "expected_digest"
+        ],
+        "title": "PlanApprovalInput"
+      },
+      "PlanInput": {
+        "properties": {
+          "definition": {
+            "$ref": "#/components/schemas/WorkflowDefinition"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Revision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "definition",
+          "expected_revision"
+        ],
+        "title": "PlanInput"
       },
       "RunInput": {
         "properties": {
@@ -584,6 +1009,124 @@
         ],
         "title": "TaskInput"
       },
+      "TaskLimits": {
+        "properties": {
+          "cost_limit_microusd": {
+            "type": "integer",
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Cost Limit Microusd"
+          },
+          "token_limit": {
+            "type": "integer",
+            "maximum": 10000000.0,
+            "minimum": 1.0,
+            "title": "Token Limit"
+          },
+          "max_attempts": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Max Attempts",
+            "default": 3
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cost_limit_microusd",
+          "token_limit"
+        ],
+        "title": "TaskLimits"
+      },
+      "TaskNode": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 48,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "instruction": {
+            "type": "string",
+            "maxLength": 16000,
+            "minLength": 1,
+            "title": "Instruction"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "analyst",
+              "architect",
+              "tester",
+              "developer",
+              "reviewer",
+              "fixer",
+              "validator"
+            ],
+            "title": "Role"
+          },
+          "depends": {
+            "items": {
+              "type": "string",
+              "maxLength": 48,
+              "minLength": 1,
+              "pattern": "^[a-z][a-z0-9_-]*$"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Depends"
+          },
+          "priority": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": -1000.0,
+            "title": "Priority",
+            "default": 0
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "business",
+              "verification"
+            ],
+            "title": "Channel",
+            "default": "business"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/TaskLimits"
+          },
+          "evaluation_digest": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Digest"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "instruction",
+          "role",
+          "limits"
+        ],
+        "title": "TaskNode"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -623,6 +1166,53 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WorkflowDefinition": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "loom.workflow/v1",
+            "title": "Schema Version"
+          },
+          "pack": {
+            "type": "string",
+            "const": "software-dev",
+            "title": "Pack"
+          },
+          "scope": {
+            "type": "string",
+            "const": "local-workspace",
+            "title": "Scope"
+          },
+          "roles": {
+            "items": {
+              "$ref": "#/components/schemas/AgentRole"
+            },
+            "type": "array",
+            "maxItems": 7,
+            "minItems": 7,
+            "title": "Roles"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/TaskNode"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Nodes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "pack",
+          "scope",
+          "roles",
+          "nodes"
+        ],
+        "title": "WorkflowDefinition"
       }
     },
     "securitySchemes": {

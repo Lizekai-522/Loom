@@ -1,0 +1,29 @@
+{
+  "routes": [
+    {
+      "alias": "deepseek-flash",
+      "provider": "deepseek",
+      "base_url": "https://api.deepseek.com",
+      "model": "deepseek-flash",
+      "key_env": "DEEPSEEK_API_KEY",
+      "timeout_seconds": 60,
+      "max_response_bytes": 1048576,
+      "max_request_bytes": 262144,
+      "max_output_tokens": 8192,
+      "thinking": "disabled",
+      "reasoning_effort": "high"
+    }
+  ],
+  "roles": {
+    "analyst": "deepseek-flash",
+    "architect": "deepseek-flash",
+    "tester": "deepseek-flash",
+    "developer": "deepseek-flash",
+    "reviewer": "deepseek-flash",
+    "fixer": "deepseek-flash",
+    "validator": "deepseek-flash",
+    "planner": "deepseek-flash",
+    "implementer": "deepseek-flash",
+    "verifier": "deepseek-flash"
+  }
+}

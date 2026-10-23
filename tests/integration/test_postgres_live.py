@@ -14,6 +14,7 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
+import re
 from threading import Barrier
 import unittest
 from uuid import UUID, uuid4
@@ -60,6 +61,55 @@ def connect_options(config, *, user=None, database=None):
     }
 
 
+class PostgreSQLConnectionFailure(RuntimeError):
+    """Safe diagnostics only: never retain the driver's exception or conninfo."""
+
+    def __init__(self, category, sqlstate=None, *, credential_setup=False):
+        self.driver_category, self.sqlstate = category, sqlstate
+        prefix = "POSTGRES_TEST_CREDENTIAL_SETUP_FAILED" if credential_setup else "POSTGRES_TEST_CONNECT_FAILED"
+        message = prefix + ": " + category
+        if sqlstate is not None:
+            message += " sqlstate=" + sqlstate
+        super().__init__(message)
+
+
+def _safe_failure_details(failure):
+    __tracebackhide__ = True
+    name = type(failure).__name__
+    category = name if name in {
+        "ConnectionTimeout", "OperationalError", "InterfaceError", "ProgrammingError",
+        "TypeError", "ValueError", "KeyError", "OSError",
+    } else "DriverError"
+    state = getattr(failure, "sqlstate", None)
+    return category, state if isinstance(state, str) and re.fullmatch(r"[0-9A-Z]{5}", state) else None
+
+
+def connect_private(driver, config, *, user=None, database=None, autocommit=False):
+    # A psycopg connection traceback includes the expanded password/conninfo.
+    # Hide this frame even when pytest is invoked directly with --showlocals.
+    __tracebackhide__ = True
+    try:
+        return driver.connect(**connect_options(config, user=user, database=database), autocommit=autocommit)
+    except Exception as failure:
+        category, sqlstate = _safe_failure_details(failure)
+    # Raise outside the except block. The public exception has no chained
+    # context/traceback pointing to psycopg's private keyword arguments.
+    raise PostgreSQLConnectionFailure(category, sqlstate) from None
+
+
+def set_private_role_password(admin, sql, account):
+    # ALTER ROLE requires a literal. A failed execute must not expose the
+    # composed SQL containing that literal in a driver traceback either.
+    __tracebackhide__ = True
+    try:
+        admin.execute(sql.SQL("ALTER ROLE {} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD {}").format(
+            sql.Identifier(account["user"]), sql.Literal(account["password"])))
+        return
+    except Exception as failure:
+        category, sqlstate = _safe_failure_details(failure)
+    raise PostgreSQLConnectionFailure(category, sqlstate, credential_setup=True) from None
+
+
 @unittest.skipUnless(os.environ.get(CONFIG_ENV), f"set {CONFIG_ENV} for a disposable PostgreSQL cluster")
 class PostgreSQLLiveTests(unittest.TestCase):
     @classmethod
@@ -72,7 +122,7 @@ class PostgreSQLLiveTests(unittest.TestCase):
             raise RuntimeError("configured PostgreSQL integration requires psycopg[binary]") from exc
         cls.pg, cls.sql, cls.Jsonb = psycopg, sql, Jsonb
         cls.config = load_config()
-        with psycopg.connect(**connect_options(cls.config, database="postgres"), autocommit=True) as admin:
+        with connect_private(psycopg, cls.config, database="postgres", autocommit=True) as admin:
             actual_data = admin.execute("SELECT current_setting('data_directory')").fetchone()[0]
             if Path(actual_data).resolve() != Path(cls.config["data_directory"]).resolve():
                 raise RuntimeError("connected cluster data directory does not match disposable configuration")
@@ -90,13 +140,13 @@ class PostgreSQLLiveTests(unittest.TestCase):
             admin.execute(sql.SQL("GRANT CREATE ON DATABASE {} TO loom_owner").format(sql.Identifier(cls.config["database"])))
 
         # Serialize destructive fixture setup across separate check processes.
-        cls.fixture_lock = psycopg.connect(**connect_options(cls.config), autocommit=True)
+        cls.fixture_lock = connect_private(psycopg, cls.config, autocommit=True)
         cls.addClassCleanup(cls.fixture_lock.close)
         cls.fixture_lock.execute("SET statement_timeout='30s'")
         cls.fixture_lock.execute("SELECT pg_advisory_lock(16001520261023)")
 
         # Destructive only within the checked fresh loopback test database.
-        with psycopg.connect(**connect_options(cls.config), autocommit=True) as admin:
+        with connect_private(psycopg, cls.config, autocommit=True) as admin:
             admin.execute("DROP SCHEMA IF EXISTS loom CASCADE")
             migration = (PROJECT / "migrations/postgres/001_core.sql").read_text(encoding="utf-8")
             admin.execute(migration, prepare=False)
@@ -104,7 +154,7 @@ class PostgreSQLLiveTests(unittest.TestCase):
                 account = cls.config["test_users"][role_name]
                 if not admin.execute("SELECT 1 FROM pg_roles WHERE rolname=%s", (account["user"],)).fetchone():
                     admin.execute(sql.SQL("CREATE ROLE {} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS").format(sql.Identifier(account["user"])))
-                admin.execute(sql.SQL("ALTER ROLE {} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD {}").format(sql.Identifier(account["user"]), sql.Literal(account["password"])))
+                set_private_role_password(admin, sql, account)
                 admin.execute(sql.SQL("REVOKE loom_owner, loom_app, loom_gateway, loom_auditor, loom_scope_admin FROM {}").format(sql.Identifier(account["user"])))
                 admin.execute(sql.SQL("GRANT {} TO {}").format(sql.Identifier(group), sql.Identifier(account["user"])))
                 admin.execute(sql.SQL("GRANT CONNECT ON DATABASE {} TO {}").format(sql.Identifier(cls.config["database"]), sql.Identifier(account["user"])))
@@ -125,7 +175,7 @@ class PostgreSQLLiveTests(unittest.TestCase):
             admin.execute("INSERT INTO loom.principal_scopes(principal_name,tenant_id,access_mode,granted_reason) VALUES (%s,%s,%s,'disposable synthetic integration fixture')", (cls.config["test_users"][name]["user"], tenant, mode))
 
     def setUp(self):
-        self.admin = self.pg.connect(**connect_options(self.config))
+        self.admin = connect_private(self.pg, self.config)
         self.admin.execute("BEGIN")
 
     def tearDown(self):
@@ -188,14 +238,14 @@ class PostgreSQLLiveTests(unittest.TestCase):
 
     def test_two_tenant_business_logins_see_only_their_own_rows(self):
         for user, expected in (("loom_test_app_a", TENANT_A), ("loom_test_app_b", TENANT_B)):
-            with self.subTest(user=user), self.pg.connect(**connect_options(self.config, user=user)) as app:
+            with self.subTest(user=user), connect_private(self.pg, self.config, user=user) as app:
                 self.assertEqual(app.execute("SELECT tenant_id FROM loom.runs").fetchall(), [(expected,)])
                 app.execute("SELECT set_config('loom.tenant_id',%s,false)", (str(TENANT_B if expected == TENANT_A else TENANT_A),))
                 self.assertEqual(app.execute("SELECT tenant_id FROM loom.runs").fetchall(), [(expected,)])
 
     def test_auditor_has_explicit_scope_without_bypassrls_or_owner(self):
         user = "loom_test_audit_a"
-        with self.pg.connect(**connect_options(self.config, user=user)) as audit:
+        with connect_private(self.pg, self.config, user=user) as audit:
             self.assertEqual(audit.execute("SELECT tenant_id FROM loom.runs").fetchall(), [(TENANT_A,)])
             flags = audit.execute("SELECT rolsuper,rolbypassrls FROM pg_roles WHERE rolname=session_user").fetchone()
             self.assertEqual(flags, (False, False))
@@ -204,7 +254,7 @@ class PostgreSQLLiveTests(unittest.TestCase):
                 audit.execute("UPDATE loom.principal_scopes SET access_mode='business'")
 
     def test_business_role_is_read_only_until_command_adapter_is_reviewed(self):
-        with self.pg.connect(**connect_options(self.config, user="loom_test_app_a")) as app:
+        with connect_private(self.pg, self.config, user="loom_test_app_a") as app:
             with self.assertRaises(self.pg.errors.InsufficientPrivilege):
                 app.execute("UPDATE loom.runs SET state='succeeded'")
 
@@ -301,7 +351,7 @@ class PostgreSQLLiveTests(unittest.TestCase):
         barrier = Barrier(2)
 
         def compete(worker):
-            with self.pg.connect(**connect_options(self.config)) as db:
+            with connect_private(self.pg, self.config) as db:
                 barrier.wait(timeout=5)
                 try:
                     with db.transaction():

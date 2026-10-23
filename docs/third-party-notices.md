@@ -6,23 +6,23 @@
 
 ## 已安装依赖与作用范围
 
-保留首轮 23 个包，并新增 S2 的 7 个包，共 **30 个发行包、36 份许可/署名文件**。FastAPI、Pydantic、Uvicorn 为首轮直接运行依赖；nats-py 与 cryptography 用于 S2 消息和检查点能力，cffi/pycparser 为其传递依赖。psycopg、psycopg-binary 与 tzdata 属于 PostgreSQL 集成环境驱动及其依赖，不能据已安装就声称默认 API 已切换 PostgreSQL。HTTPX 与 pytest 用于验证。实际安装选择与版本以项目依赖配置、锁文件和对应阶段测试为准。
+保留首轮 23 个包，并新增 S2 的 7 个包，共 **30 个发行包、36 份许可/署名文件**。FastAPI、Pydantic、Uvicorn 为首轮直接运行依赖；nats-py 与 cryptography 用于 S2 消息和检查点能力，cffi/pycparser 为其传递依赖。psycopg、psycopg-binary 与 tzdata 属于 PostgreSQL 集成环境驱动及其依赖，不能据已安装就声称默认 API 已切换 PostgreSQL。HTTPX 从 0.3.0 起也是实际模型网关的直接运行依赖；pytest 仅用于验证。HTTPX 的传递依赖作用范围同步更新，包版本与许可原文不变。实际安装选择与版本以项目依赖配置、锁文件和对应阶段测试为准。
 
 | 包 | 已安装版本 | 许可证 | 作用范围 | 官方来源 | 本地许可原文 |
 |---|---|---|---|---|---|
 | annotated-doc | `0.0.5` | MIT | runtime-transitive | [上游](https://github.com/fastapi/annotated-doc) | [LICENSE](../third_party/licenses/annotated-doc-0.0.5/LICENSE) |
 | annotated-types | `0.8.0` | MIT | runtime-transitive | [上游](https://github.com/annotated-types/annotated-types) | [LICENSE](../third_party/licenses/annotated-types-0.8.0/LICENSE) |
 | anyio | `4.15.1` | MIT | runtime-transitive | [上游](https://github.com/agronholm/anyio) | [LICENSE](../third_party/licenses/anyio-4.15.1/LICENSE) |
-| certifi | `2026.10.19` | MPL-2.0 | test-or-test-transitive | [上游](https://github.com/certifi/python-certifi) | [LICENSE](../third_party/licenses/certifi-2026.10.19/LICENSE) |
+| certifi | `2026.10.19` | MPL-2.0 | runtime-transitive | [上游](https://github.com/certifi/python-certifi) | [LICENSE](../third_party/licenses/certifi-2026.10.19/LICENSE) |
 | cffi | `2.1.1` | MIT-0 | S2-runtime-transitive | [上游](https://github.com/python-cffi/cffi) | [LICENSE](../third_party/licenses/cffi-2.1.1/LICENSE) |
 | click | `8.5.0` | BSD-3-Clause | runtime-transitive | [上游](https://github.com/pallets/click/) | [LICENSE.txt](../third_party/licenses/click-8.5.0/LICENSE.txt) |
 | colorama | `0.4.6` | BSD-3-Clause (from packaged LICENSE.txt) | runtime-transitive | [上游](https://github.com/tartley/colorama) | [LICENSE.txt](../third_party/licenses/colorama-0.4.6/LICENSE.txt) |
 | cryptography | `50.0.2` | Apache-2.0 OR BSD-3-Clause | S2-runtime | [上游](https://github.com/pyca/cryptography/) | [LICENSE](../third_party/licenses/cryptography-50.0.2/LICENSE), [LICENSE.APACHE](../third_party/licenses/cryptography-50.0.2/LICENSE.APACHE), [LICENSE.BSD](../third_party/licenses/cryptography-50.0.2/LICENSE.BSD) |
 | fastapi | `0.159.1` | MIT | direct-runtime | [上游](https://github.com/fastapi/fastapi) | [LICENSE](../third_party/licenses/fastapi-0.159.1/LICENSE) |
 | h11 | `0.16.0` | MIT | runtime-transitive | [上游](https://github.com/python-hyper/h11) | [LICENSE.txt](../third_party/licenses/h11-0.16.0/LICENSE.txt) |
-| httpcore | `1.0.9` | BSD-3-Clause | test-or-test-transitive | [上游](https://github.com/encode/httpcore) | [LICENSE.md](../third_party/licenses/httpcore-1.0.9/LICENSE.md) |
-| httpx | `0.28.1` | BSD-3-Clause | test-or-test-transitive | [上游](https://github.com/encode/httpx) | [LICENSE.md](../third_party/licenses/httpx-0.28.1/LICENSE.md) |
-| idna | `3.20` | BSD-3-Clause | test-or-test-transitive | [上游](https://github.com/kjd/idna) | [LICENSE.md](../third_party/licenses/idna-3.20/LICENSE.md) |
+| httpcore | `1.0.9` | BSD-3-Clause | runtime-transitive | [上游](https://github.com/encode/httpcore) | [LICENSE.md](../third_party/licenses/httpcore-1.0.9/LICENSE.md) |
+| httpx | `0.28.1` | BSD-3-Clause | direct-runtime-and-test | [上游](https://github.com/encode/httpx) | [LICENSE.md](../third_party/licenses/httpx-0.28.1/LICENSE.md) |
+| idna | `3.20` | BSD-3-Clause | runtime-transitive | [上游](https://github.com/kjd/idna) | [LICENSE.md](../third_party/licenses/idna-3.20/LICENSE.md) |
 | iniconfig | `2.3.1` | MIT | test-or-test-transitive | [上游](https://github.com/pytest-dev/iniconfig) | [LICENSE](../third_party/licenses/iniconfig-2.3.1/LICENSE) |
 | nats-py | `2.16.0` | Apache-2.0 | S2-runtime | [上游](https://github.com/nats-io/nats.py) | [LICENSE](../third_party/licenses/nats-py-2.16.0/LICENSE) |
 | opentelemetry-api | `1.45.1` | Apache-2.0 | runtime-transitive | [上游](https://github.com/open-telemetry/opentelemetry-python) | [LICENSE](../third_party/licenses/opentelemetry-api-1.45.1/LICENSE) |

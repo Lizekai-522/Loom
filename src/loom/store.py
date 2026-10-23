@@ -164,6 +164,13 @@ class Store:
             raise NotFound("run not found in tenant")
         return row
 
+    @staticmethod
+    def _workflow_plan(db: sqlite3.Connection, tenant: str, run_id: str):
+        """Optional managed-plan projection; legacy runs keep their contract."""
+        if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='workflow_goals'").fetchone():
+            return None
+        return db.execute("SELECT plan_status FROM workflow_goals WHERE tenant=? AND run_id=?", (tenant, run_id)).fetchone()
+
     def _event(self, db: sqlite3.Connection, tenant: str, run_id: str, kind: str,
                payload: dict, actor: str, command_key: str | None = None) -> dict:
         self._run(db, tenant, run_id)
@@ -230,6 +237,8 @@ class Store:
 
         def apply(db):
             run = self._run(db, tenant, run_id)
+            if self._workflow_plan(db, tenant, run_id) is not None:
+                raise Conflict("managed tasks are created only by atomic plan approval")
             if run["status"] != "open":
                 raise Conflict("run is not open")
             for dependency in depends:
@@ -280,6 +289,9 @@ class Store:
             run = self._run(db, tenant, run_id)
             if run["status"] != "open":
                 raise Conflict("run is not open")
+            managed = self._workflow_plan(db, tenant, run_id)
+            if managed is not None and managed["plan_status"] != "approved":
+                raise Conflict("workflow plan has not been approved")
             self._expire(db)
             total = db.execute("SELECT count(*) FROM tasks WHERE status='running'").fetchone()[0]
             business = db.execute("SELECT count(*) FROM tasks WHERE status='running' AND channel='business'").fetchone()[0]
@@ -326,6 +338,20 @@ class Store:
             self._event(db, claim.tenant_id, claim.run_id, "task.output_submitted", {**result, "output": output}, "worker:" + claim.worker_id, key)
             return result
         return self._command(claim.tenant_id, key, "submit_output", args, apply)
+
+    def renew_claim(self, claim: Claim, *, lease_seconds: float = 90) -> Claim:
+        """A live owner may renew its own epoch; expired owners cannot revive it."""
+        if isinstance(lease_seconds, bool) or not isinstance(lease_seconds, (int, float)) or not 0 < lease_seconds <= 3600:
+            raise InvalidInput("invalid renewal lease")
+        with self.transaction() as db:
+            self._assert_claim(db, claim)
+            until = max(self.now(db) + lease_seconds,
+                        db.execute("SELECT lease_until FROM tasks WHERE tenant=? AND id=?", (claim.tenant_id, claim.task_id)).fetchone()[0])
+            db.execute("UPDATE tasks SET lease_until=? WHERE tenant=? AND run_id=? AND id=? AND epoch=? AND worker=?",
+                       (until, claim.tenant_id, claim.run_id, claim.task_id, claim.epoch, claim.worker_id))
+            self._event(db, claim.tenant_id, claim.run_id, "task.lease_renewed",
+                        {"task_id": claim.task_id, "epoch": claim.epoch, "lease_until": until}, "worker:" + claim.worker_id)
+            return Claim(claim.tenant_id, claim.run_id, claim.task_id, claim.worker_id, claim.epoch, until)
 
     def complete(self, claim: Claim, key: str, output: dict, *, verification: ArtifactSubmission) -> dict:
         """Trusted verification-engine entry; never exposed as a worker HTTP endpoint.
@@ -380,6 +406,20 @@ class Store:
                 if (old["task_id"], old["run_id"], old["epoch"], old["cost"], old["tokens"]) != (claim.task_id, claim.run_id, claim.epoch, max_cost, max_tokens):
                     raise Conflict("reservation ID reused")
                 return dict(old)
+            if self._workflow_plan(db, claim.tenant_id, claim.run_id) is not None:
+                contract = db.execute("SELECT contract FROM workflow_tasks WHERE tenant=? AND run_id=? AND task_id=?",
+                                      (claim.tenant_id, claim.run_id, claim.task_id)).fetchone()
+                if contract is None:
+                    raise Conflict("managed task has no frozen execution contract")
+                limits = json.loads(contract[0])["limits"]
+                used = db.execute("""SELECT
+                    coalesce(sum(CASE WHEN state='reserved' THEN cost ELSE actual_cost END),0),
+                    coalesce(sum(CASE WHEN state='reserved' THEN tokens ELSE actual_tokens END),0)
+                    FROM reservations WHERE tenant=? AND run_id=? AND task_id=?""",
+                    (claim.tenant_id, claim.run_id, claim.task_id)).fetchone()
+                if (used[0] + max_cost > limits["cost_limit_microusd"]
+                        or used[1] + max_tokens > limits["token_limit"]):
+                    raise BudgetExceeded("logical task has insufficient budget across attempts")
             if run["status"] != "open" or run["spent"] + run["reserved"] + max_cost > run["cost_limit"] or run["tokens_spent"] + run["tokens_reserved"] + max_tokens > run["token_limit"]:
                 raise BudgetExceeded("run has insufficient unreserved budget")
             db.execute("UPDATE runs SET reserved=reserved+?,tokens_reserved=tokens_reserved+? WHERE tenant=? AND id=?",
@@ -532,7 +572,12 @@ class Store:
         for event in events:
             payload, kind = event["payload"], event["type"]
             if kind == "run.created":
-                state.update({"status": "open", "anchor_digest": payload["anchor_digest"], "ruleset": payload["ruleset"]})
+                state.update({"status": payload.get("status", "open"), "anchor_digest": payload["anchor_digest"], "ruleset": payload["ruleset"]})
+            elif kind == "workflow.plan_approved":
+                state["status"] = "open"
+            elif kind == "execution.blocked":
+                state["status"] = "awaiting_human"
+                state["tasks"][payload["task_id"]]["status"] = "awaiting_human"
             elif kind == "task.created":
                 state["tasks"][payload["task_id"]] = {"status": "pending", "depends_on": payload["depends_on"], "priority": payload["priority"], "channel": payload["channel"], "epoch": 0}
             elif kind in {"task.claimed", "task.completed", "task.output_submitted", "task.invalidated", "task.lease_expired", "task.verification_failed"}:

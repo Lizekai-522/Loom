@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from . import __version__
 from .store import Claim, Conflict, InvalidInput, LoomError, NotFound, Store, canonical
+from .workflow import WorkflowDefinition, WorkflowService
 
 
 class Input(BaseModel):
@@ -30,6 +31,24 @@ class TaskInput(Input):
     depends_on: list[str] = Field(default_factory=list, max_length=100)
     priority: int = Field(default=0, ge=-1000, le=1000)
     channel: str = "business"
+
+
+class GoalInput(Input):
+    title: str = Field(min_length=1, max_length=500)
+    description: str = Field(min_length=1, max_length=32000)
+    acceptance: list[str] = Field(min_length=1, max_length=3)
+    cost_limit_microusd: int = Field(default=1_000_000, ge=0, le=1_000_000_000_000)
+    token_limit: int = Field(default=10000, ge=0, le=1_000_000_000)
+
+
+class PlanInput(Input):
+    definition: WorkflowDefinition
+    expected_revision: int = Field(ge=0)
+
+
+class PlanApprovalInput(Input):
+    expected_revision: int = Field(ge=1)
+    expected_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
 class ClaimInput(Input):
@@ -58,6 +77,7 @@ def create_app(store: Store, tenant_keys: dict[str, str]) -> FastAPI:
         raise ValueError("tenant keys must be unique")
     app = FastAPI(title="Loom local kernel", version=__version__,
                   description="Local S1 development API. No real model or external write execution.")
+    workflows = WorkflowService(store)
     security = HTTPBearer(auto_error=False)
 
     def principal(credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)]) -> str:
@@ -85,6 +105,32 @@ def create_app(store: Store, tenant_keys: dict[str, str]) -> FastAPI:
     @app.get("/health")
     def health():
         return {"status": "ok", "version": __version__, "stage": "S1-local", "external_writes_enabled": False}
+
+    @app.post("/v1/goals", status_code=201)
+    def create_goal(body: GoalInput, tenant: Tenant, idempotency_key: Key):
+        return workflows.create_goal(tenant, idempotency_key, title=body.title, description=body.description,
+                                     acceptance=body.acceptance, cost_limit=body.cost_limit_microusd,
+                                     token_limit=body.token_limit)
+
+    @app.get("/v1/goals")
+    def list_goals(tenant: Tenant):
+        return {"goals": workflows.list_goals(tenant)}
+
+    @app.get("/v1/goals/{run_id}")
+    def get_goal(run_id: str, tenant: Tenant):
+        return workflows.get_goal(tenant, run_id)
+
+    @app.get("/v1/goals/{run_id}/plan")
+    def get_plan(run_id: str, tenant: Tenant):
+        return workflows.get_plan(tenant, run_id)
+
+    @app.put("/v1/goals/{run_id}/plan")
+    def save_plan(run_id: str, body: PlanInput, tenant: Tenant, idempotency_key: Key):
+        return workflows.save_plan(tenant, run_id, idempotency_key, body.definition, body.expected_revision)
+
+    @app.post("/v1/goals/{run_id}/plan/approve")
+    def approve_plan(run_id: str, body: PlanApprovalInput, tenant: Tenant, idempotency_key: Key):
+        return workflows.approve_plan(tenant, run_id, idempotency_key, body.expected_revision, body.expected_digest)
 
     @app.post("/v1/runs", status_code=201)
     def create_run(body: RunInput, tenant: Tenant, idempotency_key: Key):

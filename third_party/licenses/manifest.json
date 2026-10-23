@@ -47,7 +47,7 @@
       "version": "2026.10.19",
       "license": "MPL-2.0",
       "source": "https://github.com/certifi/python-certifi",
-      "scope": "test-or-test-transitive",
+      "scope": "runtime-transitive",
       "license_files": [
         {
           "path": "third_party/licenses/certifi-2026.10.19/LICENSE",
@@ -146,7 +146,7 @@
       "version": "1.0.9",
       "license": "BSD-3-Clause",
       "source": "https://github.com/encode/httpcore",
-      "scope": "test-or-test-transitive",
+      "scope": "runtime-transitive",
       "license_files": [
         {
           "path": "third_party/licenses/httpcore-1.0.9/LICENSE.md",
@@ -159,7 +159,7 @@
       "version": "0.28.1",
       "license": "BSD-3-Clause",
       "source": "https://github.com/encode/httpx",
-      "scope": "test-or-test-transitive",
+      "scope": "direct-runtime-and-test",
       "license_files": [
         {
           "path": "third_party/licenses/httpx-0.28.1/LICENSE.md",
@@ -172,7 +172,7 @@
       "version": "3.20",
       "license": "BSD-3-Clause",
       "source": "https://github.com/kjd/idna",
-      "scope": "test-or-test-transitive",
+      "scope": "runtime-transitive",
       "license_files": [
         {
           "path": "third_party/licenses/idna-3.20/LICENSE.md",
