@@ -2,6 +2,26 @@
 
 (() => {
   const $ = (id) => document.getElementById(id);
+  // Keep JSON number lexemes for display without changing metadata types.
+  // Weak keys let candidate data leave memory when a selection/session clears.
+  const numberSources = new WeakMap();
+  function parseResponseJSON(text) {
+    return JSON.parse(text, function (key, value, context) {
+      if (typeof value === "number" && typeof context?.source === "string") {
+        if (!numberSources.has(this)) numberSources.set(this, new Map());
+        numberSources.get(this).set(key, context.source);
+      }
+      return value;
+    });
+  }
+  function exactBodyText(body) {
+    return JSON.stringify(body, function (key, value) {
+      if (typeof value !== "number") return value;
+      const literal = numberSources.get(this)?.get(key);
+      if (typeof JSON.rawJSON !== "function" || typeof literal !== "string") throw new Error("EXACT_JSON_UNAVAILABLE");
+      return JSON.rawJSON(literal);
+    }, 2);
+  }
   const state = {
     token: "", principal: null, goals: [], interventions: [], runId: null,
     goal: null, snapshot: null, plan: null, review: null, tab: "tasks",
@@ -96,7 +116,7 @@
       const raw = new Uint8Array(bytes);
       let offset = 0;
       for (const chunk of chunks) { raw.set(chunk, offset); offset += chunk.byteLength; }
-      try { return JSON.parse(new TextDecoder("utf-8", {fatal: true}).decode(raw)); }
+      try { return parseResponseJSON(new TextDecoder("utf-8", {fatal: true}).decode(raw)); }
       catch { throw Object.assign(new Error(), {code: "BAD_JSON"}); }
     } finally {
       clearTimeout(timer);
@@ -424,6 +444,7 @@
         || !hashPattern.test(item.content_hash) || !hashPattern.test(item.plan_digest) || item.plan_digest !== state.plan?.digest
         || !(task.input_artifacts || []).some((selector) => selector.source_node === item.source_node
           && selector.kind === item.kind && selector.schema_version === item.schema_version)) return null;
+    try { exactBodyText(item.body); } catch { return null; }
     return {artifact_id: item.artifact_id, expected_plan_digest: item.plan_digest, expected_source_epoch: item.source_epoch,
       expected_target_epoch: task.epoch, expected_revision: item.revision, expected_content_hash: item.content_hash};
   }
@@ -445,7 +466,12 @@
   function boundedBody(body) {
     const details = node("details", "artifact-body");
     details.append(node("summary", "", "展开不可信 typed 正文（纯文本）"));
-    const text = JSON.stringify(body, null, 2) || "";
+    let text;
+    try { text = exactBodyText(body) || ""; }
+    catch {
+      details.append(node("p", "inline-error", "当前浏览器无法原样显示 JSON 数值，不能据此批准候选。请更新浏览器后重试。"));
+      return details;
+    }
     details.append(node("pre", "", text.slice(0, 32768)));
     if (text.length > 32768) details.append(node("p", "field-help", "页面显示已截断至 32768 个字符，摘要仍对应服务端完整正文。"));
     return details;

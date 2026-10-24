@@ -2,9 +2,9 @@
   "version": "0.9.0",
   "stage": "role-handoff-alpha",
   "date": "2026-10-25",
-  "generated_at": "2026-10-25T01:59:58.353712+08:00",
-  "release_status": "verification_pending_docker",
-  "source_file_count_excluding_manifest": 173,
+  "generated_at": "2026-10-25T02:47:07.316358+08:00",
+  "release_status": "bounded_local_milestone_passed",
+  "source_file_count_excluding_manifest": 174,
   "files": [
     {
       "path": ".gitignore",
@@ -13,13 +13,13 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 1796,
-      "sha256": "d38e92960c861ee2e9bf3d17c705c4c83b1d7a58e08fa249f1f09ebc13eeede5"
+      "bytes": 1832,
+      "sha256": "25b3f51b561103a250153bebb149898d71d74af096504546d297320baa675c8c"
     },
     {
       "path": "README.md",
-      "bytes": 18516,
-      "sha256": "9a46fbda7383f06a94d100e0113d586f0258e9a77319be6e11bfafc7d1a20113"
+      "bytes": 18698,
+      "sha256": "98e347d5fa04e17a22d5fcc95eb080a9651d719f2da29ae0c5b88ab402f77449"
     },
     {
       "path": "configs/models.example.json",
@@ -78,8 +78,8 @@
     },
     {
       "path": "docs/artifacts.md",
-      "bytes": 20744,
-      "sha256": "bd6ad090e4679905266b5f170d301af4c157b73f62b7394e47697ade5f86ac73"
+      "bytes": 21105,
+      "sha256": "88ee0da37666201bf42a0e9f17e080e3fb21c64ce67f3362180e905675c92c9a"
     },
     {
       "path": "docs/bounded-repair.md",
@@ -93,8 +93,8 @@
     },
     {
       "path": "docs/console.md",
-      "bytes": 9245,
-      "sha256": "814e7dd9f9965de956edd11efd7d96a5e623f5f3dd694dad8aa218e07f599748"
+      "bytes": 9808,
+      "sha256": "acc5ee6b485f02af1b09a954e8ef73a29de31e1358918b42f72f444b93290d48"
     },
     {
       "path": "docs/coverage-s2.json",
@@ -113,8 +113,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 29857,
-      "sha256": "80167be5197647c13ba341553ecf87cbd59f7a1c2c8d47d2b6d0a39865eaa184"
+      "bytes": 31540,
+      "sha256": "40de581a03c988f5b19e7d95edc3b66bc05a70d87418680833e1b3edae898815"
     },
     {
       "path": "docs/local-auth.md",
@@ -123,8 +123,8 @@
     },
     {
       "path": "docs/local-execution.md",
-      "bytes": 14861,
-      "sha256": "6ecde3ee42be259950cd8e3a37d47b9aebae194f676ee9dd0a97636e3cb7b49b"
+      "bytes": 16111,
+      "sha256": "24540184bd4a2fde9b91e02e051f17e83707711833d48da2debf96e724bf3ae6"
     },
     {
       "path": "docs/local-sandbox.md",
@@ -153,8 +153,8 @@
     },
     {
       "path": "docs/progress-cycle.md",
-      "bytes": 8569,
-      "sha256": "6c942d8397b812368afd157ac82086ac280201a55b185d5dea5dd206a709015a"
+      "bytes": 9349,
+      "sha256": "04605a85406f4a7b93921838dda44b4481ec620d47f1333a32ffd8f8443843c2"
     },
     {
       "path": "docs/review-resolution.md",
@@ -203,8 +203,8 @@
     },
     {
       "path": "docs/validation.md",
-      "bytes": 2845,
-      "sha256": "4fb749b7d3f96ed474b9f20adc059e574ee1e3614a83070b9c38871beb459b8f"
+      "bytes": 2973,
+      "sha256": "c5a94c9e19ed477ddc14cc725794b1f86ea84670981f510f45e864cc4bf94a7a"
     },
     {
       "path": "docs/workflow.md",
@@ -320,6 +320,11 @@
       "path": "scripts/run_workflow_task.py",
       "bytes": 20805,
       "sha256": "847099569d4e3bd6cfe67f0dab1cf5d4d2941a1b6fad29eba763326c49b185be"
+    },
+    {
+      "path": "scripts/start_local_docker.ps1",
+      "bytes": 4651,
+      "sha256": "48e2de110733e31f3166bae67e41b90ed6dc7281d33bb99321c5f749aa523364"
     },
     {
       "path": "src/loom/__init__.py",
@@ -438,8 +443,8 @@
     },
     {
       "path": "src/loom/web/console.js",
-      "bytes": 58259,
-      "sha256": "8aa950db843235c0d5aa4292f671be2f1a2e6a49683a47a48cc771ddefaa95bb"
+      "bytes": 59441,
+      "sha256": "526c90adea3404d8b5533e16aaca61a6800365dfeda950a4ab988a50ddb81d3e"
     },
     {
       "path": "src/loom/web/index.html",
@@ -872,51 +877,7 @@
       "sha256": "efe1acf3e62fb99c288b0ec73e5a773b7268ef4320fe757ea994214e4b63c371"
     }
   ],
-  "validation": {
-    "full_gate_passed": false,
-    "unit_and_local": {
-      "name": "unit-and-local",
-      "executed": true,
-      "testcases": 617,
-      "subtests_passed": 382,
-      "failures": 0,
-      "skipped": 0,
-      "passed": true
-    },
-    "native_infrastructure": {
-      "name": "native-infrastructure",
-      "executed": true,
-      "testcases": 23,
-      "subtests_passed": 14,
-      "failures": 0,
-      "skipped": 0,
-      "passed": true
-    },
-    "docker_infrastructure": {
-      "name": "docker-infrastructure",
-      "executed": false,
-      "passed": false,
-      "status": "blocked",
-      "selected_testcases": 20,
-      "reason": "Docker startup fails on stale AF_UNIX socket; runtime parent rename is denied.",
-      "failed_tests": 0,
-      "skipped_tests": 0,
-      "note": "Not executed, never counted as passing or skipped: 3 new and 17 existing Docker tests."
-    },
-    "actual_http_checks": 163,
-    "browser_assertions_passed": 17,
-    "openapi_paths": 24,
-    "new_real_tester_requests": 1,
-    "new_real_tester_responses": 1,
-    "actual_four_role_run_executed": false
-  },
-  "last_completed_release": {
-    "version": "0.8.0",
-    "commit": "477b1c4eaad9ac7f02b56422b84ba8442018e98f"
-  },
   "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
-  "production_ready": false,
-  "full_workflow_completed": false,
   "raw_crlf_exception_paths": [
     "DELIVERY_MANIFEST.json",
     "docs/api/openapi.json",
@@ -925,12 +886,46 @@
     "third_party/licenses/psycopg-binary-3.3.6/LICENSE.txt",
     "third_party/licenses/pydantic-core-2.50.1/LICENSE"
   ],
+  "validation": {
+    "full_gate_passed": true,
+    "main_tests_passed": 660,
+    "subtests_passed": 396,
+    "failures": 0,
+    "skipped": 0,
+    "real_infrastructure_main_tests_included": 43,
+    "api_smoke_checks": 196,
+    "http_report_groups": 9,
+    "browser_assertions_passed": 33,
+    "openapi_paths": 24,
+    "version_09_real_model_requests": 5,
+    "four_role_real_model_requests": 4,
+    "standalone_tester_real_model_requests": 1,
+    "four_role_host_docker_cases": 5,
+    "public_checks_executed": false,
+    "billed_currency_verified": false,
+    "docker_restart_handoff_tests_passed_separately": 3
+  },
+  "runtime": {
+    "python": "3.13.12",
+    "docker": "29.4.0",
+    "docker_desktop": "4.70.0",
+    "nats_server": "2.15.1",
+    "postgresql": "16.15",
+    "project_docker_cache_restart_verified": true,
+    "normal_default_shortcut_startup_verified": false
+  },
+  "production_ready": false,
+  "real_models_used": true,
+  "full_workflow_completed": false,
+  "independent_second_model": "pending_configuration",
   "notes": [
-    "Development checkpoint only: Docker is blocked; no full-acceptance release archive was created.",
-    "Model-generated checks remain unexecuted auxiliary data, never host acceptance truth.",
-    "One new real tester response; earlier three-role/5-case evidence belongs to 0.8.",
-    "All real candidates remain submitted, unverified; independent second model is pending configuration.",
-    "No API key, identity token, database, venv or native runtime is part of the source manifest.",
-    "No public deployment, push or external publication."
+    "Bounded four-role local handoff passes; this is not seven-role workflow completion or production readiness.",
+    "All four real role tasks remain submitted and unverified. Generated public checks are auxiliary and unexecuted. Review hard dependencies remain enforced.",
+    "Full-suite models use mocks. Separate 0.9 probes comprise one standalone tester response and four workflow responses; earlier 0.8 probes are not counted as new 0.9 requests.",
+    "Four-role usage is 4901 tokens, upper accounting 2440 microusd, reserved zero. No invoice verification or fabricated independent signature.",
+    "Docker recovery changes only process-local cache, reusing the original WSL disk through a validated junction. Settings and pinned image are unchanged; original OS runtime-directory fault remains.",
+    "Candidate numeric literals retain exact display or block approval when the browser lacks required JSON support.",
+    "Source archive excludes private configuration, databases, venvs, browser logs, images, native servers and runtime data. UTF-8 and UTF-16LE private values are scanned including decompressed historical archives.",
+    "SQLite remains the local Store; PostgreSQL tests cover separate schema/roles. Production identity, full recovery, seven roles and scale validation remain incomplete. Nothing is pushed or published."
   ]
 }

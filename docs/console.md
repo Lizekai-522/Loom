@@ -63,3 +63,8 @@
 ## 0.9 tester展示
 
 public-checks来源仅对应tester/loom.public-checks/v1。任务、候选与尝试均明确“公开开发检查候选：用例未执行，未作为冻结验收”。API标量public_checks_executed固定false，不信Worker的passed/verified自报；正文仍按需纯文本展开。17项新浏览器检查通过，fixture模型/沙箱均为替身。当前Docker阻塞见验证记录。
+
+
+## 0.9 数值原样显示修复
+
+候选和上下文正文显示保留响应中的JSON数字原文，避免大整数被舍入、宽整数变为不精确科学计数。请求元数据仍为原JavaScript数值类型，批准仅发送原精确引用。浏览器需支持JSON.parse reviver source及JSON.rawJSON；不支持时数值正文显示明确错误且禁止批准，强制提交同样拒绝，不显示一个已被舍入的替代值。字符串、bool、null和纯文本HTML保持原类型。16项浏览器反例/正常路径通过，完整浏览器33项。

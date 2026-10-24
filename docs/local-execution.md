@@ -116,3 +116,12 @@ scripts/run_workflow_task.py与configs/workflow-task.example.json提供同run的
 上限4Flash请求，每次输出1–1024tokens，最多8host用例，无重试/repair。Goal cap 2001000µUSD/4401000tokens，四业务节点各500000µUSD/1100000tokens、1attempt。六grant按1/2/3项输入分配；生成checks只作未执行参考，host-authored测试才构成developer终验。四业务任务只submitted，review硬依赖全部四父；具名自动流程不代表两名真人独立审阅。
 
 2026-10-25：Docker残留socket及父目录访问错误阻塞，真实四角色链未验收。API与单独真实tester可用，代码执行当前不可用。先恢复Docker并通过check_s2，再按第九轮指南预览/显式批准；不能绕过preflight或在宿主执行生成代码。
+
+
+## 0.9 最终验收与本机Docker入口
+
+2026-10-25已恢复Docker，完整660主/396子、196HTTP、33浏览器通过。真实四角色run58614923-b31f-43a7-90ea-897703443390取得4Flash响应/5host用例通过，4901tokens/2440µUSD上界、预留0，未核对账单。六次grant与1/2/3项上下文均核对，生成checks未执行，四任务submitted、review pending，第二模型仍待配置。
+
+原系统secrets-engine目录即使管理员也无法改名。项目通过进程专用LOCALAPPDATA缓存启动Docker，缓存wsl junction仍指向原磁盘；未改全局环境或设置，原镜像/runner不变。源码入口scripts/start_local_docker.ps1接受必填RuntimeRoot；先用-InspectOnly检查，退出已有Docker后去掉该参数启动。只有已知socket文件的目录才可改名保留，异常链接/额外文件停止，不删除。此入口已实际正常停止/再启动并通过3项真实交接复测；普通Desktop快捷方式的原目录故障没有解决。
+
+本机命令：powershell -NoProfile -File scripts/start_local_docker.ps1 -RuntimeRoot ../../work/loom-docker-cache 。Docker启动后仍须通过固定镜像preflight才进入执行，启动成功不等于引擎健康。详情见第九轮测试指南。
