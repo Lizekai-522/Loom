@@ -1,12 +1,14 @@
 # Loom
 
-基于 Loom v2.1 修订方案的 Agent 编排项目，当前版本 **0.9.0，role-handoff-alpha**。受限分析→设计→测试候选→开发的同run精确辅助交接已实际通过；仍为单实例SQLite，第二模型独立双签待配置。
+基于 Loom v2.1 修订方案的 Agent 编排项目，当前版本 **0.10.0，public-checks-preview-alpha**。新增生成公开检查的纯编译和CLI预览，保留精确数值、来源正文摘要和现有执行器digest。尚未批准或执行生成用例。[使用与冻结协议](docs/public-checks.md)
 
-完整660主/396子、零失败/跳过；196项实际HTTP、33项浏览器断言通过。真实4Flash/5host冻结Docker用例通过，4901tokens/2440µUSD上界，预留0。生成public-checks仍未执行，四父只submitted，review与Goal最终成功保持阻断。[验证记录](docs/validation.md)
+完整 **703主/396子，零失败/跳过**，包含43项真实基础设施测试；新增编译/CLI43项。两份已有真实tester候选的预览与CLI一致，未新增模型调用。[验证记录](docs/validation.md)
 
-已修非CSV任务指令污染及候选数值舍入。Docker用进程专用缓存恢复，原磁盘/镜像及设置保持；本机重启请使用scripts/start_local_docker.ps1，原系统目录问题保留。[执行与启动](docs/local-execution.md)
+上一完整0.9受限四角色交接有实际4Flash/5host冻结Docker用例通过，4901tokens/2440µUSD上界，预留0；196HTTP、33浏览器证据保留。四父仍submitted，生成checks未执行，独立review/Goal成功保持阻断，第二模型待配置；不是七角色完整验收。
 
-上一完整0.8证据和源码包保留；旧真实任务未重复付费。本版单tester1次623tokens/326µUSD上界另记；所有费用均非独立账单认证。七角色/生产身份/恢复与完整功能继续按原62项追踪推进。
+Docker用进程专用缓存恢复，原磁盘/镜像及设置保持；本机重启使用scripts/start_local_docker.ps1，原系统目录问题保留。[执行与启动](docs/local-execution.md)
+
+下一步独立审阅记录与新草案冻结引用；旧批准计划不改，input grant不晋升执行许可。生产身份、恢复和原62项完整功能继续按计划推进。
 
 0.4.0新增Unicode任务通过 **5个冻结用例**，提供方返回 **452 tokens**，保守费用记账上界 **262µUSD**，并与工作台证据对账。0.3.0历史探针为4个用例、417 tokens、247µUSD。费用均为上界记账，非供应商账单。用户确认本阶段先使用 Flash，双签保持待配置；任务仍为 `submitted`，人工核对或操作控制都不代替独立验证，也不将完整 run 标为成功。[真实执行方式与边界](docs/local-execution.md)
 

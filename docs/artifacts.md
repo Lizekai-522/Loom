@@ -223,3 +223,10 @@ body 继续使用上文的 `PublicChecksBody`：`visibility` 只能为 `developm
 
 
 2026-10-25最终补记：Docker已用本机进程专用缓存恢复，0.9四角色辅助交接完整660主/396子、HTTP196、浏览器33及实际4Flash/5host用例通过。此前阶段阻塞记录保留，不能读作当前仍阻塞。生成公开检查依然未执行；单独审阅/冻结development是下一步骤，input grant不晋升为执行许可。
+
+
+## 0.10纯编译子步验收（2026-10-25）
+
+严格public-checks schema与freeze_tests双重校验、不可变编译文本/全新JSON树、source body/development/compiler摘要及只读CLI完成。43项新增测试、103主/71子兼容专项、完整703主/396子通过，零失败/跳过；两个既有真实tester候选各3case免费核对，不修改原候选/任务或执行生成用例。首次pytest长ID夹具错误保留并已修复。
+
+接下来直接实现独立审阅/冻结注册表核心及反例，按docs/public-checks.md核对精确来源、编译版本、单独具名operator、幂等和事件/回执/outbox原子性。再实现新草案合同引用、API权限和启动重新核对；未实现前不接通执行，不改任何已批准计划。原62项FR、FR-051/052 partial与部署日期不变。

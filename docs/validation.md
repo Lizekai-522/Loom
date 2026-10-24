@@ -1,26 +1,21 @@
-# Loom 0.9 验证记录
+# Loom 0.10 验证记录
 
-2026-10-25，0.9.0，role-handoff-alpha。受限四角色交接本机验收完成：**660主/396子，零失败/跳过；196实际HTTP、33浏览器断言通过**。不是生产完成或七角色完整验收；原0.8记录见[历史](validation-0.8.md)。
+2026-10-25，0.10.0，public-checks-preview-alpha。本阶段完成公开检查纯编译和预览，未接入生成用例的批准/执行。上一完整四角色交接证据见[0.9记录](validation-0.9.md)。
 
 | 完整阶段 | 主测试 | 子测试 | 失败 | 跳过 |
 |---|---:|---:|---:|---:|
-| unit-and-local | 617 | 382 | 0 | 0 |
+| unit-and-local | 660 | 382 | 0 | 0 |
 | real-infrastructure | 43 | 14 | 0 | 0 |
+| 合计 | 703 | 396 | 0 | 0 |
 
-真实基础设施含NATS8、重启1、PG14、原Docker9、repair4、上下文4、新四角色交接3。模型HTTP在此套件均为替身；真实供应商调用另列。专项、完整和重启后的重复检查不累计为新总数。
+新增43项编译/CLI测试已包含在660项本地测试中；103主/71子兼容专项与完整集合重叠，不另加。基础设施继续实际验证NATS、重启、PG、Docker隔离、repair、上下文和四角色交接，模型使用替身，没有新增付费调用。
 
-实际HTTP9组196：API9、Goal12、人工控制31、旧真实任务17、候选31、旧上下文16、旧角色24、单tester23、新四角色33。旧163项对应相同API/执行核心，新增33项核对新真实链；无重复付费。浏览器重新验证角色/权限17项和数值精度/兼容16项，模型/沙箱均为fixture替身，实际服务资产hash与主API一致。
+两份0.9真实tester候选各3个case，通过只读DB查询与实际CLI编译，候选hash、编译结果和执行器development_digest一致。原任务仍submitted，生成case未执行、未冻结为新计划，不新增模型请求。
 
-## 四角色真实执行
+编译覆盖重复字段、错误schema/visibility、伪造批准字段、非JSON/非有限数、32KiB正文与16KiB单值边界、深度/节点/用例数量、精确bool/int/float及大整数、返回树防别名和静态错误。默认预览不输出case正文；显式include-cases才输出。纯函数无文件/网络/DB/环境/秘密配置/子进程I/O。
 
-run 58614923-b31f-43a7-90ea-897703443390，analyst→architect→tester→developer实际4Flash响应、5host冻结Docker用例通过。4901tokens/2440µUSD上界记账，预留0，未核对账单。六个精确输入grant、1/2/3项上下文均核对；三类候选绑定来源，developer使用原host终验摘要，生成checks未执行。
+首次CLI测试用大bytes自动生成pytest参数ID，超出Windows环境变量32767字符限制并连带下一夹具初始化失败。改为短静态ID后103主/71子和完整门槛通过；原XML保留，不转skip。只读核对脚本曾误用tasks.state，已按实际status列更正，不改DB。
 
-四任务均submitted/未独立验证，review硬依赖保持pending，Goal未成功，第二模型待配置。另有本版单tester1响应623tokens/326µUSD上界，未重复调用。版本0.9真实调用共5次，和上一轮0.8基线3次/5用例分开，不能将其算作同一次全链。
+当前未改API权限/业务路径或控制台资产。新实例启动后另行执行33项既有真实四角色只读HTTP对账；0.9的196HTTP和33浏览器证据按相同代码/资产复用，不与本次重新检查相加。第二模型待配置、Goal未成功、SQLite单实例、生产身份/恢复和七角色继续未完成。
 
-## 修复和恢复
-
-修复非CSV任务误套CSV指令。浏览器还复现较大整数被JSON.parse/JSON.stringify舍入的问题；现保留响应数字原文用于候选和上下文纯文本展示，元数据类型与批准引用不变。16项新浏览器检查涵盖大正负整数、宽整数、float/bool/null、字符串/HTML、精确批准、缺JSON.rawJSON或parse source时停止显示/批准，不能用舍入后的数值审阅。
-
-Docker原系统socket目录普通/管理员改名仍失败。采用仅对Docker进程覆盖LOCALAPPDATA的本机缓存，wsl junction仍指向原数据盘；原设置hash、镜像/runner保持，未删镜像/卷或升级。已真实启动、正常停止、再用scripts/start_local_docker.ps1启动并通过3项真实Docker交接复测。原系统目录问题仍保留；本机请用项目缓存入口，不声称普通快捷方式已修好。
-
-完整原方案SHA不变、OpenAPI仍24路径，源码/安装/凭据与归档校验另列。此前阻塞报告和数值显示失败证据保留，没有转skip。API仍单实例SQLite，PG是独立约束/RLS检查；生产权限/恢复、完整PG Store、收益对照、完整七角色及独立模型尚未完成。[下一步](implementation-plan.md)
+下一步为[单独审阅/冻结协议](public-checks.md)：独立append-only记录、精确来源、幂等与原子事件；先验核心与反例，再接新草案执行合同，不能改旧批准计划或把input grant晋升为执行权。
