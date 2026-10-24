@@ -1,21 +1,21 @@
-# Loom 0.11 验证记录
+# Loom 0.12 验证记录
 
-2026-10-25，0.11.0，development-suite-registry-alpha。完成独立开发套件审阅注册表核心；API授权入口、执行计划引用和生成用例执行仍待接入。[0.10纯编译记录](validation-0.10.md)，[0.9真实四角色记录](validation-0.9.md)。
+2026-10-25，0.12.0，development-suite-api-alpha。已开放开发套件精确预览、具名operator冻结和套件读取API；未绑定新执行合同，生成用例仍未执行。[注册表历史](validation-0.11.md)
 
 | 完整阶段 | 主测试 | 子测试 | 失败 | 跳过 |
 |---|---:|---:|---:|---:|
-| unit-and-local | 682 | 382 | 0 | 0 |
+| unit-and-local | 702 | 382 | 0 | 0 |
 | real-infrastructure | 44 | 14 | 0 | 0 |
-| 合计 | 726 | 396 | 0 | 0 |
+| 合计 | 746 | 396 | 0 | 0 |
 
-本轮新增22项注册表主测试和1项真实NATS测试，已包含在上述总数。66项注册表/编译/CLI/NATS专项与完整集合重叠，不叠加；模型均为替身，无新付费请求。NATS新增真实suite_frozen事件投递、PubAck、确认丢失重投、inbox去重和Store重启读取；原43项Docker/NATS/PG门槛继续通过。
+新增20项审批API测试包含在完整集合中。118项API/身份/注册表兼容专项和100项权限专项范围重叠，不相加；模型为替身，未新增付费。真实基础设施继续验证Docker、repair、NATS/重投、PG等。
 
-注册表验证精确候选内容/模型来源、当前epoch/revision/计划/事件、编译版本、按源顺序的选定case和独立review digest。suite/事件/回执/outbox同事务，只追加，插入失败整体回滚；同请求并发只创建一份，同键异参数/actor拒绝。源换代、superseded、过期租约或暂停时不能新增冻结，旧记录保留并标stale。修改记录或来源事件不被接受。
+独立数据库副本中完成39项实际HTTP检查：真实旧候选来源、精确摘要/选择、operator专权、Worker/viewer/legacy/未认证/跨租户拒绝、服务端actor、幂等、只追加事件、计划/任务/费用不变、暂停后拒绝新冻结及历史stale。原主库事件链不变，不是主库人工审批，也不证明独立人员。
 
-两份既有0.9真实模型候选在隔离DB副本各完成一次冻结和幂等/重启核对；主库仅只读备份和指纹核对，没有新增suite表、事件、批准、任务状态或费用。它们不是实际主API的人工审批，也不证明独立人员身份。
+17项实际Chromium检查通过，覆盖现有工作台角色、候选来源/未执行标签、viewer强制提交无写入、移动布局和凭据不持久化；模型和沙箱为公开fixture替身。控制台资产字节未变，原16项数字精度检查按相同JS复用，未计为本轮新断言。当前没有suite冻结UI。
 
-首次单元夹具将Store.snapshot误当含run键的嵌套对象，修正为整个快照对比。首次NATS夹具重复ack同一已确认Msg而报MsgAlreadyAckd；改为真实丢ack后从broker重投，不忽略异常、不改生产bridge，重投去重验收通过。原失败XML保留。
+初次专项和完整回归的失败来自两处旧测试精确权限快照尚未包括新增suite.approve；更新operator白名单断言并验证Worker/viewer/legacy继续无此权限。原完整失败JSON/JUnit保留，基础设施当时未执行而非skip。实际HTTP脚本还误用/pause，已改现存/control/pause，重建副本后39项通过；旧副本保留。
 
-当前API、权限和UI没有新增suite入口。服务更新后重新做33项四角色只读HTTP对账；原196HTTP/33浏览器按不变业务代码/资产复用，不相加或当作新suite UI验收。原任务仍submitted，独立review pending、Goal不成功、第二模型待配置。
+本机服务更新后另做33项旧真实四角色只读对账。原任务submitted、review pending、Goal未成功，第二模型待配置。新注册表在主库仅初始化空表，不自动批准套件或生成执行任务。
 
-下一步依次接入具名operator权限API/准确预览、新草案suite引用和预算合同、首个开发调用前重新核对、Docker开发检查/repair及工作台；不得改旧批准计划或用辅助input grant替代执行许可。
+下一步新草案明确引用suite/独立host acceptance，在批准计划及首个开发模型发起前重验来源、compiler、目标与预算，再接真实development/repair和工作台。旧批准计划不改，input grant和suite.freeze不授予执行权。

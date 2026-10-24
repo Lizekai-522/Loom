@@ -1,10 +1,10 @@
 {
-  "version": "0.11.0",
-  "stage": "development-suite-registry-alpha",
+  "version": "0.12.0",
+  "stage": "development-suite-api-alpha",
   "date": "2026-10-25",
-  "generated_at": "2026-10-25T03:10:03.591160+08:00",
-  "release_status": "bounded_registry_core_substep_passed",
-  "source_file_count_excluding_manifest": 183,
+  "generated_at": "2026-10-25T03:22:19.691964+08:00",
+  "release_status": "bounded_suite_api_substep_passed",
+  "source_file_count_excluding_manifest": 185,
   "files": [
     {
       "path": ".gitignore",
@@ -18,8 +18,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 18948,
-      "sha256": "03f4a772aa8d0cb1dd515c5d0f51a5bdbb930b7b4cbb61448bc8723d3d1333fc"
+      "bytes": 18704,
+      "sha256": "daa1f3fe64a79ea545047438356a2eea5ac32703920e80714e129af3f22e45f6"
     },
     {
       "path": "configs/models.example.json",
@@ -68,18 +68,18 @@
     },
     {
       "path": "docs/api/README.md",
-      "bytes": 11518,
-      "sha256": "312e5ade25478535e682c60b7e4221fe0c90870005ebc323ee4540fd02838d44"
+      "bytes": 12251,
+      "sha256": "fb2082b2aa37fc4b393bac4b4708101abc587a7d847ea2b8feffffd39ff9016b"
     },
     {
       "path": "docs/api/openapi.json",
-      "bytes": 53848,
-      "sha256": "31d27669caa79264c833f11cf0085871d070539ebee2dc842fad583175b77452"
+      "bytes": 60161,
+      "sha256": "a0395b53df004283288850a72bd95d3dd7f72afc11220449306306ef28ba3b89"
     },
     {
       "path": "docs/artifacts.md",
-      "bytes": 22722,
-      "sha256": "1c46c641f4f414489c83ecd7a4abc6e8174fa7a41d8a30643b2846dbb5a952f3"
+      "bytes": 23455,
+      "sha256": "db55fcebc6048efcadf3e41b1872d63bd4863dc2fb559d368933651330d63ec7"
     },
     {
       "path": "docs/bounded-repair.md",
@@ -113,13 +113,13 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 33157,
-      "sha256": "d42a2f4d19abe0d093ef6331731be6c3eaf9d7b0dea626288d54719fb0b45f22"
+      "bytes": 33890,
+      "sha256": "a9f1347bb1dd328e0d3ba6cfea9baa4c0d0ffcd040cfa662588f317abcf7ca72"
     },
     {
       "path": "docs/local-auth.md",
-      "bytes": 4828,
-      "sha256": "2ddc89accccd534c48163dd76edc98c7900efb97d524b3c9737955f1138ef2d3"
+      "bytes": 5561,
+      "sha256": "ce680fca7fb866ea010271b28409baee076b01551683d4baf352e0fb3132ad66"
     },
     {
       "path": "docs/local-execution.md",
@@ -153,13 +153,13 @@
     },
     {
       "path": "docs/progress-cycle.md",
-      "bytes": 10966,
-      "sha256": "0acb8d92c118603b969baef05b11b080e1c03108e9c7dc3b0a441e38f2d49ff7"
+      "bytes": 11699,
+      "sha256": "2dfdb185089c1bd1f76564cb5ddae147bcb24ee5bc03376bb0a884c059eaa370"
     },
     {
       "path": "docs/public-checks.md",
-      "bytes": 5814,
-      "sha256": "dda17f68dfec6ecc6066ff6dd3cbdb555e3175643a24280fb466f3634f1339f0"
+      "bytes": 7555,
+      "sha256": "78f1b75164a1fecf0c2265b128b3e11b41048bbc74d74e2d5bfdbbd80c97e8c5"
     },
     {
       "path": "docs/review-resolution.md",
@@ -180,6 +180,11 @@
       "path": "docs/validation-0.10.md",
       "bytes": 2199,
       "sha256": "b1b190d25b4e96083b9bfb8eab88414479bc9ff89a9d80873e457b40f5aa78dc"
+    },
+    {
+      "path": "docs/validation-0.11.md",
+      "bytes": 2387,
+      "sha256": "d1ed950c9bb99ee66ea1d30d355da108a23aa116add4d53467bf3ff590619965"
     },
     {
       "path": "docs/validation-0.3.md",
@@ -218,8 +223,8 @@
     },
     {
       "path": "docs/validation.md",
-      "bytes": 2387,
-      "sha256": "d1ed950c9bb99ee66ea1d30d355da108a23aa116add4d53467bf3ff590619965"
+      "bytes": 2262,
+      "sha256": "24bbfd270ddbfcb817146dd238b7ed9b78f7965c355ebb4db29a2756a32512a3"
     },
     {
       "path": "docs/workflow.md",
@@ -244,7 +249,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 771,
-      "sha256": "75e0d6063a0a9edd94dadb1fe2053dd3d0a8c88b52c3c6de869b9ffcb233e3aa"
+      "sha256": "f151cc52babe4cf81b9838489742db60ce379d3eeba11ab6ebd63a535431cc9a"
     },
     {
       "path": "requirements.lock",
@@ -298,8 +303,8 @@
     },
     {
       "path": "scripts/check_s2.py",
-      "bytes": 5635,
-      "sha256": "b8d4bf7d6e990566ec5b16309f3a269ade44337cec0b4b9b102736e7fff014c3"
+      "bytes": 5630,
+      "sha256": "290dc91256eb45a99e056ca94a7a89f4aebb5594b97f5f12ea79826fddb27187"
     },
     {
       "path": "scripts/check_sandbox.py",
@@ -349,7 +354,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "5291178b8b9d1e8b85c3c4142a0197dce4c9d38da29afe1f0455b62fee0f6459"
+      "sha256": "44738cc470d161be85e794dedcf5efc9a07fe994d35767f51c0b9e36c6c178ab"
     },
     {
       "path": "src/loom/__main__.py",
@@ -358,8 +363,8 @@
     },
     {
       "path": "src/loom/api.py",
-      "bytes": 19062,
-      "sha256": "3d9003a1578f5f32e282f7fc44137aa034f0afb951a78ee3e75eacb82003ab56"
+      "bytes": 20551,
+      "sha256": "141e4ef3ed7b26f9ae5e4c87ff8ddd48d86cb2649b8cc899d8462c1311455910"
     },
     {
       "path": "src/loom/artifact_schemas.py",
@@ -378,8 +383,8 @@
     },
     {
       "path": "src/loom/auth.py",
-      "bytes": 7666,
-      "sha256": "0550826795a35ad7fd0279d7dc6b10d1bf20bde00181228ccd7a14cf4b5427c0"
+      "bytes": 7683,
+      "sha256": "afa11469b00086580143e824c38b8cbb54cbc6de40ff141bdc49a15dd5e1b2a7"
     },
     {
       "path": "src/loom/checkpoints.py",
@@ -558,8 +563,8 @@
     },
     {
       "path": "tests/test_auth.py",
-      "bytes": 10867,
-      "sha256": "7b887f66a6f2243a228390985a1d8224b5e4c855050a3f6c0359e02b9bfdc9f1"
+      "bytes": 10960,
+      "sha256": "c1fc621932c7b03da981d9696bc92970675d61d1681e98c352134aa67d4f508e"
     },
     {
       "path": "tests/test_checkpoints.py",
@@ -583,13 +588,18 @@
     },
     {
       "path": "tests/test_control_api.py",
-      "bytes": 20093,
-      "sha256": "8e98026f606c64e6e01003cfeedd992fd22798dcabbdff37337e808d10a0807f"
+      "bytes": 20110,
+      "sha256": "e2bb76e387f5a10476f34f054a86c9a9389dbc406025f7afe2ab35bb3da2c710"
     },
     {
       "path": "tests/test_demo.py",
       "bytes": 1364,
       "sha256": "6c5be5b1382ae6e5fd9ea14dcc084a08631f11796b5727de31cf55b563f5a1d9"
+    },
+    {
+      "path": "tests/test_development_suite_api.py",
+      "bytes": 8037,
+      "sha256": "275347b97b3d180ae7d7e8828bc153cd56bb6fbc825e000b0aeaf4c8cfbd1a0d"
     },
     {
       "path": "tests/test_development_suites.py",
@@ -933,27 +943,29 @@
   ],
   "validation": {
     "full_gate_passed": true,
-    "main_tests_passed": 726,
+    "main_tests_passed": 746,
     "subtests_passed": 396,
     "failures": 0,
     "skipped": 0,
     "prior_compiler_cli_tests_included": 43,
-    "new_registry_tests_included": 22,
-    "new_registry_nats_tests_included": 1,
+    "prior_registry_tests_included": 22,
+    "new_approval_api_tests_included": 20,
+    "prior_registry_nats_tests_included": 1,
     "real_infrastructure_main_tests_included": 44,
-    "fresh_http_checks": 33,
-    "prior_09_http_checks_reused": 196,
-    "fresh_browser_assertions": 0,
-    "prior_09_browser_assertions_reused": 33,
+    "fresh_core_http_checks": 33,
+    "fresh_approval_api_http_checks": 39,
+    "fresh_browser_assertions": 17,
+    "prior_09_precision_browser_assertions_reused": 16,
     "unchanged_ui_asset_bytes_verified": true,
-    "openapi_paths": 24,
-    "existing_real_candidates_frozen_in_isolated_copy": 2,
+    "openapi_paths": 27,
+    "existing_real_candidate_frozen_via_api_in_isolated_copy": 1,
     "new_paid_model_requests": 0,
     "public_checks_executed": false,
     "generated_checks_frozen_in_main_api": false,
-    "isolated_copy_suites_frozen": 2,
+    "isolated_copy_suites_frozen_via_api": 1,
     "execution_connected": false,
-    "review_registry_core_passed": true
+    "review_registry_core_passed": true,
+    "named_operator_approval_api_passed": true
   },
   "runtime": {
     "python": "3.13.12",
@@ -968,13 +980,13 @@
   "full_workflow_completed": false,
   "independent_second_model": "pending_configuration",
   "notes": [
-    "This milestone adds a trusted internal, append-only development-suite review registry. Operator API authentication, new execution-plan binding, UI and generated-check execution remain separate pending steps.",
-    "Preview and freeze revalidate full candidate/model provenance, current epoch/revision/plan/event, exact ordered selection and compiler digest. Suite, event, receipt and outbox commit atomically; concurrency/idempotency and stale-history tests pass.",
-    "Fresh full-suite 726/396 includes 44 real infrastructure main tests, with one new real NATS suite event/ack-loss redelivery/deduplication/restart test. Model calls use test doubles.",
-    "Two existing real 0.9 model candidates were reviewed/frozen only in an isolated database copy. The original API database and tasks remain unchanged. No new paid requests or generated-case execution.",
-    "Fresh read-only HTTP33 and unchanged UI asset hashes pass; prior 0.9 HTTP196/browser33 evidence is reused without adding overlapping counts.",
-    "Existing four role tasks remain submitted, review pending, Goal open and second-model configuration pending. A suite review does not verify content or grant execution authority.",
-    "Docker uses the previously tested project cache and original WSL disk. Original OS directory fault remains. No settings/image/volume/global-environment changes.",
-    "Private UTF-8 and UTF-16LE values are scanned including decompressed historical archives. Credentials, databases, logs, runtimes and environments are excluded from source. Nothing is published."
+    "This milestone adds authenticated read-only suite preview/read and named-operator-only suite.approve HTTP endpoints. Server derives actor and tenant; Worker/viewer/legacy and cross-tenant negative checks pass.",
+    "Freeze revalidates the exact source/selection/compiler review digest and idempotency key. It creates no execution plan, task completion, budget effect, sandbox run or verification signature.",
+    "Fresh full-suite 746/396 includes 44 real infrastructure tests. New approval API20 tests, actual isolated-copy suite HTTP39 and actual main-instance read-only core HTTP33 pass.",
+    "Seventeen actual Chromium checks pass for existing console behavior. Only the prior sixteen numeric-precision checks are reused on identical asset bytes. Suite-freeze UI remains pending.",
+    "One existing real 0.9 model candidate was reviewed/frozen through HTTP only in an isolated database copy. No new paid requests or generated-case execution. Main API only initializes an empty registry.",
+    "Existing four role tasks remain submitted, review pending, Goal open and second-model configuration pending. Frozen review records do not confer execution authority or verify content.",
+    "Initial permission snapshot and fixture-path failures are preserved in separate reports; final full gate is zero failures/skips. Docker remains on the tested project cache/original disk; original OS directory fault remains.",
+    "Private UTF-8 and UTF-16LE values are scanned including decompressed historical archives. Credentials, databases, logs, runtimes and environments are excluded. Nothing is published."
   ]
 }

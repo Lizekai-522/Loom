@@ -237,3 +237,10 @@ body 继续使用上文的 `PublicChecksBody`：`visibility` 只能为 `developm
 完成DevelopmentSuiteService预览、精确review_digest冻结和核对读取；来源版本/事件/编译/选择绑定、只追加、幂等并发、全事务回滚、stale历史均有反例。新增22本地/1真实NATS，完整726主/396子、零失败/跳过。两个0.9真实模型候选仅在隔离副本冻结，主库/任务/费用未改；没有新增模型或执行用例。
 
 下一步直接接具名operator权限API/预览，再新草案suite引用与首次模型发起前核对。内部freeze依赖适配层认证，现有主API未开放；生产身份、执行授权和跨run来源引用均不能据内部记录存在而视为完成。旧计划/input grant/独立验证边界不变，FR-051/052及原日程继续追踪。
+
+
+## 0.12审批API补记（2026-10-25）
+
+公开检查套件新增精确预览GET、具名operator冻结POST和suite读取GET，OpenAPI27路径。suite.approve仅operator，不能由Worker/viewer/legacy或正文actor获取；冻结绑定精确review digest/选择及幂等头，计划/任务/费用不变。新增20项API测试，完整746主/396子零失败/跳过；独立副本39项实际HTTP和现有UI17项Chromium通过，无新付费。旧权限快照/HTTP路径夹具失败保留并已复测。
+
+下一步新草案suite来源引用与执行前核对，再真实development/repair和工作台；当前冻结不授执行权，生成case未执行、第二模型待配置、Goal未成功。原62项及部署日期继续追踪。

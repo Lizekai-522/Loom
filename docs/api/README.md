@@ -80,3 +80,10 @@ CLI 通过 `loom serve --identities-file <源码和公开outputs之外的私有J
 ## 0.9 tester来源
 
 路径仍24个；显式role_output新增tester→public-checks/loom.public-checks/v1，visibility仅development。review/attempts来源白名单允许tester并投影public_checks_executed=false；trusted_evaluation=false/cases=[]/hard_criteria_passed=null保持，Worker自报不晋升。没有新增HTTP自动模型触发入口，本机CLI仍需原权限、预算与精确epoch批准。
+
+
+## 0.12审批API补记（2026-10-25）
+
+公开检查套件新增精确预览GET、具名operator冻结POST和suite读取GET，OpenAPI27路径。suite.approve仅operator，不能由Worker/viewer/legacy或正文actor获取；冻结绑定精确review digest/选择及幂等头，计划/任务/费用不变。新增20项API测试，完整746主/396子零失败/跳过；独立副本39项实际HTTP和现有UI17项Chromium通过，无新付费。旧权限快照/HTTP路径夹具失败保留并已复测。
+
+下一步新草案suite来源引用与执行前核对，再真实development/repair和工作台；当前冻结不授执行权，生成case未执行、第二模型待配置、Goal未成功。原62项及部署日期继续追踪。

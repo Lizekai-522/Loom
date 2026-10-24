@@ -40,7 +40,7 @@ def private_file(directory, data):
 
 
 @pytest.mark.parametrize("role,allowed", [
-    ("operator", {"read", "goal.write", "plan.approve", "control"}),
+    ("operator", {"read", "goal.write", "plan.approve", "control", "suite.approve"}),
     ("worker", {"read", "task.claim", "task.submit"}),
     ("viewer", {"read"}),
 ])
@@ -50,7 +50,7 @@ def test_named_roles_enforce_exact_capabilities(role, allowed):
     principal = registry.authenticate(registered.token)
     assert principal == Principal("a", role, frozenset({role}))
     assert registry.capabilities(principal) == sorted(allowed)
-    for action in {"read", "goal.write", "plan.approve", "control", "task.claim", "task.submit", "arbitrary"}:
+    for action in {"read", "goal.write", "plan.approve", "control", "suite.approve", "task.claim", "task.submit", "arbitrary"}:
         assert registry.authorize(principal, action) is (action in allowed)
 
 
@@ -60,6 +60,7 @@ def test_legacy_routes_remain_compatible_without_control_rights():
     assert legacy.roles == frozenset({"developer"})
     assert registry.capabilities(legacy) == ["goal.write", "plan.approve", "read", "task.claim", "task.submit"]
     assert not registry.authorize(legacy, "control")
+    assert not registry.authorize(legacy, "suite.approve")
     assert not registry.authorize(registry.authenticate(WORKER_KEY), "goal.write")
     assert not registry.authorize(registry.authenticate(OPERATOR_KEY), "task.submit")
 

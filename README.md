@@ -1,14 +1,14 @@
 # Loom
 
-基于 Loom v2.1 修订方案的 Agent 编排项目，当前版本 **0.11.0，development-suite-registry-alpha**。完成公开检查纯编译/CLI预览，以及独立审阅注册表核心：精确来源、选定用例、编译摘要、只追加记录、幂等和事务事件。[使用与接入顺序](docs/public-checks.md)
+基于 Loom v2.1 修订方案的 Agent 编排项目，当前版本 **0.12.0，development-suite-api-alpha**。已接通公开检查纯编译、独立审阅注册表及具名operator审批API：精确预览→显式冻结→只读核对。[接口与流程](docs/public-checks.md)
 
-完整 **726主/396子，零失败/跳过**，含44项真实基础设施。新增注册表22项及真实NATS1项；确认丢失重投、去重和重启读取通过。两份旧真实候选在隔离DB副本冻结核对，主库未改，无新付费调用。[验证记录](docs/validation.md)
+完整 **746主/396子，零失败/跳过**，含44项真实基础设施。新增审批API20项；独立副本39项实际HTTP、现有控制台17项Chromium检查通过，未新增付费调用。[验证记录](docs/validation.md)
 
-当前注册表为可信内部接口；尚未开放suite审批HTTP/UI、绑定新执行合同或执行生成用例。冻结记录不授予执行权限、不证明正确性，也不改旧计划或任务状态。
+冻结只记录审阅后的development套件，不改旧计划/任务/预算，也不授予执行权。生成用例尚未接入新执行合同；工作台suite审批表单待接入，可先使用本机API文档。
 
-0.9受限四角色曾实际4Flash/5host冻结Docker用例通过，4901tokens/2440µUSD上界、预留0；196HTTP/33浏览器证据保留。四父仍submitted、独立review/Goal成功阻断，第二模型待配置。完整七角色、生产身份/恢复和原62项要求继续推进。
+0.9实际四角色4Flash/5host冻结Docker用例证据保留；四父仍submitted、独立review pending、Goal不成功，第二模型待配置。完整七角色、生产身份/恢复及原62项要求继续推进。
 
-Docker使用进程专用项目缓存，原盘/镜像及设置保持；本机重启使用scripts/start_local_docker.ps1，原系统目录问题保留。[启动](docs/local-execution.md)
+Docker沿用项目专用缓存和原盘/镜像；原系统目录问题保留。[启动](docs/local-execution.md)
 
 0.4.0新增Unicode任务通过 **5个冻结用例**，提供方返回 **452 tokens**，保守费用记账上界 **262µUSD**，并与工作台证据对账。0.3.0历史探针为4个用例、417 tokens、247µUSD。费用均为上界记账，非供应商账单。用户确认本阶段先使用 Flash，双签保持待配置；任务仍为 `submitted`，人工核对或操作控制都不代替独立验证，也不将完整 run 标为成功。[真实执行方式与边界](docs/local-execution.md)
 

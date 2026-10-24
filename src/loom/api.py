@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -15,6 +15,7 @@ from . import __version__
 from .attempts import attempt_summaries
 from .auth import AuthRegistry, LocalIdentity, Principal
 from .artifacts import ArtifactService
+from .development_suites import DevelopmentSuiteService
 from .artifact_schemas import MAX_BODY_BYTES
 from .role_summary import submitted_role_source
 from .operator import OperatorService
@@ -57,6 +58,11 @@ class PlanInput(Input):
 class PlanApprovalInput(Input):
     expected_revision: int = Field(ge=1)
     expected_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class SuiteFreezeInput(Input):
+    expected_review_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    selected_case_names: list[str] | None = Field(default=None, min_length=1, max_length=32)
 
 
 class ClaimInput(Input):
@@ -125,6 +131,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     workflows = WorkflowService(store)
     operators = OperatorService(store)
     artifacts = ArtifactService(store)
+    suites = DevelopmentSuiteService(store)
     security = HTTPBearer(auto_error=False)
 
     def principal(credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)]) -> Principal:
@@ -154,6 +161,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     Writer = Annotated[Principal, Depends(permitted("goal.write"))]
     Approver = Annotated[Principal, Depends(permitted("plan.approve"))]
     Controller = Annotated[Principal, Depends(permitted("control"))]
+    SuiteApprover = Annotated[Principal, Depends(permitted("suite.approve"))]
     Claimer = Annotated[Principal, Depends(permitted("task.claim"))]
     Submitter = Annotated[Principal, Depends(permitted("task.submit"))]
     Key = Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=200)]
@@ -321,6 +329,22 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     @app.get("/v1/runs/{run_id}/tasks/{task_id}/context-preview")
     def preview_context(run_id: str, task_id: str, tenant: Tenant):
         return artifacts.preview_context(tenant, run_id, task_id)
+
+    @app.get("/v1/runs/{run_id}/artifacts/{artifact_id}/development-preview")
+    def preview_development_suite(run_id: str, artifact_id: str, tenant: Tenant,
+                                  case: Annotated[list[str] | None, Query(max_length=32)] = None):
+        return suites.preview(tenant, run_id, artifact_id, selected_case_names=case)
+
+    @app.post("/v1/runs/{run_id}/artifacts/{artifact_id}/development-suites", status_code=201)
+    def freeze_development_suite(run_id: str, artifact_id: str, body: SuiteFreezeInput,
+                                 identity: SuiteApprover, idempotency_key: Key):
+        return suites.freeze(identity.tenant_id, run_id, artifact_id, idempotency_key,
+            actor="subject:" + identity.subject_id, expected_review_digest=body.expected_review_digest,
+            selected_case_names=body.selected_case_names)
+
+    @app.get("/v1/runs/{run_id}/development-suites/{suite_id}")
+    def get_development_suite(run_id: str, suite_id: str, tenant: Tenant, include_body: bool = False):
+        return suites.get_suite(tenant, run_id, suite_id, include_body=include_body)
 
     @app.get("/v1/runs/{run_id}/attempts")
     def read_attempts(run_id: str, tenant: Tenant):

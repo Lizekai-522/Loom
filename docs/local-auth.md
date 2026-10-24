@@ -66,3 +66,10 @@ if not registry.authorize(principal, "control"):
 Principal 是不可变的 tenant_id、subject_id 和 frozenset 角色，不包含 token。LocalIdentity 的默认 repr 隐去 token；AuthRegistry 的 repr 固定脱敏。`capabilities(principal)` 只返回该 registry 实际登记的主体权限，角色或租户被替换的 Principal 不取得权限。未经认证的原始请求对象不得直接构造受信 Principal；同进程任意 Python 代码仍处于受信边界之内。
 
 测试使用虚构 token 和临时文件，不读取本机实际私密文件、不连接网络。它们覆盖角色矩阵、越租户/提权拒绝、兼容 key 不获 control、身份与 token 唯一、只读并发、输入限制、路径/权限及错误脱敏。HTTP 资源级授权和每个动作的业务前置条件还需由 API/服务层验证，认证模块本身不放宽计划、预算、claim 或独立验证门禁。
+
+
+## 0.12审批API补记（2026-10-25）
+
+公开检查套件新增精确预览GET、具名operator冻结POST和suite读取GET，OpenAPI27路径。suite.approve仅operator，不能由Worker/viewer/legacy或正文actor获取；冻结绑定精确review digest/选择及幂等头，计划/任务/费用不变。新增20项API测试，完整746主/396子零失败/跳过；独立副本39项实际HTTP和现有UI17项Chromium通过，无新付费。旧权限快照/HTTP路径夹具失败保留并已复测。
+
+下一步新草案suite来源引用与执行前核对，再真实development/repair和工作台；当前冻结不授执行权，生成case未执行、第二模型待配置、Goal未成功。原62项及部署日期继续追踪。
