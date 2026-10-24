@@ -1,10 +1,10 @@
 {
-  "version": "0.10.0",
-  "stage": "public-checks-preview-alpha",
+  "version": "0.11.0",
+  "stage": "development-suite-registry-alpha",
   "date": "2026-10-25",
-  "generated_at": "2026-10-25T02:58:31.056416+08:00",
-  "release_status": "bounded_preview_substep_passed",
-  "source_file_count_excluding_manifest": 180,
+  "generated_at": "2026-10-25T03:10:03.591160+08:00",
+  "release_status": "bounded_registry_core_substep_passed",
+  "source_file_count_excluding_manifest": 183,
   "files": [
     {
       "path": ".gitignore",
@@ -18,8 +18,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 18855,
-      "sha256": "1ba835297b35f3526949358631c13d10f7454dd80aba7c75356fc19e17fbc995"
+      "bytes": 18948,
+      "sha256": "03f4a772aa8d0cb1dd515c5d0f51a5bdbb930b7b4cbb61448bc8723d3d1333fc"
     },
     {
       "path": "configs/models.example.json",
@@ -74,12 +74,12 @@
     {
       "path": "docs/api/openapi.json",
       "bytes": 53848,
-      "sha256": "fac7b4bc21ca7f1f3e3620a7be66e147b7755d75524ff3ac6751cbe3d88d6946"
+      "sha256": "31d27669caa79264c833f11cf0085871d070539ebee2dc842fad583175b77452"
     },
     {
       "path": "docs/artifacts.md",
-      "bytes": 21927,
-      "sha256": "f66296d6b52212e8d82cae4567dfa0c5cf62955fb68266a2a93ab7345c424938"
+      "bytes": 22722,
+      "sha256": "1c46c641f4f414489c83ecd7a4abc6e8174fa7a41d8a30643b2846dbb5a952f3"
     },
     {
       "path": "docs/bounded-repair.md",
@@ -113,8 +113,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 32362,
-      "sha256": "d2092c4cd0f03209a2e31c972d045d3a01270035d0df9edd6ad01db1e6b9ef04"
+      "bytes": 33157,
+      "sha256": "d42a2f4d19abe0d093ef6331731be6c3eaf9d7b0dea626288d54719fb0b45f22"
     },
     {
       "path": "docs/local-auth.md",
@@ -153,13 +153,13 @@
     },
     {
       "path": "docs/progress-cycle.md",
-      "bytes": 10171,
-      "sha256": "3b447ab5eff50ae312529b66d5a0d22f08372586065e144db741008531f1cf5f"
+      "bytes": 10966,
+      "sha256": "0acb8d92c118603b969baef05b11b080e1c03108e9c7dc3b0a441e38f2d49ff7"
     },
     {
       "path": "docs/public-checks.md",
-      "bytes": 4027,
-      "sha256": "6d803cef538760fb8f1616858c1680be3337742de4b0e2ab238c3df44e202537"
+      "bytes": 5814,
+      "sha256": "dda17f68dfec6ecc6066ff6dd3cbdb555e3175643a24280fb466f3634f1339f0"
     },
     {
       "path": "docs/review-resolution.md",
@@ -175,6 +175,11 @@
       "path": "docs/third-party-notices.md",
       "bytes": 9095,
       "sha256": "9ef1faf05c944f794f9b18c9de7dcaa9356ace5446ea174483dcd694ffd92223"
+    },
+    {
+      "path": "docs/validation-0.10.md",
+      "bytes": 2199,
+      "sha256": "b1b190d25b4e96083b9bfb8eab88414479bc9ff89a9d80873e457b40f5aa78dc"
     },
     {
       "path": "docs/validation-0.3.md",
@@ -213,8 +218,8 @@
     },
     {
       "path": "docs/validation.md",
-      "bytes": 2199,
-      "sha256": "b1b190d25b4e96083b9bfb8eab88414479bc9ff89a9d80873e457b40f5aa78dc"
+      "bytes": 2387,
+      "sha256": "d1ed950c9bb99ee66ea1d30d355da108a23aa116add4d53467bf3ff590619965"
     },
     {
       "path": "docs/workflow.md",
@@ -239,7 +244,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 771,
-      "sha256": "e45a137f69d84289b3042fe3468a722f0728ca70e3f4ad7288a496510ba92b1a"
+      "sha256": "75e0d6063a0a9edd94dadb1fe2053dd3d0a8c88b52c3c6de869b9ffcb233e3aa"
     },
     {
       "path": "requirements.lock",
@@ -293,8 +298,8 @@
     },
     {
       "path": "scripts/check_s2.py",
-      "bytes": 5630,
-      "sha256": "86419ee0fbff2755998e5ccf4297df2d6c420cd5b1407e066ef0d29e7fb62444"
+      "bytes": 5635,
+      "sha256": "b8d4bf7d6e990566ec5b16309f3a269ade44337cec0b4b9b102736e7fff014c3"
     },
     {
       "path": "scripts/check_sandbox.py",
@@ -344,7 +349,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "7031250ea6f200874b9ee136def3e8317e4a771db0ce29c26ffe23ec947fb867"
+      "sha256": "5291178b8b9d1e8b85c3c4142a0197dce4c9d38da29afe1f0455b62fee0f6459"
     },
     {
       "path": "src/loom/__main__.py",
@@ -390,6 +395,11 @@
       "path": "src/loom/demo.py",
       "bytes": 5727,
       "sha256": "875d7ad3e96dc68dd41b2e3633a9a66c7f10bd275a4a35c5dd108a5e13223198"
+    },
+    {
+      "path": "src/loom/development_suites.py",
+      "bytes": 9040,
+      "sha256": "30ec7dba51a3fd21f88ffb68ab351791ccf6affcaf6b383dde436a4735f69d70"
     },
     {
       "path": "src/loom/execution.py",
@@ -498,8 +508,8 @@
     },
     {
       "path": "tests/integration/test_nats_live.py",
-      "bytes": 9668,
-      "sha256": "1b68558075497172bb8b12485301cca6631ad750df3b53a9ce4d0f374efe53a8"
+      "bytes": 13864,
+      "sha256": "eb60fae61318ca23449bda28dd8a0bebd4e26956b7176ffe744ab3d557b171de"
     },
     {
       "path": "tests/integration/test_nats_restart.py",
@@ -580,6 +590,11 @@
       "path": "tests/test_demo.py",
       "bytes": 1364,
       "sha256": "6c5be5b1382ae6e5fd9ea14dcc084a08631f11796b5727de31cf55b563f5a1d9"
+    },
+    {
+      "path": "tests/test_development_suites.py",
+      "bytes": 12937,
+      "sha256": "75279f00426e32106def0609d0b362f46abe0cba78b9d0c869e5e7f3a5b4d235"
     },
     {
       "path": "tests/test_execution.py",
@@ -918,22 +933,27 @@
   ],
   "validation": {
     "full_gate_passed": true,
-    "main_tests_passed": 703,
+    "main_tests_passed": 726,
     "subtests_passed": 396,
     "failures": 0,
     "skipped": 0,
-    "new_compiler_cli_tests_included": 43,
-    "real_infrastructure_main_tests_included": 43,
+    "prior_compiler_cli_tests_included": 43,
+    "new_registry_tests_included": 22,
+    "new_registry_nats_tests_included": 1,
+    "real_infrastructure_main_tests_included": 44,
     "fresh_http_checks": 33,
     "prior_09_http_checks_reused": 196,
     "fresh_browser_assertions": 0,
     "prior_09_browser_assertions_reused": 33,
     "unchanged_ui_asset_bytes_verified": true,
     "openapi_paths": 24,
-    "existing_real_candidates_compiled": 2,
+    "existing_real_candidates_frozen_in_isolated_copy": 2,
     "new_paid_model_requests": 0,
     "public_checks_executed": false,
-    "generated_checks_approved_or_frozen": false
+    "generated_checks_frozen_in_main_api": false,
+    "isolated_copy_suites_frozen": 2,
+    "execution_connected": false,
+    "review_registry_core_passed": true
   },
   "runtime": {
     "python": "3.13.12",
@@ -948,12 +968,13 @@
   "full_workflow_completed": false,
   "independent_second_model": "pending_configuration",
   "notes": [
-    "This milestone compiles/previews untrusted development candidate data only; no new approval registry, plan binding, model execution, sandbox execution or independent verification is conferred by compilation.",
-    "Two existing 0.9 real-model candidates were compiled read-only, each with 3 cases. No new paid model requests. Historical source provenance is not copied to a new run.",
-    "Shared strict artifact and executor validators enforce limits; canonical immutable storage gives each consumer fresh JSON trees. Compiler, source body and development digests are bound without losing JSON numeric types.",
-    "Fresh full-suite 703/396 and 33 read-only HTTP checks pass. Prior 0.9 HTTP196/browser33 evidence is reused for unchanged API/UI behavior and byte-identical assets, not added to fresh counts.",
-    "Existing four-role tasks remain submitted, independent review pending and Goal open. Second-model review is unconfigured. Generated public checks remain unexecuted.",
-    "Docker uses the previously tested process-local project cache and original WSL storage; no global environment, settings, image or volume changes. Ordinary default Docker shortcut remains unverified.",
-    "Private UTF-8 and UTF-16LE values are scanned in public files and decompressed historical archives. Source excludes credentials, databases, logs, runtime images, native servers and environments. Nothing is published."
+    "This milestone adds a trusted internal, append-only development-suite review registry. Operator API authentication, new execution-plan binding, UI and generated-check execution remain separate pending steps.",
+    "Preview and freeze revalidate full candidate/model provenance, current epoch/revision/plan/event, exact ordered selection and compiler digest. Suite, event, receipt and outbox commit atomically; concurrency/idempotency and stale-history tests pass.",
+    "Fresh full-suite 726/396 includes 44 real infrastructure main tests, with one new real NATS suite event/ack-loss redelivery/deduplication/restart test. Model calls use test doubles.",
+    "Two existing real 0.9 model candidates were reviewed/frozen only in an isolated database copy. The original API database and tasks remain unchanged. No new paid requests or generated-case execution.",
+    "Fresh read-only HTTP33 and unchanged UI asset hashes pass; prior 0.9 HTTP196/browser33 evidence is reused without adding overlapping counts.",
+    "Existing four role tasks remain submitted, review pending, Goal open and second-model configuration pending. A suite review does not verify content or grant execution authority.",
+    "Docker uses the previously tested project cache and original WSL disk. Original OS directory fault remains. No settings/image/volume/global-environment changes.",
+    "Private UTF-8 and UTF-16LE values are scanned including decompressed historical archives. Credentials, databases, logs, runtimes and environments are excluded from source. Nothing is published."
   ]
 }

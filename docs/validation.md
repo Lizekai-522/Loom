@@ -1,21 +1,21 @@
-# Loom 0.10 验证记录
+# Loom 0.11 验证记录
 
-2026-10-25，0.10.0，public-checks-preview-alpha。本阶段完成公开检查纯编译和预览，未接入生成用例的批准/执行。上一完整四角色交接证据见[0.9记录](validation-0.9.md)。
+2026-10-25，0.11.0，development-suite-registry-alpha。完成独立开发套件审阅注册表核心；API授权入口、执行计划引用和生成用例执行仍待接入。[0.10纯编译记录](validation-0.10.md)，[0.9真实四角色记录](validation-0.9.md)。
 
 | 完整阶段 | 主测试 | 子测试 | 失败 | 跳过 |
 |---|---:|---:|---:|---:|
-| unit-and-local | 660 | 382 | 0 | 0 |
-| real-infrastructure | 43 | 14 | 0 | 0 |
-| 合计 | 703 | 396 | 0 | 0 |
+| unit-and-local | 682 | 382 | 0 | 0 |
+| real-infrastructure | 44 | 14 | 0 | 0 |
+| 合计 | 726 | 396 | 0 | 0 |
 
-新增43项编译/CLI测试已包含在660项本地测试中；103主/71子兼容专项与完整集合重叠，不另加。基础设施继续实际验证NATS、重启、PG、Docker隔离、repair、上下文和四角色交接，模型使用替身，没有新增付费调用。
+本轮新增22项注册表主测试和1项真实NATS测试，已包含在上述总数。66项注册表/编译/CLI/NATS专项与完整集合重叠，不叠加；模型均为替身，无新付费请求。NATS新增真实suite_frozen事件投递、PubAck、确认丢失重投、inbox去重和Store重启读取；原43项Docker/NATS/PG门槛继续通过。
 
-两份0.9真实tester候选各3个case，通过只读DB查询与实际CLI编译，候选hash、编译结果和执行器development_digest一致。原任务仍submitted，生成case未执行、未冻结为新计划，不新增模型请求。
+注册表验证精确候选内容/模型来源、当前epoch/revision/计划/事件、编译版本、按源顺序的选定case和独立review digest。suite/事件/回执/outbox同事务，只追加，插入失败整体回滚；同请求并发只创建一份，同键异参数/actor拒绝。源换代、superseded、过期租约或暂停时不能新增冻结，旧记录保留并标stale。修改记录或来源事件不被接受。
 
-编译覆盖重复字段、错误schema/visibility、伪造批准字段、非JSON/非有限数、32KiB正文与16KiB单值边界、深度/节点/用例数量、精确bool/int/float及大整数、返回树防别名和静态错误。默认预览不输出case正文；显式include-cases才输出。纯函数无文件/网络/DB/环境/秘密配置/子进程I/O。
+两份既有0.9真实模型候选在隔离DB副本各完成一次冻结和幂等/重启核对；主库仅只读备份和指纹核对，没有新增suite表、事件、批准、任务状态或费用。它们不是实际主API的人工审批，也不证明独立人员身份。
 
-首次CLI测试用大bytes自动生成pytest参数ID，超出Windows环境变量32767字符限制并连带下一夹具初始化失败。改为短静态ID后103主/71子和完整门槛通过；原XML保留，不转skip。只读核对脚本曾误用tasks.state，已按实际status列更正，不改DB。
+首次单元夹具将Store.snapshot误当含run键的嵌套对象，修正为整个快照对比。首次NATS夹具重复ack同一已确认Msg而报MsgAlreadyAckd；改为真实丢ack后从broker重投，不忽略异常、不改生产bridge，重投去重验收通过。原失败XML保留。
 
-当前未改API权限/业务路径或控制台资产。新实例启动后另行执行33项既有真实四角色只读HTTP对账；0.9的196HTTP和33浏览器证据按相同代码/资产复用，不与本次重新检查相加。第二模型待配置、Goal未成功、SQLite单实例、生产身份/恢复和七角色继续未完成。
+当前API、权限和UI没有新增suite入口。服务更新后重新做33项四角色只读HTTP对账；原196HTTP/33浏览器按不变业务代码/资产复用，不相加或当作新suite UI验收。原任务仍submitted，独立review pending、Goal不成功、第二模型待配置。
 
-下一步为[单独审阅/冻结协议](public-checks.md)：独立append-only记录、精确来源、幂等与原子事件；先验核心与反例，再接新草案执行合同，不能改旧批准计划或把input grant晋升为执行权。
+下一步依次接入具名operator权限API/准确预览、新草案suite引用和预算合同、首个开发调用前重新核对、Docker开发检查/repair及工作台；不得改旧批准计划或用辅助input grant替代执行许可。

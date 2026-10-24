@@ -175,3 +175,66 @@ class LiveNatsTests(unittest.IsolatedAsyncioTestCase):
                                                         discard=DiscardPolicy.OLD, max_msgs=1))
         with self.assertRaises(Conflict):
             await self.bridge.provision(self.js)
+
+    async def test_frozen_development_suite_event_survives_durable_delivery_and_restart(self):
+        import json
+        from loom.artifacts import ArtifactService
+        from loom.development_suites import DevelopmentSuiteService
+        from loom.workflow import WorkflowService
+        workflow = WorkflowService(self.store)
+        goal = workflow.create_goal("live-tenant", "suite-goal", title="Review suite",
+                                    description="Development only", acceptance=["tests.pass"])
+        run = goal["run_id"]
+        definition = json.loads((Path(__file__).resolve().parents[2] / "packs/software-dev/workflow-v1.json").read_text(encoding="utf-8"))
+        definition["nodes"] = [{"id": "checks", "title": "Public cases", "instruction": "Data only",
+            "role": "tester", "depends": [],
+            "limits": {"cost_limit_microusd": 1000, "token_limit": 1000, "max_attempts": 1}}]
+        saved = workflow.save_plan("live-tenant", run, "suite-plan", definition, 0)
+        workflow.approve_plan("live-tenant", run, "suite-approve", saved["revision"], saved["digest"])
+        claim = self.store.claim_next("live-tenant", run, "tester", lease_seconds=3600)
+        body = {"schema_version": "loom.public-checks/v1", "visibility": "development",
+                "cases": [{"name": "exact", "input": 9007199254740993, "expected": True}]}
+        candidate = ArtifactService(self.store).save_candidate(
+            claim, "suite-candidate", "public-checks", body, actor="subject:tester")
+        service = DevelopmentSuiteService(self.store)
+        preview = service.preview("live-tenant", run, candidate["artifact_id"])
+        frozen = service.freeze("live-tenant", run, candidate["artifact_id"], "suite-freeze",
+                                actor="subject:operator", expected_review_digest=preview["review_digest"])
+        with self.store.connect() as db:
+            event_count = db.execute("SELECT count(*) FROM events WHERE tenant=? AND run_id=?",
+                                     ("live-tenant", run)).fetchone()[0]
+        subscription = await self.bridge.subscribe(self.js, tenant="live-tenant", run_id=run, durable="suite", ack_wait=0.15)
+        await self.bridge.publish_pending(self.js)
+        received = []
+        def apply(db, event):
+            if event["type"] == "development.suite_frozen":
+                received.append(event)
+        last = None
+        for index in range(event_count):
+            last = (await subscription.fetch(1, timeout=2))[0]
+            if index == event_count - 1:
+                class LostAck:
+                    data, subject = last.data, last.subject
+                    async def ack_sync(self):
+                        raise ConnectionError("simulated lost acknowledgement")
+                with self.assertRaises(ConnectionError):
+                    await self.bridge.consume_message(LostAck(), tenant="live-tenant", run_id=run,
+                                                       durable="suite", apply=apply)
+            else:
+                result = await self.bridge.consume_message(last, tenant="live-tenant", run_id=run,
+                                                           durable="suite", apply=apply)
+                self.assertTrue(result.applied)
+        self.assertEqual(len(received), 1)
+        self.assertEqual(received[0]["payload"]["suite_digest"], frozen["suite_digest"])
+        self.assertFalse(received[0]["payload"]["execution_connected"])
+        self.assertNotIn("body", received[0]["payload"])
+        await asyncio.sleep(0.2)
+        redelivered = (await subscription.fetch(1, timeout=2))[0]
+        duplicate = await self.bridge.consume_message(redelivered, tenant="live-tenant", run_id=run,
+                                                      durable="suite", apply=apply)
+        self.assertTrue(duplicate.duplicate)
+        self.assertEqual(len(received), 1)
+        restarted = DevelopmentSuiteService(Store(self.store.path))
+        view = restarted.get_suite("live-tenant", run, frozen["suite_id"], include_body=True)
+        self.assertEqual(view["body"], body)
+        self.assertEqual(view["freeze_event_hash"], frozen["freeze_event_hash"])

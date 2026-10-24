@@ -230,3 +230,10 @@ body 继续使用上文的 `PublicChecksBody`：`visibility` 只能为 `developm
 严格public-checks schema与freeze_tests双重校验、不可变编译文本/全新JSON树、source body/development/compiler摘要及只读CLI完成。43项新增测试、103主/71子兼容专项、完整703主/396子通过，零失败/跳过；两个既有真实tester候选各3case免费核对，不修改原候选/任务或执行生成用例。首次pytest长ID夹具错误保留并已修复。
 
 接下来直接实现独立审阅/冻结注册表核心及反例，按docs/public-checks.md核对精确来源、编译版本、单独具名operator、幂等和事件/回执/outbox原子性。再实现新草案合同引用、API权限和启动重新核对；未实现前不接通执行，不改任何已批准计划。原62项FR、FR-051/052 partial与部署日期不变。
+
+
+## 0.11独立审阅注册表核心验收（2026-10-25）
+
+完成DevelopmentSuiteService预览、精确review_digest冻结和核对读取；来源版本/事件/编译/选择绑定、只追加、幂等并发、全事务回滚、stale历史均有反例。新增22本地/1真实NATS，完整726主/396子、零失败/跳过。两个0.9真实模型候选仅在隔离副本冻结，主库/任务/费用未改；没有新增模型或执行用例。
+
+下一步直接接具名operator权限API/预览，再新草案suite引用与首次模型发起前核对。内部freeze依赖适配层认证，现有主API未开放；生产身份、执行授权和跨run来源引用均不能据内部记录存在而视为完成。旧计划/input grant/独立验证边界不变，FR-051/052及原日程继续追踪。
