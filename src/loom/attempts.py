@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import re
 
-from .store import Store
+from .artifacts import ArtifactService
+from .role_summary import model_source_summary
+from .store import Conflict, NotFound, Store
 
 
 _KINDS = frozenset({"execution.candidate", "development.evaluated", "execution.evaluated",
                     "execution.blocked", "failure.classified", "repair.applied", "repair.exhausted",
-                    "execution.context_bound"})
+                    "execution.context_bound", "role.candidate_generated"})
 _FIELDS = ("task_id", "epoch", "from_epoch", "to_epoch", "primitive", "family", "code", "reason",
            "stage", "source_sha256", "plan_digest", "development_digest", "evaluation_digest",
            "hard_criteria_passed", "passed", "billing_uncertain", "auto_repair_allowed")
@@ -18,12 +20,33 @@ def attempt_summaries(store: Store, tenant: str, run_id: str) -> list[dict]:
     with store.connect() as db:
         store._run(db, tenant, run_id)
     summaries = []
+    artifacts = None
     for event in store.events(tenant, run_id):
         if event["type"] not in _KINDS:
             continue
         if event["type"] == "execution.context_bound" and event["actor"] != "local-executor":
             continue
         payload = event["payload"]
+        if event["type"] == "role.candidate_generated":
+            if event["actor"] != "local-executor":
+                continue
+            artifact_id = payload.get("artifact_id")
+            if type(artifact_id) is not str or len(artifact_id) > 200:
+                continue
+            if artifacts is None:
+                artifacts = ArtifactService(store)
+            try:
+                candidate = artifacts.get_artifact(tenant, run_id, artifact_id, include_body=False)
+            except (Conflict, NotFound):
+                continue
+            source = model_source_summary(candidate)
+            if (source is None or candidate["source_event_hash"] != event["hash"]
+                    or candidate["source_task_id"] != payload.get("task_id")
+                    or candidate["source_epoch"] != payload.get("epoch")):
+                continue
+            summaries.append({"event_type": event["type"], "event_hash": event["hash"], "seq": event["seq"],
+                "task_id": candidate["source_task_id"], "epoch": candidate["source_epoch"], **source})
+            continue
         summary = {"event_type": event["type"], "event_hash": event["hash"], "seq": event["seq"]}
         # Never forward nested model/worker data, even if a future event adds
         # structured data under a formerly scalar field name.

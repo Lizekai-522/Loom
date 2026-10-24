@@ -3,7 +3,7 @@
   "info": {
     "title": "Loom local kernel",
     "description": "Local S1 development API. No real model or external write execution.",
-    "version": "0.7.0"
+    "version": "0.8.0"
   },
   "paths": {
     "/v1/me": {
@@ -1731,6 +1731,31 @@
         ],
         "title": "ReconciliationInput"
       },
+      "RoleOutput": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "requirements",
+              "design"
+            ],
+            "title": "Kind"
+          },
+          "schema_version": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Schema Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "schema_version"
+        ],
+        "title": "RoleOutput"
+      },
       "RunInput": {
         "properties": {
           "acceptance": {
@@ -1942,6 +1967,16 @@
               }
             ],
             "title": "Input Artifacts"
+          },
+          "role_output": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoleOutput"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,

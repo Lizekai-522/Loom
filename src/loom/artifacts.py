@@ -13,7 +13,9 @@ from uuid import uuid4
 
 from pydantic import ValidationError
 
-from .artifact_schemas import (ARTIFACT_ROLES, MAX_CONTEXT_BYTES, validate_body)
+from .artifact_schemas import (ARTIFACT_ROLES, MAX_CONTEXT_BYTES, ModelProvenance,
+                               RoleGenerationRequest, RoleModelResult, RoleOutputError,
+                               decode_role_output, validate_body)
 from .store import Claim, Conflict, InvalidInput, NotFound, Store, canonical, digest
 from .workflow import WorkflowDefinition, WorkflowService
 
@@ -24,7 +26,7 @@ CREATE TABLE IF NOT EXISTS artifact_candidates (
  source_task_id TEXT NOT NULL, source_node TEXT NOT NULL, source_epoch INTEGER NOT NULL,
  kind TEXT NOT NULL, revision INTEGER NOT NULL, plan_digest TEXT NOT NULL,
  schema_version TEXT NOT NULL, content_hash TEXT NOT NULL, body TEXT NOT NULL,
- actor TEXT NOT NULL, source_event_hash TEXT NOT NULL,
+ actor TEXT NOT NULL, source_event_hash TEXT NOT NULL, origin TEXT, provenance TEXT,
  PRIMARY KEY(tenant,id), UNIQUE(tenant,run_id,source_task_id,kind,revision),
  FOREIGN KEY(tenant,source_task_id) REFERENCES tasks(tenant,id),
  FOREIGN KEY(tenant,run_id) REFERENCES runs(tenant,id));
@@ -81,6 +83,11 @@ class ArtifactService:
         WorkflowService(store)
         with store.connect() as db:
             db.executescript(SCHEMA)
+        with store.transaction() as db:
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(artifact_candidates)")}
+            for column in ("origin", "provenance"):
+                if column not in columns:
+                    db.execute("ALTER TABLE artifact_candidates ADD COLUMN " + column + " TEXT")
 
     def _contract(self, db, tenant, run_id, task_id):
         """Rebuild from the frozen definition in the caller's same snapshot."""
@@ -110,13 +117,27 @@ class ArtifactService:
 
     @staticmethod
     def _candidate_binding(row):
-        return {"artifact_id": row["id"], "tenant_id": row["tenant"], "run_id": row["run_id"],
+        origin = row["origin"] if "origin" in row.keys() else None
+        provenance = row["provenance"] if "provenance" in row.keys() else None
+        result = {"artifact_id": row["id"], "tenant_id": row["tenant"], "run_id": row["run_id"],
                 "source_task_id": row["source_task_id"], "source_node": row["source_node"],
                 "source_epoch": row["source_epoch"], "kind": row["kind"], "revision": row["revision"],
                 "plan_digest": row["plan_digest"], "schema_version": row["schema_version"],
                 "content_hash": row["content_hash"], "actor": row["actor"], "status": "candidate",
                 "origin": "authenticated-worker-submission", "producer_verified": False,
                 "counts_as_success": False}
+        if origin is None and provenance is None:
+            return result  # Preserve every old event key, including its origin.
+        if origin != "model-gateway-response" or provenance is None or row["actor"] != "local-executor":
+            raise Conflict("candidate origin binding is inconsistent")
+        try:
+            raw = json.loads(provenance)
+            checked = ModelProvenance.model_validate(raw).model_dump(mode="json")
+            if canonical(checked) != canonical(raw):
+                raise ValueError
+        except (ValidationError, TypeError, ValueError, RecursionError):
+            raise Conflict("candidate model provenance is invalid") from None
+        return {**result, "origin": origin, "model_provenance": checked, "model_source_recorded": True}
 
     @staticmethod
     def _grant_binding(row):
@@ -160,8 +181,28 @@ class ArtifactService:
         except (InvalidInput, TypeError, ValueError, RecursionError):
             raise Conflict("candidate artifact content binding is inconsistent") from None
         binding = self._candidate_binding(row)
-        self._event_matches(db, tenant, run_id, row["source_event_hash"], "artifact.candidate_saved",
-                            row["actor"], {**binding, "body": body})
+        payload = {**binding, "body": body}
+        event_type = "artifact.candidate_saved"
+        if binding.get("model_source_recorded"):
+            event_type = "role.candidate_generated"
+            payload.update(task_id=row["source_task_id"], epoch=row["source_epoch"])
+            provenance = binding["model_provenance"]
+            spec = self._contract(db, tenant, run_id, row["source_task_id"])
+            request = {key: provenance[key] for key in (
+                "route", "provider", "model", "prompt_digest", "max_output_tokens", "plan_digest",
+                "role_output", "response_contract")}
+            if "context_digest" in provenance:
+                request["context_digest"] = provenance["context_digest"]
+            try:
+                actual_body, actual_provenance = self._role_evidence_in(db, tenant, run_id,
+                    row["source_task_id"], row["source_epoch"], spec, provenance["call_id"],
+                    provenance["reservation_id"], request)
+                if (canonical(actual_body) != canonical(body) or canonical(actual_provenance) != canonical(provenance)
+                        or row["kind"] != spec["role_output"]["kind"]):
+                    raise Conflict("candidate model evidence differs from its body")
+            except RoleOutputError:
+                raise Conflict("candidate model body binding is invalid") from None
+        self._event_matches(db, tenant, run_id, row["source_event_hash"], event_type, row["actor"], payload)
         return row, body
 
     def _stale_reasons(self, db, row):
@@ -218,21 +259,31 @@ class ArtifactService:
             contract = self._contract(db, claim.tenant_id, claim.run_id, claim.task_id)
             if contract["role"] != ARTIFACT_ROLES[kind] or "artifacts.write" not in contract["tools"]:
                 raise Conflict("approved source role cannot produce this artifact type")
-            revision = db.execute("SELECT coalesce(max(revision),0)+1 FROM artifact_candidates WHERE tenant=? AND run_id=? AND source_task_id=? AND kind=?",
-                                  (claim.tenant_id, claim.run_id, claim.task_id, kind)).fetchone()[0]
-            values = dict(tenant=claim.tenant_id, run_id=claim.run_id, id=str(uuid4()),
-                          source_task_id=claim.task_id, source_node=contract["node_id"], source_epoch=claim.epoch,
-                          kind=kind, revision=revision, plan_digest=contract["plan_digest"],
-                          schema_version=body["schema_version"], content_hash=digest(body), body=canonical(body), actor=actor)
-            event = self.store._event(db, claim.tenant_id, claim.run_id, "artifact.candidate_saved",
-                                      {**self._candidate_binding(values), "body": body}, actor, key)
-            values["source_event_hash"] = event["hash"]
-            columns = list(values)
-            db.execute("INSERT INTO artifact_candidates (" + ",".join(columns) + ") VALUES (" + ",".join("?" for _ in columns) + ")",
-                       tuple(values[column] for column in columns))
+            values = self._save_candidate_in(db, claim, key, kind, body, contract, actor=actor)
             return self._view(db, values, body)
 
         return self.store._command(claim.tenant_id, key, "artifact.save_candidate", args, apply)
+
+    def _save_candidate_in(self, db, claim, key, kind, body, contract, *, actor, provenance=None):
+        revision = db.execute("SELECT coalesce(max(revision),0)+1 FROM artifact_candidates WHERE tenant=? AND run_id=? AND source_task_id=? AND kind=?",
+                              (claim.tenant_id, claim.run_id, claim.task_id, kind)).fetchone()[0]
+        values = dict(tenant=claim.tenant_id, run_id=claim.run_id, id=str(uuid4()),
+                      source_task_id=claim.task_id, source_node=contract["node_id"], source_epoch=claim.epoch,
+                      kind=kind, revision=revision, plan_digest=contract["plan_digest"],
+                      schema_version=body["schema_version"], content_hash=digest(body), body=canonical(body), actor=actor)
+        event_type = "artifact.candidate_saved"
+        if provenance is not None:
+            values.update(origin="model-gateway-response", provenance=canonical(provenance))
+            event_type = "role.candidate_generated"
+        payload = {**self._candidate_binding(values), "body": body}
+        if provenance is not None:
+            payload.update(task_id=claim.task_id, epoch=claim.epoch)
+        event = self.store._event(db, claim.tenant_id, claim.run_id, event_type, payload, actor, key)
+        values["source_event_hash"] = event["hash"]
+        columns = list(values)
+        db.execute("INSERT INTO artifact_candidates (" + ",".join(columns) + ") VALUES (" + ",".join("?" for _ in columns) + ")",
+                   tuple(values[column] for column in columns))
+        return values
 
     def get_artifact(self, tenant, run_id, artifact_id, *, include_body=True):
         if type(include_body) is not bool:
@@ -509,3 +560,134 @@ class ArtifactService:
             return self.store._submit_output(db, claim, key, output)
 
         return self.store._command(claim.tenant_id, key, "submit_execution_output", args, apply)
+
+    def _gateway_event_in(self, db, tenant, run_id, kind, call_id, payload):
+        rows = db.execute("SELECT hash FROM events WHERE tenant=? AND run_id=? AND json_extract(envelope,'$.type')=? AND json_extract(envelope,'$.payload.call_id')=?",
+                          (tenant, run_id, kind, call_id)).fetchall()
+        if len(rows) != 1:
+            raise Conflict("role model gateway event is missing or ambiguous")
+        self._event_matches(db, tenant, run_id, rows[0]["hash"], kind, "gateway", payload)
+        return rows[0]["hash"]
+
+    @staticmethod
+    def _role_request(request):
+        try:
+            if type(request) is not dict:
+                raise ValueError
+            checked = RoleGenerationRequest.model_validate(request).model_dump(mode="json")
+            raw = canonical(request)
+            if len(raw.encode("utf-8")) > 8192 or raw != canonical(checked):
+                raise ValueError
+            return json.loads(raw)
+        except (ValidationError, TypeError, ValueError, RecursionError, UnicodeError, OverflowError):
+            raise InvalidInput("invalid role generation request metadata") from None
+
+    def _role_evidence_in(self, db, tenant, run_id, task_id, epoch, spec, call_id, reservation_id, request):
+        """Reconstruct model origin from the known ledger, never caller body."""
+        output = spec.get("role_output")
+        if (output is None or spec["role"] not in {"analyst", "architect"}
+                or ARTIFACT_ROLES.get(output["kind"]) != spec["role"]
+                or "artifacts.write" not in spec["tools"] or spec["scope"] != "local-workspace"
+                or epoch > spec["limits"]["max_attempts"]):
+            raise Conflict("task has no approved read-only model output contract")
+        request = self._role_request(request)
+        if (request["plan_digest"] != spec["plan_digest"] or request["role_output"] != output
+                or request["route"] != spec["model_alias"]):
+            raise Conflict("role model request differs from the frozen output contract")
+        expected_call = digest({"tenant_id": tenant, "run_id": run_id, "task_id": task_id,
+                                "operation_id": f"model-generation:{epoch}"})
+        if call_id != expected_call or reservation_id != f"python:{task_id}:{epoch}":
+            raise Conflict("role model call or reservation is not bound to this attempt")
+        effect = db.execute("SELECT * FROM effects WHERE tenant=? AND run_id=? AND task_id=? AND epoch=? AND id=?",
+                            (tenant, run_id, task_id, epoch, call_id)).fetchone()
+        reservation = db.execute("SELECT * FROM reservations WHERE tenant=? AND run_id=? AND task_id=? AND epoch=? AND id=?",
+                                 (tenant, run_id, task_id, epoch, reservation_id)).fetchone()
+        if (effect is None or effect["state"] != "done" or effect["request_hash"] != digest(request)
+                or reservation is None or reservation["state"] != "settled"):
+            raise Conflict("role model source requires a known response and settled reservation")
+        try:
+            raw_result = json.loads(effect["result"])
+            model = RoleModelResult.model_validate(raw_result)
+            if canonical(model.model_dump(mode="json")) != canonical(raw_result):
+                raise ValueError
+        except (ValidationError, TypeError, ValueError, RecursionError):
+            raise Conflict("role model response metadata is invalid") from None
+        intent_hash = self._gateway_event_in(db, tenant, run_id, "tool.intent", call_id,
+            {"call_id": call_id, "task_id": task_id, "request_hash": effect["request_hash"], "state": "intent"})
+        done_hash = self._gateway_event_in(db, tenant, run_id, "tool.done", call_id,
+            {"call_id": call_id, "state": "done", "result": raw_result})
+        if (model.route_alias != request["route"] or model.provider != request["provider"]
+                or model.model_id != request["model"] or model.response_model != request["model"]
+                or model.usage.completion_tokens > request["max_output_tokens"]
+                or reservation["actual_tokens"] != model.usage.total_tokens
+                or type(reservation["actual_cost"]) is not int or reservation["actual_cost"] < 0
+                or reservation["actual_cost"] > reservation["cost"]
+                or model.usage.total_tokens > reservation["tokens"]):
+            raise Conflict("role model usage or route differs from the known ledger")
+        if model.finish_reason != "stop":
+            raise RoleOutputError()
+        body = decode_role_output(output["kind"], model.content)
+        provenance = {"schema_version": "loom.model-provenance/v1", "call_id": call_id,
+            "reservation_id": reservation_id, "task_id": task_id, "epoch": epoch,
+            "plan_digest": spec["plan_digest"], "role": spec["role"], "role_output": output,
+            "content_hash": digest(body), "route": model.route_alias, "provider": model.provider,
+            "model": model.model_id, "usage": model.usage.model_dump(mode="json"),
+            "usage_cost_upper_microusd": reservation["actual_cost"], "request_hash": effect["request_hash"],
+            "prompt_digest": request["prompt_digest"], "max_output_tokens": request["max_output_tokens"],
+            "response_contract": request["response_contract"], "model_result_hash": digest(raw_result),
+            "tool_intent_event_hash": intent_hash, "tool_done_event_hash": done_hash}
+        if "context_digest" in request:
+            provenance["context_digest"] = request["context_digest"]
+        return body, ModelProvenance.model_validate(provenance).model_dump(mode="json")
+
+    def submit_role_output(self, claim: Claim, key: str, *, call_id: str, reservation_id: str,
+                           request: dict, snapshot: dict | None) -> dict:
+        """Atomically save a gateway-derived candidate, origin and submission.
+
+        Trusted executor entry only. The known model response and settled usage
+        predate this command and survive any candidate/receipt rollback.
+        """
+        if not isinstance(claim, Claim) or type(claim.epoch) is not int or claim.epoch < 1:
+            raise InvalidInput("a current role claim is required")
+        _text(key, "idempotency key")
+        _hash(call_id)
+        _text(reservation_id, "reservation ID")
+        request = self._role_request(request)
+        snapshot_digest = digest(None)
+        if snapshot is not None:
+            snapshot, snapshot_digest = self._snapshot_receipt_binding(snapshot)
+        args = {"run_id": claim.run_id, "task_id": claim.task_id, "epoch": claim.epoch,
+                "worker": claim.worker_id, "call_id": call_id, "reservation_id": reservation_id,
+                "request": request, "execution_context_snapshot_digest": snapshot_digest}
+
+        def apply(db):
+            current = self.assert_execution_context_in(db, claim, snapshot)
+            contract = self._contract(db, claim.tenant_id, claim.run_id, claim.task_id)
+            bound_request = dict(request)
+            if current is not None:
+                if "context_digest" in request and request["context_digest"] != current["context_digest"]:
+                    raise ExecutionContextError("CONTEXT_SNAPSHOT_CHANGED")
+                bound_request["context_digest"] = current["context_digest"]
+            elif "context_digest" in request:
+                raise ExecutionContextError("CONTEXT_SNAPSHOT_CHANGED")
+            body, provenance = self._role_evidence_in(db, claim.tenant_id, claim.run_id,
+                claim.task_id, claim.epoch, contract, call_id, reservation_id, bound_request)
+            kind = contract["role_output"]["kind"]
+            row = self._save_candidate_in(db, claim, key, kind, body, contract,
+                                          actor="local-executor", provenance=provenance)
+            output = {"kind": "role-artifact", "artifact_id": row["id"], "artifact_kind": kind,
+                      "artifact_schema_version": body["schema_version"], "artifact_content_hash": digest(body),
+                      "plan_digest": contract["plan_digest"], "model_call_id": call_id,
+                      "producer_verified": False, "counts_as_success": False}
+            if current is not None:
+                output["execution_context_digest"] = current["context_digest"]
+            submitted = self.store._submit_output(db, claim, key, output)
+            return {**submitted, "artifact_id": row["id"], "artifact_content_hash": row["content_hash"],
+                    "artifact": self._view(db, row, body), "schema_validated": True,
+                    "model_source_recorded": True, "producer_verified": False, "verified": False,
+                    "counts_as_success": False, "usage": provenance["usage"],
+                    "usage_cost_upper_microusd": provenance["usage_cost_upper_microusd"],
+                    "model_call_id": call_id,
+                    **({"execution_context_digest": current["context_digest"]} if current is not None else {})}
+
+        return self.store._command(claim.tenant_id, key, "artifact.submit_role_output", args, apply)

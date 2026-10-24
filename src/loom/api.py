@@ -16,6 +16,7 @@ from .attempts import attempt_summaries
 from .auth import AuthRegistry, LocalIdentity, Principal
 from .artifacts import ArtifactService
 from .artifact_schemas import MAX_BODY_BYTES
+from .role_summary import submitted_role_source
 from .operator import OperatorService
 from .store import Claim, Conflict, InvalidInput, LoomError, NotFound, Store, canonical, digest
 from .workflow import WorkflowDefinition, WorkflowService
@@ -260,11 +261,14 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
             tasks = []
             for row in db.execute("SELECT * FROM tasks WHERE tenant=? AND run_id=? ORDER BY rowid", (tenant, run_id)):
                 item = {key: row[key] for key in ("id", "title", "status", "channel", "priority", "epoch")}
+                spec = None
                 contract = db.execute("SELECT contract FROM workflow_tasks WHERE tenant=? AND run_id=? AND task_id=?", (tenant, run_id, row["id"])).fetchone()
                 if contract:
                     spec = workflows.get_task_spec(tenant, run_id, row["id"])
                     item.update({key: spec[key] for key in ("role", "model_alias", "evaluation_digest", "limits")})
                     item["input_artifacts"] = spec.get("input_artifacts") or []
+                    if spec.get("role_output") is not None:
+                        item["role_output"] = spec["role_output"]
                 if row["output"] is not None:
                     output = json.loads(row["output"])
                     identity = digest(output)
@@ -274,6 +278,8 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
                         "hard_criteria_passed": evidence.get("hard_criteria_passed") if evidence else None,
                         "verification": "awaiting_independent_models" if row["status"] == "submitted" else row["status"],
                         "cases": []}
+                    if output.get("kind") == "role-artifact":
+                        item["artifact"].update(submitted_role_source(artifacts, tenant, run_id, row, spec, output))
                     tests = output.get("tests", {})
                     if evidence and isinstance(tests, dict) and isinstance(tests.get("cases"), list):
                         item["artifact"]["cases"] = [{key: case.get(key) for key in ("name", "passed", "status")} for case in tests["cases"][:32] if isinstance(case, dict)]

@@ -201,7 +201,7 @@
 
   function renderTasks() {
     const tasks = state.review?.tasks || state.snapshot?.tasks || [];
-    $("tasks-hint").textContent = `${tasks.length} 个任务`;
+    $("tasks-hint").textContent = state.review ? `${tasks.length} 个任务` : "任务证据摘要读取失败，模型来源状态未知；请刷新重试。";
     $("task-count").textContent = `${tasks.filter((task) => task.status === "done").length} / ${tasks.length}`;
     if (!tasks.length) {
       $("task-list").replaceChildren(node("p", "inline-empty", state.snapshot?.status === "draft" ? "草案尚未创建执行任务。保存并批准计划后，任务才会进入调度。" : "此运行暂无任务。"));
@@ -218,7 +218,13 @@
         const cases = Array.isArray(artifact.cases) ? artifact.cases : [];
         const summary = [artifact.kind, cases.length ? `冻结用例 ${cases.filter((item) => item.passed === true).length}/${cases.length}` : "", artifact.verification === "awaiting_independent_models" ? "等待独立模型复核" : artifact.verification].filter(Boolean).join(" · ");
         content.append(node("div", "task-detail", summary));
-        if (artifact.content_hash) content.append(node("div", "task-detail mono", `产物 ${artifact.content_hash}`));
+        if (artifact.content_hash) content.append(node("div", "task-detail mono", `${artifact.kind === "role-artifact" ? "任务输出摘要" : "产物"} ${artifact.content_hash}`));
+        if (artifact.kind === "role-artifact") {
+          const source = artifact.model_provenance;
+          const recorded = artifact.model_source_recorded === true && artifact.model_source_status === "recorded"
+            && validRoleSource(source) && source.source_epoch === task.epoch && source.plan_digest === state.plan?.digest;
+          content.append(roleSourceDisplay(recorded ? source : null, recorded ? "recorded" : artifact.model_source_status, true));
+        }
       }
       row.append(node("span", "task-number", String(index + 1).padStart(2, "0")), content, badge(task.status));
       return row;
@@ -277,15 +283,24 @@
     for (const attempt of attempts.slice(-50).reverse()) {
       const article = node("article", "intervention-item");
       const contextEvent = attempt.event_type === "execution.context_bound";
+      const roleEvent = attempt.event_type === "role.candidate_generated";
+      const roleSource = roleEvent && validRoleSource(attempt) && attempt.source_epoch === attempt.epoch
+        && attempt.source_event_hash === attempt.event_hash ? attempt : null;
       const contextValid = contextEvent && typeof attempt.context_digest === "string" && hashPattern.test(attempt.context_digest)
         && integer(attempt.context_bytes) && attempt.context_bytes <= 65536
         && integer(attempt.context_item_count) && attempt.context_item_count <= 8
         && attempt.untrusted_data === true && attempt.producer_verified === false && attempt.counts_as_success === false;
-      article.append(node("strong", "", contextEvent ? contextValid ? "本次尝试已绑定辅助上下文" : "辅助上下文绑定记录待核对" : attempt.event_type));
+      article.append(node("strong", "", roleEvent ? roleSource ? "模型生成候选来源已绑定执行记录" : "模型来源记录待核对"
+        : contextEvent ? contextValid ? "本次尝试已绑定辅助上下文" : "辅助上下文绑定记录待核对" : attempt.event_type));
       const detail = [attempt.task_id, attempt.epoch === undefined ? "" : `epoch ${attempt.epoch}`,
-        ...(contextEvent ? [] : [attempt.primitive, attempt.family, attempt.code, attempt.reason, attempt.stage])].filter(Boolean).join(" · ");
+        ...(contextEvent || roleEvent ? [] : [attempt.primitive, attempt.family, attempt.code, attempt.reason, attempt.stage])].filter(Boolean).join(" · ");
       article.append(node("p", "muted", detail));
-      if (contextEvent) {
+      if (roleEvent) {
+        article.append(roleSourceDisplay(roleSource, "unavailable"));
+        const currentTask = (review.tasks || []).find((task) => task.id === attempt.task_id);
+        if (currentTask && currentTask.epoch !== attempt.epoch) article.append(node("p", "muted", `历史模型来源记录 · 当前任务 epoch ${str(currentTask.epoch)}`));
+        article.append(node("p", "field-help", "来源记录仅关联本机网关的模型响应，不证明内容正确、供应商账单已核验或独立验收通过。"));
+      } else if (contextEvent) {
         if (contextValid) {
           article.append(node("p", "mono break-word", `辅助上下文摘要 ${attempt.context_digest}`),
             node("p", "muted", `${count(attempt.context_bytes)} UTF-8 字节 · ${count(attempt.context_item_count)} 个辅助条目 · 不可信数据 · 未验证`));
@@ -296,7 +311,7 @@
       } else if (attempt.from_epoch !== undefined || attempt.to_epoch !== undefined) {
         article.append(node("p", "muted", `尝试 ${str(attempt.from_epoch)} → ${str(attempt.to_epoch)}`));
       }
-      const hashes = contextEvent ? [["event_hash", "事件"], ["plan_digest", "计划摘要"]]
+      const hashes = contextEvent || roleEvent ? [["event_hash", "事件"], ["plan_digest", "计划摘要"]]
         : [["event_hash", "事件"], ["source_sha256", "源码摘要"], ["evaluation_digest", "测试摘要"]];
       for (const [key, label] of hashes) {
         if (typeof attempt[key] === "string") article.append(node("p", "mono break-word", `${label} ${attempt[key]}`));
@@ -328,6 +343,54 @@
   }
 
   const hashPattern = /^[0-9a-f]{64}$/;
+  function validRoleSource(source) {
+    if (!source || typeof source !== "object" || source.model_response_recorded !== true
+        || source.producer_verified !== false || source.counts_as_success !== false
+        || source.provider !== "deepseek" || source.model !== "deepseek-flash"
+        || typeof source.route !== "string" || !/^[a-z][a-z0-9_-]{0,47}$/.test(source.route)
+        || typeof source.artifact_id !== "string" || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(source.artifact_id)
+        || !integer(source.source_epoch) || source.source_epoch < 1) return false;
+    if (!["requirements", "design"].includes(source.kind)) return false;
+    const expected = {requirements: ["analyst", "loom.requirements/v1"], design: ["architect", "loom.design/v1"]}[source.kind];
+    if (!expected || source.role !== expected[0] || source.schema_version !== expected[1]) return false;
+    if (["call_id", "artifact_content_hash", "plan_digest", "source_event_hash"].some((key) => typeof source[key] !== "string" || !hashPattern.test(source[key]))) return false;
+    if (["prompt_tokens", "completion_tokens", "total_tokens"].some((key) => !integer(source[key]) || source[key] > 1048576)
+        || source.prompt_tokens + source.completion_tokens !== source.total_tokens
+        || !integer(source.usage_cost_upper_microusd) || source.usage_cost_upper_microusd > 1000000000000) return false;
+    return true;
+  }
+
+  function candidateRoleSource(item) {
+    const source = item?.model_provenance;
+    if (item?.origin !== "model-gateway-response" || item.model_source_recorded !== true || !source
+        || item.producer_verified !== false || item.counts_as_success !== false
+        || source.task_id !== item.source_task_id || source.epoch !== item.source_epoch
+        || source.content_hash !== item.content_hash || source.plan_digest !== item.plan_digest
+        || source.role_output?.kind !== item.kind || source.role_output?.schema_version !== item.schema_version) return null;
+    const summary = {artifact_id: item.artifact_id, call_id: source.call_id, artifact_content_hash: item.content_hash,
+      plan_digest: item.plan_digest, source_event_hash: item.source_event_hash, role: source.role, kind: item.kind,
+      schema_version: item.schema_version, source_epoch: item.source_epoch, provider: source.provider,
+      model: source.model, route: source.route, prompt_tokens: source.usage?.prompt_tokens,
+      completion_tokens: source.usage?.completion_tokens, total_tokens: source.usage?.total_tokens,
+      usage_cost_upper_microusd: source.usage_cost_upper_microusd, model_response_recorded: true,
+      producer_verified: false, counts_as_success: false};
+    return validRoleSource(summary) ? summary : null;
+  }
+
+  function roleSourceDisplay(source, status, compact = false) {
+    const block = node("div", "artifact-metadata");
+    const labels = {version_mismatch: "版本不匹配，未确认当前来源", worker_submission: "未取得匹配执行记录（Worker 提交）", unavailable: "证据暂不可用"};
+    block.append(node("p", "task-detail", `模型来源：${source ? "已绑定执行记录" : labels[status] || "证据摘要待核对"}`),
+      node("p", "task-detail", "内容：未独立验证"));
+    if (source) {
+      block.append(node("p", "task-detail", `${source.role} · ${source.provider} / ${source.model} · 路由 ${source.route}`));
+      if (!compact) {
+        for (const [key, label] of [["artifact_id", "候选"], ["artifact_content_hash", "候选正文摘要"], ["call_id", "模型调用"], ["source_event_hash", "来源事件"]]) block.append(node("p", "mono break-word", `${label} ${source[key]}`));
+        block.append(node("p", "task-detail", `已知用量 ${count(source.prompt_tokens)} 输入 + ${count(source.completion_tokens)} 输出 = ${count(source.total_tokens)} tokens；费用上界 ${amount(source.usage_cost_upper_microusd)}，非供应商账单。`));
+      }
+    }
+    return block;
+  }
   const artifactFields = ["artifact_id", "revision", "kind", "schema_version", "source_task_id", "source_node", "source_epoch", "plan_digest", "content_hash", "source_event_hash"];
   const runChecked = () => Boolean(state.runId && state.snapshot && !state.loading
     && state.loadedSelection === state.selection && (state.snapshot.id || state.snapshot.run_id) === state.runId);
@@ -352,7 +415,7 @@
         || state.snapshot.status !== "open" || state.artifactStatus !== "ready" || state.detailStatus !== "ready"
         || state.contextStatus === "loading" || state.contextBindingChanged || state.artifactsSelection !== state.selection
         || !sameArtifact(item, listed) || item.stale !== false || listed.stale !== false
-        || item.origin !== "authenticated-worker-submission" || item.producer_verified !== false || item.counts_as_success !== false
+        || !(item.origin === "authenticated-worker-submission" || candidateRoleSource(item)) || item.producer_verified !== false || item.counts_as_success !== false
         || !task || !integer(task.epoch) || ["stale", "cancelled", "done", "indeterminate"].includes(task.status)
         || !Number.isSafeInteger(item.revision) || item.revision < 1 || !Number.isSafeInteger(item.source_epoch) || item.source_epoch < 1
         || !hashPattern.test(item.content_hash) || !hashPattern.test(item.plan_digest) || item.plan_digest !== state.plan?.digest
@@ -391,6 +454,7 @@
     for (const [key, label] of [["artifact_id", "候选"], ["source_task_id", "源任务"], ["content_hash", "内容摘要"], ["plan_digest", "计划摘要"], ["source_event_hash", "来源事件"]]) {
       block.append(node("p", "mono break-word", `${label} ${str(item[key])}`));
     }
+    block.append(roleSourceDisplay(candidateRoleSource(item), item.origin === "authenticated-worker-submission" ? "worker_submission" : "unavailable"));
     return block;
   }
 
@@ -405,7 +469,8 @@
     if (status === "ready") for (const item of state.artifacts.slice(-100).reverse()) {
       const article = node("article", "artifact-card");
       article.append(node("strong", "", `${str(item.kind)} · 修订 ${str(item.revision)}`), node("span", "badge attention-state", item.stale ? "已失效 · 未验证" : "候选 · 未验证"));
-      article.append(node("p", "muted", `已认证 Worker 提交 · 节点 ${str(item.source_node)} · 源 epoch ${str(item.source_epoch)}`));
+      article.append(node("p", "muted", `${item.origin === "model-gateway-response" ? "模型网关响应候选" : item.origin === "authenticated-worker-submission" ? "已认证 Worker 提交" : "来源待核对"} · 节点 ${str(item.source_node)} · 源 epoch ${str(item.source_epoch)}`));
+      article.append(roleSourceDisplay(candidateRoleSource(item), item.origin === "authenticated-worker-submission" ? "worker_submission" : "unavailable", true));
       article.append(node("p", "mono break-word", `内容摘要 ${str(item.content_hash)}`));
       const button = node("button", "artifact-select", item.artifact_id === state.artifactId ? "已选候选 · 重新读取" : "查看并选择候选");
       button.type = "button"; button.dataset.artifactId = item.artifact_id;

@@ -1,9 +1,9 @@
 {
-  "version": "0.7.0",
-  "stage": "execution-context-alpha",
-  "date": "2026-10-23",
-  "generated_at": "2026-10-23T21:17:35.867048+08:00",
-  "source_file_count_excluding_manifest": 156,
+  "version": "0.8.0",
+  "stage": "role-candidates-alpha",
+  "date": "2026-10-24",
+  "generated_at": "2026-10-24T10:00:31.735888+08:00",
+  "source_file_count_excluding_manifest": 165,
   "files": [
     {
       "path": ".gitignore",
@@ -17,8 +17,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "ddf46c2272fbe2fad26c6251f97133673760bebc0d9af383560318addc6eb833",
-      "bytes": 18075
+      "sha256": "618cffd16b880267294ec6e1bcf9d074bbb283b53ca1bc14be222ffdf388fc4a",
+      "bytes": 18345
     },
     {
       "path": "configs/models.example.json",
@@ -46,6 +46,11 @@
       "bytes": 1334
     },
     {
+      "path": "configs/role-task.example.json",
+      "sha256": "ec497abbaa6b4c890fca14ccfea2b4c9264e68b312280a488518b5016ccd23d9",
+      "bytes": 358
+    },
+    {
       "path": "configs/workflow.artifacts.example.json",
       "sha256": "2f1108a0010f1ebbac53a80bc23e34ed406001c81d9cc54b65385df314c560b8",
       "bytes": 2985
@@ -57,18 +62,18 @@
     },
     {
       "path": "docs/api/README.md",
-      "sha256": "525602e76ba8025a5695c230ab2c4afd66083be8ad6740669e8de9bc2a82ab6e",
-      "bytes": 10304
+      "sha256": "66a02e3cc359cea60b30a144e1bda1cbd6e4d2bb6dedfd001fe7f7e952593ada",
+      "bytes": 11107
     },
     {
       "path": "docs/api/openapi.json",
-      "sha256": "9cd37b21e6925fae8c72bfb30639824b10e5594383c902c126ae13a64c50eda2",
-      "bytes": 52962
+      "sha256": "8f0b18b9f0a0b45bf3efd1ab9102e598d7a183b3821527f4d67e36f435468d7d",
+      "bytes": 53815
     },
     {
       "path": "docs/artifacts.md",
-      "sha256": "ef556e5d35c5d1811dfae81ff022a9543d026eed9e1f28a1fde94a08c722a091",
-      "bytes": 12728
+      "sha256": "3c06335e00d598133f0213cf699b9feed3760b22253b70a40153abd6ef0a6f20",
+      "bytes": 17490
     },
     {
       "path": "docs/bounded-repair.md",
@@ -82,8 +87,8 @@
     },
     {
       "path": "docs/console.md",
-      "sha256": "cb49dedef3e11fd44a1b162ad01222f50453116b789047cd74900a5482730989",
-      "bytes": 7573
+      "sha256": "da4fa39ccade88c5eada105bba9b94e5b2e9d506cc78ecf7b251bb7c3f3a58dd",
+      "bytes": 8834
     },
     {
       "path": "docs/coverage-s2.json",
@@ -102,8 +107,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "sha256": "e7a8ce269fadbaed782b648f0cfbd66672beeb47f5ae66c4d74b473081dde14a",
-      "bytes": 25554
+      "sha256": "f6953fad9ba4b444b83533510f9abcfd5bb1bbbe3aa94050e287182f60060db1",
+      "bytes": 27594
     },
     {
       "path": "docs/local-auth.md",
@@ -112,8 +117,8 @@
     },
     {
       "path": "docs/local-execution.md",
-      "sha256": "cdbac5743a82e7234a67a78c52895f85ef0ecabce62aa0432daedeaa25568b05",
-      "bytes": 12945
+      "sha256": "350816eda591d33685eb30eae504f9c1db184e01ede95ca9c487553200ec04eb",
+      "bytes": 13768
     },
     {
       "path": "docs/local-sandbox.md",
@@ -142,8 +147,8 @@
     },
     {
       "path": "docs/progress-cycle.md",
-      "sha256": "784749ae1d4ec8abb669575fd0996999aa67a7766e13ecd8399dc7f7e0cb1b79",
-      "bytes": 4447
+      "sha256": "3bb7f41bd1b9a9a792f6d55738469961428a88a9e7f81eb5ebe87bf279587fee",
+      "bytes": 6238
     },
     {
       "path": "docs/review-resolution.md",
@@ -181,9 +186,14 @@
       "bytes": 3091
     },
     {
-      "path": "docs/validation.md",
+      "path": "docs/validation-0.7.md",
       "sha256": "773e523d8df47a29bc6f4cf2e5f68ab44f228a06623cddc9483b575f86e51cf0",
       "bytes": 3893
+    },
+    {
+      "path": "docs/validation.md",
+      "sha256": "6d1929f3fb515eb16c0fbc0f095079d6f5ab97c76c3fe01739a6227e212116be",
+      "bytes": 3550
     },
     {
       "path": "docs/workflow.md",
@@ -207,7 +217,7 @@
     },
     {
       "path": "pyproject.toml",
-      "sha256": "bc8d30b896c1aea7fd8b178c2dccc12c5acad15666672c392c9b83a17e921c4e",
+      "sha256": "00d2c1eaeaba2c5d5e5baca3ce5116e569926323e01c26253d58c27803293684",
       "bytes": 771
     },
     {
@@ -262,8 +272,8 @@
     },
     {
       "path": "scripts/check_s2.py",
-      "sha256": "4224d3e2be56307d11367f44584952e28cc309314b187245bed10b8934a4fefa",
-      "bytes": 5625
+      "sha256": "dc8209c4768d319fd6113e7eccb7b896aa626c4c95594bd1fc78722f65e77ece",
+      "bytes": 5623
     },
     {
       "path": "scripts/check_sandbox.py",
@@ -291,8 +301,13 @@
       "bytes": 9212
     },
     {
+      "path": "scripts/run_role_tasks.py",
+      "sha256": "981251ff41c5a389f9e72f185c28f30c28642db617d0679b6bf99b1c311c894c",
+      "bytes": 16935
+    },
+    {
       "path": "src/loom/__init__.py",
-      "sha256": "ca1e3896325c4131b631768006af83080db5b323c34f3864984b85bcba13d507",
+      "sha256": "8c5d5f82d051199e116454a3e692b784c7b3e360d3695446394b163fdbf59dd5",
       "bytes": 73
     },
     {
@@ -302,23 +317,23 @@
     },
     {
       "path": "src/loom/api.py",
-      "sha256": "b44a7531e394060e62b00f2e2eec75b098540f09e71f05759d9d53ddd6163fb2",
-      "bytes": 18681
+      "sha256": "3d9003a1578f5f32e282f7fc44137aa034f0afb951a78ee3e75eacb82003ab56",
+      "bytes": 19062
     },
     {
       "path": "src/loom/artifact_schemas.py",
-      "sha256": "242f2dec8e7d82b200534f9ee2f667644d2364aa7c81f3d56c46a141bee7ede6",
-      "bytes": 4603
+      "sha256": "5f5505a71a4eafd6661a2df27e9d2a9c2c117c5834e2d1d786a033915e528ec8",
+      "bytes": 9162
     },
     {
       "path": "src/loom/artifacts.py",
-      "sha256": "0e739ba70259a74fd3abac51276c6c829aa7b3894f6a2a6157fb266c464e84e0",
-      "bytes": 31494
+      "sha256": "64a97ab80de7466a27b4870891761c7cee1871a7107db5f67a12cc29c0c727de",
+      "bytes": 43938
     },
     {
       "path": "src/loom/attempts.py",
-      "sha256": "f7ccb6eead3970b3f414ed718f9fabc4bb1da289f80106fe2a29e6053c965eff",
-      "bytes": 2250
+      "sha256": "27cf3a5cbd66a0b877282e172e4c42814e624f6ae54ce2561919e6bba550c4d3",
+      "bytes": 3499
     },
     {
       "path": "src/loom/auth.py",
@@ -342,8 +357,8 @@
     },
     {
       "path": "src/loom/execution.py",
-      "sha256": "3c9a4d2041b2f36b45447939eb85134ff61302f625ad7027814815f72a092cc9",
-      "bytes": 36374
+      "sha256": "d04bcf46d892af2a859e45077e51c64940d8530be8bca1567821a74c3467efe0",
+      "bytes": 36756
     },
     {
       "path": "src/loom/failures.py",
@@ -381,6 +396,16 @@
       "bytes": 13109
     },
     {
+      "path": "src/loom/role_execution.py",
+      "sha256": "f28dbac6655a0b6257c1b63d0245d2e6898e4fc38e04e8b762d4b774644ca96a",
+      "bytes": 7416
+    },
+    {
+      "path": "src/loom/role_summary.py",
+      "sha256": "b4f79a57ab1275101f28f21d7831217b8deb780b15b8be55a82cd7abc68d39e2",
+      "bytes": 4407
+    },
+    {
       "path": "src/loom/sandbox.py",
       "sha256": "6e9d0a627da20324f11ab6c63c0aafd642c5aac5efaa2300b0b696169a4a0a4d",
       "bytes": 22272
@@ -397,18 +422,18 @@
     },
     {
       "path": "src/loom/web/console.js",
-      "sha256": "8e5633e3b4db36f9e62351f9d46cb5727e5b8bcb7d8bac3a9de4c94ecee005de",
-      "bytes": 51798
+      "sha256": "4ec688e14abd57384d36671a877693b91ec25904066c2462be07b5bda7b9a182",
+      "bytes": 57855
     },
     {
       "path": "src/loom/web/index.html",
-      "sha256": "2d7d3d1f3ae1b8741db0b801285e900ec280bf90a67456bcfb2faf1eff55a5b6",
-      "bytes": 12784
+      "sha256": "8eb4cc627731f3dc427486e3ee86f2551c676e6a9a48f9c68f4009bb72ad647d",
+      "bytes": 12841
     },
     {
       "path": "src/loom/workflow.py",
-      "sha256": "73db71364737e2e8b8cbd79f25974550afb18eaa0c2bbe1fc467d8f9ab06f7da",
-      "bytes": 22945
+      "sha256": "f479b93eb578190d9d21e86f019f921ddacf3984df40dcbc49a9289da7839671",
+      "bytes": 23709
     },
     {
       "path": "tests/__init__.py",
@@ -564,6 +589,26 @@
       "path": "tests/test_repair.py",
       "sha256": "ab2603c03246c7caf112ca8a8bb2107021e96a6962b6d8eba5790682cc0502f6",
       "bytes": 29288
+    },
+    {
+      "path": "tests/test_role_execution.py",
+      "sha256": "2fd21d7d70898f001f6511da464139e5843c429dd3a65884115818094d774c5b",
+      "bytes": 26079
+    },
+    {
+      "path": "tests/test_role_output.py",
+      "sha256": "1e50876c7a37af350c3b211ead876ee2d19cd437a228c60571e352017ed8a5c0",
+      "bytes": 22547
+    },
+    {
+      "path": "tests/test_role_source_api.py",
+      "sha256": "82f4137f15b52ddcbee53b53f893a995b193b3401b5cc94260a027b8c9f8eac5",
+      "bytes": 8541
+    },
+    {
+      "path": "tests/test_role_task_script.py",
+      "sha256": "5726806926dc5bf99860e6d846584f06a4b8a3f996b5942930b6d05c99363b77",
+      "bytes": 14850
     },
     {
       "path": "tests/test_sandbox.py",
@@ -787,13 +832,19 @@
     }
   ],
   "validation": {
-    "main_tests_passed": 530,
-    "subtests_passed": 326,
+    "main_tests_passed": 602,
+    "subtests_passed": 356,
     "skipped": 0,
-    "api_smoke_checks": 116,
-    "browser_assertions_passed": 29,
+    "api_smoke_checks": 140,
+    "http_report_groups": 7,
+    "role_source_http_checks": 24,
+    "openapi_paths": 24,
+    "browser_assertions_passed": 41,
     "real_docker_main_tests_included": 17,
-    "new_paid_model_requests": 1,
+    "new_paid_model_requests": 2,
+    "new_model_dispatch_admissions": 2,
+    "new_model_responses_received": 2,
+    "role_generation_docker_cases": 0,
     "billed_currency_verified": false,
     "auxiliary_context_execution_connected": true
   },
@@ -808,15 +859,23 @@
   "production_ready": false,
   "real_models_used": true,
   "full_workflow_completed": false,
+  "raw_crlf_exception_paths": [
+    "DELIVERY_MANIFEST.json",
+    "docs/api/openapi.json",
+    "docs/third-party-notices.md",
+    "third_party/licenses/manifest.json",
+    "third_party/licenses/psycopg-binary-3.3.6/LICENSE.txt",
+    "third_party/licenses/pydantic-core-2.50.1/LICENSE"
+  ],
   "notes": [
-    "Typed candidates originate from authenticated Workers; schema and auxiliary read approval do not verify content or model provenance.",
-    "Preview GET remains read-only. Python execution may consume exact grants under current claims; admission and guarded submission revalidate input versions. Gate-V and hard dependencies remain unchanged.",
-    "One separately recorded real Flash response with five Docker cases; full-suite model HTTP uses mocks. The independent second model remains pending configuration.",
-    "Named local identities are route permissions, not production OIDC or proof of independent people.",
-    "API/Store use SQLite; PostgreSQL integration tests validate separate DDL/roles/constraints.",
-    "Real Docker regression tests use mock model HTTP. Separate real input-execution probe is recorded outside the source tree. The local sandbox image is not published or embedded.",
-    "Desktop 4.70.0 runtime socket workaround is unchanged; production identity, full workflow, recovery and scale validation remain incomplete.",
-    "Manifest excludes itself; archive hash is delivered separately. Browser-generated temporary logs are excluded.",
-    "No credentials, databases, private keys, venvs, runtime images or native server binaries are included."
+    "New analyst requirements and architect design candidates originate from known gateway responses, with exact call, settled usage, contract, content and source-event bindings. Model origin does not verify content.",
+    "Historical authenticated-Worker candidates keep their original origin and event shape; manual publication and schema validity do not confer model provenance.",
+    "Both real role tasks remain submitted, producer_verified=false, verified=false and counts_as_success=false. Hard dependencies and Gate-V remain unchanged; the independent second model is pending configuration.",
+    "Two separately recorded real Flash responses; role generation executes no code, file, network tool or Docker. Full-suite model HTTP uses mocks. Seventeen existing Docker regression tests remain in the full infrastructure stage.",
+    "The design request consumes explicitly approved typed requirements under its current claim/epoch. Preview reads and grants alone do not dispatch models or verify content. No automatic retry or grant inheritance.",
+    "Named local identities are route permissions, not production OIDC or proof of independent people. API/Store use SQLite; PostgreSQL integration tests validate separate DDL, roles and constraints.",
+    "Actual private UTF-8 and UTF-16LE values are scanned in public files and decompressed archive contents, including historical archives. Scan output never contains the values.",
+    "Raw CRLF exception paths preserve generated/upstream bytes; other source is LF. Manifest excludes itself; archive hash is delivered separately. Browser logs, credentials, databases, venvs, runtime images and native server binaries are excluded.",
+    "Desktop 4.70.0 runtime socket workaround is unchanged; full workflow, production identity, recovery and scale validation remain incomplete. Nothing is published publicly."
   ]
 }

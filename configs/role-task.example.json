@@ -1,0 +1,4 @@
+{
+  "title": "Local CSV audit planning",
+  "description": "Plan a read-only audit of user-provided CSV text with record_id and amount columns. Report errors with original row numbers, sum valid decimal amounts, and require explicit human approval before any export. Produce requirements and a design only; do not read files, execute code, or export data."
+}

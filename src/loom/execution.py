@@ -188,6 +188,14 @@ class LocalTaskRunner:
         return None
 
     async def run_python(self, claim: Claim, tests: Sequence[FrozenTest], *, max_output_tokens: int = 512) -> dict:
+        return await self.run_owned(claim, lambda: self._run_python(claim, tests, max_output_tokens=max_output_tokens))
+
+    async def run_owned(self, claim: Claim, operation) -> dict:
+        """Fence one trusted operation with the existing lease/control rules.
+
+        This only owns lifecycle and accounting uncertainty; it grants no model,
+        workspace, test, file or network-tool authority to the operation's data.
+        """
         # The default HTTP claim lasts 30s whereas a provider request alone may
         # take 60s. Renew before work and fence the whole model/container chain.
         self.store.renew_claim(claim, lease_seconds=90)
@@ -198,7 +206,7 @@ class LocalTaskRunner:
                 self.store.renew_claim(claim, lease_seconds=90)
 
         lease_task = asyncio.create_task(heartbeat())
-        work_task = asyncio.create_task(self._run_python(claim, tests, max_output_tokens=max_output_tokens))
+        work_task = asyncio.create_task(operation())
         try:
             done, _ = await asyncio.wait((lease_task, work_task), return_when=asyncio.FIRST_COMPLETED)
             if lease_task in done:

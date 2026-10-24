@@ -1,6 +1,6 @@
 # 本地 API 契约
 
-此目录的 `openapi.json` 由当前 FastAPI 应用生成，描述实际可运行的 HTTP 子集。当前版本 **0.7.0，execution-context-alpha**；本机 [控制台](http://127.0.0.1:8796/console) 与 [接口文档](http://127.0.0.1:8796/docs) 同源提供。设计方案附录中的其余接口仍属后续目标，未因列入规范而自动实现。
+此目录的 `openapi.json` 由当前 FastAPI 应用生成，描述实际可运行的 HTTP 子集。当前版本 **0.8.0，role-candidates-alpha**；本机 [控制台](http://127.0.0.1:8796/console) 与 [接口文档](http://127.0.0.1:8796/docs) 同源提供。设计方案附录中的其余接口仍属后续目标，未因列入规范而自动实现。
 
 `/health` 返回 version，stage 仍为 `S1-local`，表示 HTTP 内核继续使用单实例 SQLite；`external_writes_enabled=false` 表示此 API 没有执行真实外部写的路由。本机脚本的真实模型调用另见 [本机执行说明](../local-execution.md)。`/integrity` 的 `external_checkpoint: "not_configured"` 表示该 HTTP 实例尚未配置独立检查点；离线 Ed25519 组件不在普通查询时自动签名，使用方法见 [检查点说明](../checkpoints.md)。
 
@@ -71,3 +71,7 @@ CLI 通过 `loom serve --identities-file <源码和公开outputs之外的私有J
 0.6历史为469主/302子、100HTTP/46浏览器；本轮0.7为530主测试、326子测试，零失败/跳过；另116项实际HTTP、29项新增真实浏览器断言通过。完整门槛与单独真实模型证据见[验证记录](../validation.md)，候选/绑定摘要仍不等于独立验收。
 
 `attempts`/`review.attempts`可包含可信`execution.context_bound`摘要：task/epoch/plan、context_digest、context_bytes、context_item_count及固定未验证标记；不返回refs、body、worker身份或隐藏测试。该事件仅表示本机准入，不能证明供应商收到。
+
+## 0.8 角色来源
+
+计划可显式冻结`role_output`：analyst→requirements或architect→design，不能混代码验收/repair。HTTP路由数仍24，没有新增付费执行或密钥上传入口。`review`返回冻结role_output；仅在核心来源及当前task/epoch/plan/body hash/schema/call完全匹配后返回`artifact.model_source_recorded=true`和白名单标量`model_provenance`。Worker自报/旧epoch/替代引用均不取得该标签。`attempts`新增`role.candidate_generated`，只展示与已核验候选真实source_event_hash匹配的安全摘要，不复制body/提示或provider request_id。来源记录不授予trusted_evaluation或依赖完成权限。候选列表/详情的model_provenance为核心验证过的完整白名单，字段形状与review标量摘要不同。

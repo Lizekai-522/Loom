@@ -1,8 +1,8 @@
 # Loom
 
-基于 Loom v2.1 修订方案的 Agent 编排项目，当前版本 **0.7.0，execution-context-alpha**。已将精确批准的辅助输入接入Python执行器：发起前原子绑定上下文、预算与意图，模型返回及提交前复核版本，控制台展示安全摘要。API/任务内核仍单实例SQLite，完整七角色与全部修复原语继续推进。
+基于 Loom v2.1 修订方案的 Agent 编排项目，当前版本 **0.8.0，role-candidates-alpha**。显式批准的analyst/architect可通过Flash生成结构化需求/设计，原子绑定网关来源并提交；控制台分别展示来源与内容验证状态。API/任务内核仍单实例SQLite，完整七角色与全部修复原语继续推进。
 
-完整回归 **530主测试、326子测试，零失败/跳过；另116项实际HTTP、29项新增真实浏览器断言通过**，详见[验证记录](docs/validation.md)。本轮另完成一次真实Flash+Docker：5用例、452tokens、251µUSD费用上界，非供应商账单；完整套件的模型仍Mock。旧0.6为469主/302子、100HTTP/46浏览器，作为历史保留。
+完整回归 **602主测试、356子测试，零失败/跳过；另140项实际HTTP和41项新增浏览器断言通过**，详见[验证记录](docs/validation.md)。本轮两次真实Flash共3005tokens/2120µUSD费用上界，未核对账单；两角色仍submitted，双签待配置。0.7历史530主/326子、116HTTP/29浏览器保留。
 
 0.4.0新增Unicode任务通过 **5个冻结用例**，提供方返回 **452 tokens**，保守费用记账上界 **262µUSD**，并与工作台证据对账。0.3.0历史探针为4个用例、417 tokens、247µUSD。费用均为上界记账，非供应商账单。用户确认本阶段先使用 Flash，双签保持待配置；任务仍为 `submitted`，人工核对或操作控制都不代替独立验证，也不将完整 run 标为成功。[真实执行方式与边界](docs/local-execution.md)
 
@@ -75,7 +75,7 @@ API 只绑定回环地址。`/health`、静态控制台和接口文档可无认�
 
 通过 `POST /v1/goals` 创建，再用 `PUT /v1/goals/{run_id}/plan` 保存定义及 expected_revision，最后以当前 revision/digest 批准。创建 Goal、保存/批准计划、控制/核对及旧 run/task/提交命令需要 `Idempotency-Key`。注册判据、计划审批与权限见 [API 契约](docs/api/README.md)。已实现本机动作角色边界，**尚未完成生产 OIDC、人员身份认证、双人审批或独立验证服务身份**；同一 Windows 用户管理多个 token 不证明多个独立人员。
 
-本轮实际服务检查116项：原9+Goal12+控制31+旧真实任务17+候选31+新绑定对账16；另29项新增浏览器断言。旧fixture检查沿用原私有会话，不输出或重新生成token：
+本轮实际服务检查140项，另41项新增浏览器断言。两次新角色调用与套件Mock分别登记；旧fixture检查沿用原私有会话，不输出或重新生成token：
 
 ```powershell
 $firstRoundSession = (Resolve-Path '../../work/loom-first-round-session.json').Path
@@ -158,3 +158,5 @@ $image = (Get-Content '../../work/loom-sandbox-image.id' -Raw).Trim()
 本项目新增代码未在本次工作中指定开源许可证；第三方组件继续按各自许可证使用。
 
 0.7新增入口：[run_context_task.py](scripts/run_context_task.py) 默认仅预览；显式`--approve`才创建本机Goal、通过具名HTTP身份导入/批准输入并调用Flash。详见[输入与执行合同](docs/artifacts.md)及[本机执行](docs/local-execution.md)。
+
+0.8新增入口：[run_role_tasks.py](scripts/run_role_tasks.py)，默认仅预览；显式`--approve`才经具名HTTP身份建立有界分析/设计任务。模型来源已绑定不等于内容通过独立验证；旧Worker候选不获模型来源标签。参见[角色合同](docs/artifacts.md)和[本机执行](docs/local-execution.md)。

@@ -36,6 +36,120 @@ class ArtifactInput(ArtifactModel):
         return self
 
 
+class RoleOutput(ArtifactModel):
+    kind: Literal["requirements", "design"]
+    schema_version: str = Field(min_length=1, max_length=64)
+
+    @model_validator(mode="after")
+    def known_schema(self):
+        if self.schema_version != ARTIFACT_SCHEMAS[self.kind]:
+            raise ValueError("role output kind and schema version differ")
+        return self
+
+
+class RoleGenerationRequest(ArtifactModel):
+    route: Name
+    provider: Literal["deepseek"]
+    model: Literal["deepseek-flash"]
+    prompt_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    max_output_tokens: int = Field(ge=1, le=8192)
+    plan_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    role_output: RoleOutput
+    response_contract: Literal["role-artifact/v1"]
+    context_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$",
+                                       exclude_if=lambda value: value is None)
+
+
+class RoleModelUsage(ArtifactModel):
+    prompt_tokens: int = Field(ge=0, le=1048576)
+    completion_tokens: int = Field(ge=0, le=1048576)
+    total_tokens: int = Field(ge=0, le=1048576)
+    prompt_cache_hit_tokens: int | None = Field(default=None, ge=0, le=1048576)
+    prompt_cache_miss_tokens: int | None = Field(default=None, ge=0, le=1048576)
+    reasoning_tokens: int | None = Field(default=None, ge=0, le=1048576)
+
+    @model_validator(mode="after")
+    def consistent_usage(self):
+        if self.prompt_tokens + self.completion_tokens != self.total_tokens:
+            raise ValueError("model usage total differs")
+        hit, miss = self.prompt_cache_hit_tokens, self.prompt_cache_miss_tokens
+        if (hit is None) != (miss is None) or (hit is not None and hit + miss != self.prompt_tokens):
+            raise ValueError("model cache usage differs")
+        if self.reasoning_tokens is not None and self.reasoning_tokens > self.completion_tokens:
+            raise ValueError("model reasoning usage exceeds output")
+        return self
+
+
+class RoleModelResult(ArtifactModel):
+    content: str = Field(min_length=1, max_length=1048576)
+    model_id: Literal["deepseek-flash"]
+    provider: Literal["deepseek"]
+    route_alias: Name
+    usage: RoleModelUsage
+    request_id: str = Field(min_length=1, max_length=200, pattern=r"^[A-Za-z0-9_.:/-]+$")
+    finish_reason: Literal["stop", "length"]
+    response_model: Literal["deepseek-flash"]
+
+
+class ModelProvenance(ArtifactModel):
+    schema_version: Literal["loom.model-provenance/v1"]
+    call_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    reservation_id: str = Field(min_length=1, max_length=200)
+    task_id: str = Field(min_length=1, max_length=200)
+    epoch: int = Field(ge=1)
+    plan_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    role: Literal["analyst", "architect"]
+    role_output: RoleOutput
+    content_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    route: Name
+    provider: Literal["deepseek"]
+    model: Literal["deepseek-flash"]
+    usage: RoleModelUsage
+    usage_cost_upper_microusd: int = Field(ge=0)
+    request_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    prompt_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    max_output_tokens: int = Field(ge=1, le=8192)
+    response_contract: Literal["role-artifact/v1"]
+    model_result_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    tool_intent_event_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    tool_done_event_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    context_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$",
+                                       exclude_if=lambda value: value is None)
+
+
+class RoleOutputError(InvalidInput):
+    code = "ROLE_OUTPUT_INVALID"
+
+    def __init__(self):
+        super().__init__(self.code)
+
+
+def decode_role_output(kind, content):
+    """Decode one bounded model artifact, never permit fenced/duplicate JSON."""
+    import json
+
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise ValueError
+            result[key] = value
+        return result
+
+    def reject(_):
+        raise ValueError
+
+    try:
+        if type(kind) is not str or kind not in {"requirements", "design"} or type(content) is not str:
+            raise ValueError
+        if len(content.encode("utf-8")) > MAX_BODY_BYTES:
+            raise ValueError
+        body = json.loads(content, object_pairs_hook=pairs, parse_constant=reject)
+        return validate_body(kind, body)
+    except (InvalidInput, TypeError, ValueError, RecursionError, UnicodeError, OverflowError):
+        raise RoleOutputError() from None
+
+
 class RequirementItem(ArtifactModel):
     id: Name
     text: Text

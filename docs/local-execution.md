@@ -101,3 +101,9 @@ sha256:19d840be00b00dd952e065969de532fd28670b8c9e99c7c597408d195f67ac7e
 本轮真实run`849020d2-47cb-4f07-a506-15ebf3884c2a`，5用例通过，452tokens、251µUSD上界，剩余预留0，非账单。实际输入绑定摘要`07e3266fd893bcdb4f01839f3fddb2c26026a9012f00d98f5550b4c06a7af0f8`；只发typed user数据，权限和隐藏用例不送模型。task只submitted/verified=false，独立review未领取。
 
 快照/预算/intent/绑定审计同事务，返回后先结已知usage再检查版本；沙箱及提交再次复核。失效转人工，旧grant不跟新revision或Rebind epoch。不能把本机准入称远端收据；网络期间不持DB锁。没有自动补attempt或等待状态，最后epoch停止可能需新Goal。
+
+## 0.8 受限分析与设计
+
+`scripts/run_role_tasks.py`默认仅预览，不开DB/私有配置、不联网。显式`--approve`后，已有DB及容量检查在HTTP写前；draft创建后立即同库核验，再保存/批准合同。每角色最多一次Flash，共最多两次、1024输出tokens/次，无自动重试、代码执行或文件导出。spec/design之间采用明确批准的辅助数据，没有新增硬依赖；独立review仍依赖两者验证完成。
+
+本轮run`1d3a9c8c-df0e-43f3-93d6-b386658e5584`真实响应两次，3005tokens/2120µUSD费用上界，预留0，未核对账单；requirements/design均只submitted，内容未独立验证。命令参数及浏览器首轮检查见公开第八轮测试指南。旧Python/Docker与已批准输入路径保留。来源已记录不表示Gate-V通过。

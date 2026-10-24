@@ -1,8 +1,8 @@
 # 结构化候选、辅助输入批准与预览
 
-本模块提供需求、设计和公开开发检查的候选注册、历史查询、operator 批准及只读预览。来源固定标记为 `authenticated-worker-submission`，表示由经过认证的具名 Worker 提交；`producer_verified=false`、`counts_as_success=false`。结构校验和人工辅助读取批准不证明候选内容正确，也不证明真实模型已执行。
+本模块提供需求、设计和公开开发检查的候选注册、历史查询、operator 批准及只读预览。普通 Worker 提交的来源为 `authenticated-worker-submission`；0.8 新增受限 analyst / architect 网关生成，来源为 `model-gateway-response`，由本机可信执行器核对响应与已结 usage 后保存。两类候选均保持 `producer_verified=false`、`counts_as_success=false`。结构校验、来源记录和辅助读取批准都不证明内容正确。
 
-0.6 交付候选注册、明确批准与只读预览；0.7 在此基础上增加获准 Python 执行器的辅助上下文消费。`GET context-preview` 本身仍返回 `execution_connected=false`，不调用模型、网络或工具，不取得 claim、不预留预算；该字段描述预览接口，不代表执行器没有消费能力。原 `depends` 硬依赖保持有效，上游只有 `submitted` 时仍不能放行下游；批准候选不会将任务改为 `done`，也不改变 Gate-V。
+0.6 交付候选注册、明确批准与只读预览；0.7 增加获准 Python 执行器的辅助上下文消费；0.8 将同一精确输入绑定用于只读分析/设计生成。`GET context-preview` 本身仍返回 `execution_connected=false`，不调用模型、网络或工具，不取得 claim、不预留预算；该字段描述预览接口，不代表执行器没有消费能力。原 `depends` 硬依赖保持有效，上游只有 `submitted` 时仍不能放行下游；批准候选不会将任务改为 `done`，也不改变 Gate-V。
 
 ## 三类候选
 
@@ -116,7 +116,7 @@ operator 不能作为 worker 发布候选；worker、viewer 不能批准辅助�
 
 ## 版本、来源与事务
 
-每次新保存创建不可变候选和递增 revision，不覆盖旧内容。候选绑定租户、run、来源任务/节点、来源 epoch、批准计划摘要、schema、内容哈希和 `artifact.candidate_saved` 源事件。事件同时记录完整 typed body 与认证 actor；读取时重新核对内容和事件绑定，不读取任意 task output 或模型自报可信标记。
+每次新保存创建不可变候选和递增 revision，不覆盖旧内容。候选绑定租户、run、来源任务/节点、来源 epoch、批准计划摘要、schema、内容哈希和源事件。Worker 保存使用 `artifact.candidate_saved`，actor 为认证 subject；0.8 网关生成使用 `role.candidate_generated`，actor 为 `local-executor`。事件记录完整 typed body 和对应来源绑定；读取时重新核对内容及事件，网关候选另复核调用/响应与已结 usage，不把任意 task output 或模型自报可信标记当作来源证明。
 
 辅助 grant 精确绑定候选 ID、revision、content hash、来源 epoch、目标 epoch、plan digest、源事件和 `artifact.input_approved` 批准事件。新 revision 不会自动代替旧版本；来源或目标换代、来源失效、候选/事件绑定不一致时拒绝使用。历史候选仍可查阅并标 `stale`，但不能据此重建有效预览。旧 grant 失效后需要 operator 显式重新批准当前版本。
 
@@ -163,3 +163,33 @@ python scripts/run_context_task.py --help
 默认预览只读取任务与 Pack，不联网、不读身份或模型密钥、不启动 Docker；即使必须提供后续执行参数，未加 `--approve` 也不会加载那些私有文件。显式 `--approve` 会创建本机测试 Goal，通过具名回环 HTTP 发布需求候选、提交、领取目标并批准精确输入，再使用同一 SQLite 执行一次模型生成及 Docker 测试，可能计费。脚本先检查已有 DB 与 Store 兼容，新建 draft 后立即对账同库；不匹配时不继续审批或 claim，失败报告保留已核验的安全 run ID。
 
 示例计划显式将 spec 作为辅助来源，implement 没有 spec 的 hard depends；这是预先批准的输入声明，不是运行时绕过依赖。来源仍为认证 Worker 提交的本地需求，未伪装真实 analyst 模型执行；independent_review 仍 hard depends implement。`model_dispatch_admissions` 只说明本地准入，收到已记录响应才标 `model_response_received`；未知状态不代表零费用。此入口不自动配置第二模型，不伪造签名或最终验收。
+
+## 0.8 只读角色生成与原子来源提交
+
+新增可选 `role_output`，在计划批准时冻结，不能仅根据角色名推断授权：
+
+```json
+{"role": "analyst", "role_output": {
+  "kind": "requirements", "schema_version": "loom.requirements/v1"
+}}
+```
+
+architect 对应 `design` / `loom.design/v1`。目前不允许 tester / `public-checks` 使用这一生成入口；该类型仍可由认证 Worker 保存为开发检查候选。来源角色须有 `artifacts.write`，`role_output` 不能与代码 `evaluation_digest` 或 `repair` 混用。省略或为 null 时单独省略新字段，旧计划摘要继续保留原有 `evaluation_digest:null`。
+
+`RoleTaskRunner.run_role(claim, max_output_tokens=...)` 只发起一次获准 Flash JSON 响应，不提供沙箱、解释器、文件、浏览器或网络工具接口，不运行候选代码。辅助输入沿用 0.7 的精确 snapshot、原子准入和返回/提交复核；有必需输入时，先取得目标当前 claim，再按当前 epoch 由 operator 批准。来源换版本、target epoch 换代或 Rebind 都不能继承旧批准。
+
+模型正文使用共享严格 decoder：拒绝重复 JSON 字段、非有限数、过深结构、额外字段、schema 不符、UTF-8/规范化 body 超过 32 KiB，以及截断响应；不会从代码块或任意文本中猜测 JSON。schema 通过只表示格式有效。
+
+可信提交入口为 `submit_role_output(claim, key, *, call_id, reservation_id, request, snapshot)`，不接受调用者另传正文。它在同一命令事务中核对当前冻结合同、完整上下文、完成的 effect、匹配的网关 intent/done 事件和 settled reservation，从记录的响应提取 typed body，然后原子保存候选、`role.candidate_generated`、标准 `submitted` 输出、outbox 与回执。回执绑定完整 request 和完整 snapshot 摘要；同键异参拒绝。候选/事件/回执写入失败全部回滚，但此前已保存的模型响应与已知费用不会回滚或被当作零费用。
+
+网关候选的 `model_provenance` 白名单记录 call/reservation、task/epoch/plan、role/output、内容及请求摘要、route/provider/model、usage、`usage_cost_upper_microusd`、网关事件哈希等；不公开原始请求、原始响应包装、提供方 request ID 或凭据。`model_source_recorded=true` 表示本机已核对来源记录，不是供应商收据、账单认证或独立正确性证明。旧候选 nullable 来源迁移保留原 body、源事件键和摘要；普通 HTTP 保存入口不能指定新的 origin/provenance。
+
+任务输出以 `kind=role-artifact` 绑定 artifact ID、schema/content hash、plan 和 model call；辅助消费仍需显式精确批准。API/review 的来源摘要从核心候选及其当前 task/epoch/plan 关联重新核对，不能只信 Worker 输出自报的 `model_source_recorded`。没有第二模型时保持 `submitted`，`verified=false`、`producer_verified=false`、`counts_as_success=false`，不释放原 hard depends，也不更改 Gate-V。
+
+### 本机角色入口与阶段证据
+
+[run_role_tasks.py](../scripts/run_role_tasks.py) 与 [示例任务](../configs/role-task.example.json) 提供受限分析→精确批准需求→设计的本机入口，参数可用 `python scripts/run_role_tasks.py --help` 查看。默认预览不联网、不加载身份/模型密钥、不创建数据库或启动 Docker；显式 `--approve` 授权本机具名 operator/worker 流程，最多两次模型请求、无自动重试，可能计费。使用这些凭据不代表两名真实人员独立审阅。
+
+示例中 spec 与 design 预先声明互无 hard depends，design 必需读取精确批准的 spec 辅助候选；independent_review 仍 hard depends 两个父任务。这是批准计划中的辅助数据交接，不能把 `submitted` 父任务伪装成已验证。脚本不执行代码，也不是七角色完整链。
+
+本阶段已记录核心 **117 主/90 子**、角色执行及旧执行组 **109 主/14 子**、相关 API **48 项（新增15项）**、CLI **11项**通过。这些门槛范围重叠，不能相加作为版本总数；完整回归、实际 HTTP/浏览器和真实模型探针另行登记于[验证记录](validation.md)。下一步优先受限 tester / `public-checks` 及分析设计到开发的真实辅助交接，仍需保持开发检查与冻结验收分离，不让候选改写规则或硬依赖。

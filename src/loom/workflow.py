@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-from .artifact_schemas import ARTIFACT_ROLES, ArtifactInput
+from .artifact_schemas import ARTIFACT_ROLES, ArtifactInput, RoleOutput
 from .policy import GateRules, TaskContract, gate_p
 from .store import BudgetExceeded, Conflict, InvalidInput, NotFound, Store, canonical, digest
 
@@ -95,6 +95,7 @@ class TaskNode(StrictModel):
     # Auxiliary data permission only: scheduling still uses depends exclusively.
     input_artifacts: list[ArtifactInput] | None = Field(default=None, max_length=8,
                                                       exclude_if=lambda value: value is None)
+    role_output: RoleOutput | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @field_validator("title", "instruction")
     @classmethod
@@ -115,6 +116,11 @@ class TaskNode(StrictModel):
                 raise ValueError("Rebind requires an executable role and frozen acceptance tests")
             if self.repair.max_repairs + 1 > self.limits.max_attempts:
                 raise ValueError("repair policy exceeds the approved attempt limit")
+        if self.role_output is not None:
+            if self.role != ARTIFACT_ROLES[self.role_output.kind]:
+                raise ValueError("explicit role output does not match the source role")
+            if self.evaluation_digest is not None or self.repair is not None:
+                raise ValueError("read-only role output does not authorize code evaluation or repair")
         return self
 
 
@@ -133,6 +139,10 @@ class WorkflowDefinition(StrictModel):
         if len(nodes) != len(self.nodes):
             raise ValueError("duplicate task node ID")
         for node in self.nodes:
+            if node.role_output is not None:
+                role = next(role for role in self.roles if role.id == node.role)
+                if "artifacts.write" not in role.tools:
+                    raise ValueError("explicit role output requires artifact write capability")
             selectors = node.input_artifacts or []
             keys = [(item.source_node, item.kind) for item in selectors]
             if len(keys) != len(set(keys)):
