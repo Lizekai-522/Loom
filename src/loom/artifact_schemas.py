@@ -37,7 +37,7 @@ class ArtifactInput(ArtifactModel):
 
 
 class RoleOutput(ArtifactModel):
-    kind: Literal["requirements", "design"]
+    kind: ArtifactKind
     schema_version: str = Field(min_length=1, max_length=64)
 
     @model_validator(mode="after")
@@ -98,7 +98,7 @@ class ModelProvenance(ArtifactModel):
     task_id: str = Field(min_length=1, max_length=200)
     epoch: int = Field(ge=1)
     plan_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
-    role: Literal["analyst", "architect"]
+    role: Literal["analyst", "architect", "tester"]
     role_output: RoleOutput
     content_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     route: Name
@@ -140,7 +140,7 @@ def decode_role_output(kind, content):
         raise ValueError
 
     try:
-        if type(kind) is not str or kind not in {"requirements", "design"} or type(content) is not str:
+        if type(kind) is not str or kind not in ARTIFACT_SCHEMAS or type(content) is not str:
             raise ValueError
         if len(content.encode("utf-8")) > MAX_BODY_BYTES:
             raise ValueError

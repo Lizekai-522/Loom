@@ -58,3 +58,8 @@
 ## 验证范围
 
 本次静态检查通过 `node --check`，HTML ID 与 JavaScript 引用逐项核对，无重复 ID、悬空 label、内联样式或事件处理属性。实际浏览器与 HTTP 流程由集成验证单独登记；上述静态检查不能代替权限、人工核对状态机或真实业务验收。
+
+
+## 0.9 tester展示
+
+public-checks来源仅对应tester/loom.public-checks/v1。任务、候选与尝试均明确“公开开发检查候选：用例未执行，未作为冻结验收”。API标量public_checks_executed固定false，不信Worker的passed/verified自报；正文仍按需纯文本展开。17项新浏览器检查通过，fixture模型/沙箱均为替身。当前Docker阻塞见验证记录。

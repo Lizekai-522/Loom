@@ -350,9 +350,10 @@
         || typeof source.route !== "string" || !/^[a-z][a-z0-9_-]{0,47}$/.test(source.route)
         || typeof source.artifact_id !== "string" || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(source.artifact_id)
         || !integer(source.source_epoch) || source.source_epoch < 1) return false;
-    if (!["requirements", "design"].includes(source.kind)) return false;
-    const expected = {requirements: ["analyst", "loom.requirements/v1"], design: ["architect", "loom.design/v1"]}[source.kind];
+    if (!["requirements", "design", "public-checks"].includes(source.kind)) return false;
+    const expected = {requirements: ["analyst", "loom.requirements/v1"], design: ["architect", "loom.design/v1"], "public-checks": ["tester", "loom.public-checks/v1"]}[source.kind];
     if (!expected || source.role !== expected[0] || source.schema_version !== expected[1]) return false;
+    if (source.kind === "public-checks" && source.public_checks_executed !== false) return false;
     if (["call_id", "artifact_content_hash", "plan_digest", "source_event_hash"].some((key) => typeof source[key] !== "string" || !hashPattern.test(source[key]))) return false;
     if (["prompt_tokens", "completion_tokens", "total_tokens"].some((key) => !integer(source[key]) || source[key] > 1048576)
         || source.prompt_tokens + source.completion_tokens !== source.total_tokens
@@ -374,6 +375,7 @@
       completion_tokens: source.usage?.completion_tokens, total_tokens: source.usage?.total_tokens,
       usage_cost_upper_microusd: source.usage_cost_upper_microusd, model_response_recorded: true,
       producer_verified: false, counts_as_success: false};
+    if (item.kind === "public-checks") summary.public_checks_executed = false;
     return validRoleSource(summary) ? summary : null;
   }
 
@@ -384,6 +386,7 @@
       node("p", "task-detail", "内容：未独立验证"));
     if (source) {
       block.append(node("p", "task-detail", `${source.role} · ${source.provider} / ${source.model} · 路由 ${source.route}`));
+      if (source.kind === "public-checks") block.append(node("p", "task-detail", "公开开发检查候选：用例未执行，未作为冻结验收。"));
       if (!compact) {
         for (const [key, label] of [["artifact_id", "候选"], ["artifact_content_hash", "候选正文摘要"], ["call_id", "模型调用"], ["source_event_hash", "来源事件"]]) block.append(node("p", "mono break-word", `${label} ${source[key]}`));
         block.append(node("p", "task-detail", `已知用量 ${count(source.prompt_tokens)} 输入 + ${count(source.completion_tokens)} 输出 = ${count(source.total_tokens)} tokens；费用上界 ${amount(source.usage_cost_upper_microusd)}，非供应商账单。`));

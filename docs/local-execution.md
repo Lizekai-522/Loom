@@ -107,3 +107,12 @@ sha256:19d840be00b00dd952e065969de532fd28670b8c9e99c7c597408d195f67ac7e
 `scripts/run_role_tasks.py`默认仅预览，不开DB/私有配置、不联网。显式`--approve`后，已有DB及容量检查在HTTP写前；draft创建后立即同库核验，再保存/批准合同。每角色最多一次Flash，共最多两次、1024输出tokens/次，无自动重试、代码执行或文件导出。spec/design之间采用明确批准的辅助数据，没有新增硬依赖；独立review仍依赖两者验证完成。
 
 本轮run`1d3a9c8c-df0e-43f3-93d6-b386658e5584`真实响应两次，3005tokens/2120µUSD费用上界，预留0，未核对账单；requirements/design均只submitted，内容未独立验证。命令参数及浏览器首轮检查见公开第八轮测试指南。旧Python/Docker与已批准输入路径保留。来源已记录不表示Gate-V通过。
+
+
+## 0.9 四角色入口
+
+scripts/run_workflow_task.py与configs/workflow-task.example.json提供同run的analyst→architect→tester→developer辅助交接。默认仅读公开job/Pack并预览，不开DB/私密配置、HTTP或Docker。批准后先核验已有库/容量与Docker，再具名HTTP创建draft并立即同库核对；计划与host验收摘要在模型请求前冻结。
+
+上限4Flash请求，每次输出1–1024tokens，最多8host用例，无重试/repair。Goal cap 2001000µUSD/4401000tokens，四业务节点各500000µUSD/1100000tokens、1attempt。六grant按1/2/3项输入分配；生成checks只作未执行参考，host-authored测试才构成developer终验。四业务任务只submitted，review硬依赖全部四父；具名自动流程不代表两名真人独立审阅。
+
+2026-10-25：Docker残留socket及父目录访问错误阻塞，真实四角色链未验收。API与单独真实tester可用，代码执行当前不可用。先恢复Docker并通过check_s2，再按第九轮指南预览/显式批准；不能绕过preflight或在宿主执行生成代码。

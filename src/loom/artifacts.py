@@ -585,7 +585,7 @@ class ArtifactService:
     def _role_evidence_in(self, db, tenant, run_id, task_id, epoch, spec, call_id, reservation_id, request):
         """Reconstruct model origin from the known ledger, never caller body."""
         output = spec.get("role_output")
-        if (output is None or spec["role"] not in {"analyst", "architect"}
+        if (output is None or spec["role"] not in {"analyst", "architect", "tester"}
                 or ARTIFACT_ROLES.get(output["kind"]) != spec["role"]
                 or "artifacts.write" not in spec["tools"] or spec["scope"] != "local-workspace"
                 or epoch > spec["limits"]["max_attempts"]):

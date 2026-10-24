@@ -15,7 +15,7 @@ def model_source_summary(candidate):
         return None
     provenance = candidate.get("model_provenance")
     kind, schema = candidate.get("kind"), candidate.get("schema_version")
-    if (type(provenance) is not dict or type(kind) is not str or kind not in {"requirements", "design"}
+    if (type(provenance) is not dict or type(kind) is not str or kind not in {"requirements", "design", "public-checks"}
             or schema != ARTIFACT_SCHEMAS[kind] or provenance.get("role") != ARTIFACT_ROLES[kind]
             or provenance.get("provider") != "deepseek" or provenance.get("model") != "deepseek-flash"):
         return None
@@ -39,11 +39,14 @@ def model_source_summary(candidate):
               "plan_digest": candidate.get("plan_digest"), "source_event_hash": candidate.get("source_event_hash")}
     if any(type(value) is not str or re.fullmatch(r"[0-9a-f]{64}", value) is None for value in values.values()):
         return None
-    return {**values, "artifact_id": artifact, "role": provenance["role"], "kind": kind,
+    result = {**values, "artifact_id": artifact, "role": provenance["role"], "kind": kind,
             "schema_version": schema, "source_epoch": epoch, "provider": "deepseek", "model": "deepseek-flash",
             "route": route, "prompt_tokens": usage["prompt_tokens"], "completion_tokens": usage["completion_tokens"],
             "total_tokens": usage["total_tokens"], "usage_cost_upper_microusd": cost,
             "model_response_recorded": True, "producer_verified": False, "counts_as_success": False}
+    if kind == "public-checks":
+        result["public_checks_executed"] = False
+    return result
 
 
 def submitted_role_source(artifacts, tenant, run_id, task, spec, output):

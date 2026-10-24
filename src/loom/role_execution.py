@@ -1,4 +1,4 @@
-"""Restricted, single-response generation of frozen analyst/architect data.
+"""Restricted, single-response generation of frozen analyst/architect/tester data.
 
 There is no sandbox, interpreter, filesystem or network-tool interface here.
 The only provider operation is the explicit model gateway request. A validated
@@ -40,9 +40,9 @@ class RoleTaskRunner:
     async def _run_role(self, claim, *, max_output_tokens, totals):
         spec = self.workflows.get_task_spec(claim.tenant_id, claim.run_id, claim.task_id)
         output = spec.get("role_output")
-        if (spec["scope"] != "local-workspace" or spec["role"] not in {"analyst", "architect"}
+        if (spec["scope"] != "local-workspace" or spec["role"] not in {"analyst", "architect", "tester"}
                 or type(output) is not dict or set(output) != {"kind", "schema_version"}
-                or output["kind"] not in {"requirements", "design"}
+                or output["kind"] not in {"requirements", "design", "public-checks"}
                 or ARTIFACT_ROLES[output["kind"]] != spec["role"]
                 or ARTIFACT_SCHEMAS[output["kind"]] != output["schema_version"]
                 or "artifacts.write" not in spec["tools"] or spec.get("repair") is not None):

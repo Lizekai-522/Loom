@@ -1,28 +1,27 @@
-# Loom 0.8 验证记录
+# Loom 0.9 分步验证记录
 
-日期2026-10-24，版本0.8.0，role-candidates-alpha。**602主测试、356子测试，零失败/跳过；另140项实际HTTP和41项新增浏览器断言通过。** 专项与完整回归重叠，不累加；完整套件模型均为测试替身，真实调用另列。
+2026-10-25，0.9.0，role-handoff-alpha，**开发检查点，完整验收未通过**。API/控制台已恢复，Docker Desktop当前不可用；四角色真实执行和Docker回归待验收。原0.8完整证据见[历史记录](validation-0.8.md)。
 
-起点为0.7提交e9e2e8b及逐文件核验的157文件源码包，沿用530主/326子、116HTTP、29浏览器基线。分阶段门槛：A核心及旧合同117主/90子；B角色及旧执行109主/14子；C来源摘要及旧API48主（新增15主）、CLI11主；然后完整基础设施、浏览器、本地升级和真实探针。测试夹具问题和交叉审查见单独问题报告。
+| 当前门槛 | 主测试 | 子测试 | 失败/跳过 | 状态 |
+|---|---:|---:|---|---|
+| 全部unit-and-local | 617 | 382 | 0/0 | 通过 |
+| 真实NATS/重启/PostgreSQL | 23 | 14 | 0/0 | 通过 |
+| Docker原17项及新增交接3项 | 20项待执行 | — | 未运行 | 环境阻塞 |
 
-| 完整阶段 | 主测试 | 子测试 | 失败 | 跳过 |
-|---|---:|---:|---:|---:|
-| unit-and-local | 562 | 342 | 0 | 0 |
-| real-infrastructure | 40 | 14 | 0 | 0 |
+实际HTTP共163项：API9、Goal12、人工控制31、旧真实任务17、候选31、旧上下文16、旧角色来源24、新tester来源23。浏览器17项通过，实际health=0.9.0/S1-local，资产hash与主API核对；其模型/沙箱为测试替身，不作为真实Docker或模型证据。专项与完整单元集合重叠，不相加。
 
-真实基础设施仍40主/14子：JetStream8、原生重启1、独立PostgreSQL14、原Docker9、Rebind Docker4、上下文Docker4。角色新增路径没有Docker或代码工具；原Python隔离与预算/lease/控制回归保留。API/Store仍单实例SQLite，PG检查不等于PG Store已接通。
+新增tester核心14项、runner18项、来源API7项、四角色CLI15项均包含于617项。非CSV任务误套CSV指令的P2问题已修，新增及旧CLI12项通过。严格development-only JSON、原子来源/费用/回执、心跳/未知态停止、六次精确grant、1/2/3项上下文及失败停止均已测试；生成检查不会覆盖evaluation_digest或被标为已执行。
 
-实际HTTP合计140：原API9、Goal12、人工控制31、旧真实任务17、候选31、旧上下文16、新角色来源24。旧0.4与0.7真实任务只读对账，合同、用例、费用和事件不变；没有重跑旧付费请求。浏览器41项为本轮新断言，完整阶段与真实health/assets观测见独立JSON，非沿用旧计数。
+## 新真实tester
 
-## 两次真实Flash响应
+run 9dc5a8ad-3335-4a59-b142-abb00f248998：具名HTTP批准tester合同，1次Flash响应，469输入+154输出=623tokens，326µUSD为上界记账，预留0，未核对账单。候选未执行/未独立验证，任务submitted、review pending、Goal未完成；没有发送宿主验收用例。23项只读HTTP核对来源、费用与事件。
 
-run `1d3a9c8c-df0e-43f3-93d6-b386658e5584`：具名HTTP身份创建并批准显式role_output，分析角色产生requirements；operator按当前design claim/epoch批准精确需求版本，设计角色消费typed辅助数据后产生design。最多两次请求，各一次，无自动重试，未执行代码/文件/导出或网络工具。两份候选均绑定gateway done effect、usage、settled预留、冻结合同、内容摘要和来源事件；候选/来源/submitted/receipt同事务。
+上一轮0.8当前业务复测run 972addd4-906d-4c59-b649-ea7692e1cc00，3Flash/5Docker用例、3670tokens/2091µUSD上界，保留原证据，本次未重复，不能当成0.9四角色容器验收。
 
-供应商响应报告总3005 tokens，费用上界记账2120µUSD，剩余预留0；billed_currency_verified=false，未核对独立账单。schema_validated和model_source_recorded不证明内容正确。两个任务均submitted/producer_verified=false/verified=false，独立review仍被hard depends阻挡，Goal未完成，第二模型按用户决定待配置。
+## 阻塞及后续门槛
 
-## 拒绝与来源展示
+Docker/run/dockerInference残留socket启动失败；保留重建运行目录后，转到docker-secrets-engine/engine.sock。其父目录Move-Item、.NET改名、Rename-Item均访问被拒绝；单个socket删除操作被自动审批拒绝，未执行。未清镜像/卷、重置Desktop、注销WSL或升级系统。20项Docker测试和4次真实完整交接未运行，没有转skip或计通过。
 
-未显式批准角色合同、混用代码验收/repair、非法JSON/重复键/非有限数/截断响应、超预算、旧epoch或失效上下文均拒绝。有效已知响应先保留effect与费用，再检查控制/版本；未知调用保留预留并转人工，不重发。旧Worker候选digest与事件shape保留。
+恢复Docker后先运行scripts/check_s2.py完整门槛，确认原固定runner镜像及43项基础设施测试无跳过；再预览/显式批准四角色CLI，最多4Flash/8host冻结case。核对来源/费用/依赖后才形成完整源码包。原0.8包保留；本检查点不作为完整验收发行。
 
-review只在核心重建完整来源且task/epoch/plan/内容/类型/call均匹配时显示来源已记录。attempts匹配真实候选的source_event_hash，伪造或重放事件不能加一条来源。来源摘要不含正文/原始响应/请求ID/提示/身份；候选正文仍可按授权单独查看。旧候选、篡改引用、stale或Worker自报不获得可信标签。独立窄探针和业务全表读取无变化另有审查报告，不冒充第二模型验证。
-
-SQLite升级前备份及完整性、editable安装/pip check、OpenAPI24路径、方案81引用/10ADR/24映射、wheel资产与源码交付校验通过。原方案摘要不变，凭据仍在公开outputs之外，未发布公网。历史见[0.7](validation-0.7.md)，下一步见[实施计划](implementation-plan.md)。
+第二模型依用户决定待配置，不伪造签名/done。原62项FR、七角色/生产身份/恢复/PG Store及效果对照缺口保留；11月15日部署、11月20日前提交目标不变。[实施计划](implementation-plan.md)

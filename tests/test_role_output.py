@@ -383,7 +383,7 @@ class RoleOutputWorkflowTests(unittest.TestCase):
         bad = [
             (0, {"kind": "design", "schema_version": "loom.design/v1"}),
             (1, {"kind": "requirements", "schema_version": "loom.requirements/v1"}),
-            (2, {"kind": "public-checks", "schema_version": "loom.public-checks/v1"}),
+            (2, {"kind": "requirements", "schema_version": "loom.requirements/v1"}),
             (3, {"kind": "requirements", "schema_version": "loom.requirements/v1"}),
             (0, {"kind": "requirements", "schema_version": "loom.requirements/v2"}),
             (0, {"kind": "requirements", "schema_version": "loom.requirements/v1", "verified": True}),

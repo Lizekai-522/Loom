@@ -75,3 +75,8 @@ CLI 通过 `loom serve --identities-file <源码和公开outputs之外的私有J
 ## 0.8 角色来源
 
 计划可显式冻结`role_output`：analyst→requirements或architect→design，不能混代码验收/repair。HTTP路由数仍24，没有新增付费执行或密钥上传入口。`review`返回冻结role_output；仅在核心来源及当前task/epoch/plan/body hash/schema/call完全匹配后返回`artifact.model_source_recorded=true`和白名单标量`model_provenance`。Worker自报/旧epoch/替代引用均不取得该标签。`attempts`新增`role.candidate_generated`，只展示与已核验候选真实source_event_hash匹配的安全摘要，不复制body/提示或provider request_id。来源记录不授予trusted_evaluation或依赖完成权限。候选列表/详情的model_provenance为核心验证过的完整白名单，字段形状与review标量摘要不同。
+
+
+## 0.9 tester来源
+
+路径仍24个；显式role_output新增tester→public-checks/loom.public-checks/v1，visibility仅development。review/attempts来源白名单允许tester并投影public_checks_executed=false；trusted_evaluation=false/cases=[]/hard_criteria_passed=null保持，Worker自报不晋升。没有新增HTTP自动模型触发入口，本机CLI仍需原权限、预算与精确epoch批准。

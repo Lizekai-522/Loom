@@ -1,6 +1,6 @@
 # 结构化候选、辅助输入批准与预览
 
-本模块提供需求、设计和公开开发检查的候选注册、历史查询、operator 批准及只读预览。普通 Worker 提交的来源为 `authenticated-worker-submission`；0.8 新增受限 analyst / architect 网关生成，来源为 `model-gateway-response`，由本机可信执行器核对响应与已结 usage 后保存。两类候选均保持 `producer_verified=false`、`counts_as_success=false`。结构校验、来源记录和辅助读取批准都不证明内容正确。
+本模块提供需求、设计和公开开发检查的候选注册、历史查询、operator 批准及只读预览。普通 Worker 提交的来源为 `authenticated-worker-submission`；0.8 新增受限 analyst / architect 网关生成，0.9 合同扩展到 tester，来源为 `model-gateway-response`，由本机可信执行器核对响应与已结 usage 后保存。两类候选均保持 `producer_verified=false`、`counts_as_success=false`。结构校验、来源记录和辅助读取批准都不证明内容正确。
 
 0.6 交付候选注册、明确批准与只读预览；0.7 增加获准 Python 执行器的辅助上下文消费；0.8 将同一精确输入绑定用于只读分析/设计生成。`GET context-preview` 本身仍返回 `execution_connected=false`，不调用模型、网络或工具，不取得 claim、不预留预算；该字段描述预览接口，不代表执行器没有消费能力。原 `depends` 硬依赖保持有效，上游只有 `submitted` 时仍不能放行下游；批准候选不会将任务改为 `done`，也不改变 Gate-V。
 
@@ -174,7 +174,7 @@ python scripts/run_context_task.py --help
 }}
 ```
 
-architect 对应 `design` / `loom.design/v1`。目前不允许 tester / `public-checks` 使用这一生成入口；该类型仍可由认证 Worker 保存为开发检查候选。来源角色须有 `artifacts.write`，`role_output` 不能与代码 `evaluation_digest` 或 `repair` 混用。省略或为 null 时单独省略新字段，旧计划摘要继续保留原有 `evaluation_digest:null`。
+architect 对应 `design` / `loom.design/v1`。0.8 范围不包含 tester 网关生成，该类型当时只可由认证 Worker 保存为开发检查候选；0.9 扩展见下节。来源角色须有 `artifacts.write`，`role_output` 不能与代码 `evaluation_digest` 或 `repair` 混用。省略或为 null 时单独省略新字段，旧计划摘要继续保留原有 `evaluation_digest:null`。
 
 `RoleTaskRunner.run_role(claim, max_output_tokens=...)` 只发起一次获准 Flash JSON 响应，不提供沙箱、解释器、文件、浏览器或网络工具接口，不运行候选代码。辅助输入沿用 0.7 的精确 snapshot、原子准入和返回/提交复核；有必需输入时，先取得目标当前 claim，再按当前 epoch 由 operator 批准。来源换版本、target epoch 换代或 Rebind 都不能继承旧批准。
 
@@ -193,3 +193,30 @@ architect 对应 `design` / `loom.design/v1`。目前不允许 tester / `public-
 示例中 spec 与 design 预先声明互无 hard depends，design 必需读取精确批准的 spec 辅助候选；independent_review 仍 hard depends 两个父任务。这是批准计划中的辅助数据交接，不能把 `submitted` 父任务伪装成已验证。脚本不执行代码，也不是七角色完整链。
 
 本阶段已记录核心 **117 主/90 子**、角色执行及旧执行组 **109 主/14 子**、相关 API **48 项（新增15项）**、CLI **11项**通过。这些门槛范围重叠，不能相加作为版本总数；完整回归、实际 HTTP/浏览器和真实模型探针另行登记于[验证记录](validation.md)。下一步优先受限 tester / `public-checks` 及分析设计到开发的真实辅助交接，仍需保持开发检查与冻结验收分离，不让候选改写规则或硬依赖。
+
+## 0.9 tester 候选与开发辅助交接合同
+
+本轮先复核原 0.8 提交、166 文件源码包及现有服务/真实任务记录，再逐步扩展合同与执行接入。旧版证据保留，不将只读复核或各专项相加为新版本总数。
+
+新增显式冻结输出如下；仍需匹配的 tester 角色和 `artifacts.write`，不按角色名称自动授予生成权：
+
+```json
+{"role": "tester", "role_output": {
+  "kind": "public-checks", "schema_version": "loom.public-checks/v1"
+}}
+```
+
+body 继续使用上文的 `PublicChecksBody`：`visibility` 只能为 `development`，最多32个不重名case，拒绝重复 JSON 字段、NaN/Infinity、额外验证字段、hidden/acceptance visibility、过深结构和超过32KiB的正文。生成结果只是未执行候选，不是受信测试报告。冻结角色配置中即使含 `tests.run`，这一只读角色入口也不调用测试工具或沙箱。
+
+来源与原子提交协议沿用0.8：从已完成网关effect和settled usage提取正文；候选、来源事件、submitted、outbox/回执同事务；完整request和snapshot绑定幂等。`ModelProvenance.role`可为tester，但来源与schema有效仍不使`producer_verified`、`verified`或`counts_as_success`变为true。requirements/design、旧Worker来源、nullable迁移和省略None的旧摘要保持兼容。
+
+同一批准计划内，developer可冻结声明requirements、design、public-checks为辅助输入，领取当前目标后由operator按精确源/目标epoch、revision、内容、plan及事件批准。三类body只进入模型user数据位；source/grant失效或换代必须停止，不静默换入最新候选。已有0.8 run不能追加未冻结的developer节点，也不通过本接口跨run导入来源。
+
+**辅助输入grant不晋升测试。** 候选case可作为开发参考，但不自动成为执行器的development/acceptance用例，不覆盖`evaluation_digest`或`repair.development_digest`。本轮单run交接入口的宿主黄金验收先于首次模型请求冻结；最多4次Flash请求、8个宿主冻结Docker用例，无自动重试或repair。这里的Docker执行属于developer的原受限代码路径，tester生成阶段本身不执行case；通过仍只submitted，独立review的硬依赖和Gate-V保持不变。
+
+下一独立步骤拟设计operator单独审阅生成检查、再冻结development digest的协议；必须明确批准的内容/来源、版本及执行权限，不能把现有输入grant解释为该授权。不得使用生成者的公开检查代替宿主冻结验收或第二模型独立复核。
+
+已通过A核心及旧候选/合同/Store门槛 **131主/125子**，其中新增tester14主；与旧0.8阶段数量重叠，不累计。B执行接入、CLI/UI和完整/实际HTTP/浏览器/真实模型证据按完成顺序另记，未完成的门槛不据合同存在而预填通过。
+
+
+2026-10-25阶段结果：合同/来源API与四角色CLI包含于617主/382子通过集合；真实原生23主/14子、HTTP163、浏览器17通过。单独真实tester1次通过，Docker20项与4角色真实全链受本机运行目录访问拒绝阻塞，未执行。生成检查仍是未运行辅助候选，完整交接未验收。

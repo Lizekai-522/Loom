@@ -54,6 +54,29 @@ class RoleScriptTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(sum(node["limits"]["token_limit"] for node in nodes), report["goal_token_limit"])
         self.assertFalse(Path(self.args.db).exists())
 
+    async def test_custom_non_csv_goal_does_not_receive_unrelated_csv_requirements(self):
+        job={"title":"Meeting room availability planning", "description":
+             "Plan a read-only meeting-room availability service over user-provided time intervals. "
+             "Identify overlaps, list free windows, and explain time-zone and interval-boundary assumptions."}
+        self.args.task_file=self.temp/"meeting-room-job.json"
+        self.args.task_file.write_text(json.dumps(job),encoding="utf-8")
+        with patch.object(script,"Store",side_effect=AssertionError("DB opened")), \
+             patch.object(script,"load_identities",side_effect=AssertionError("private read")), \
+             patch.object(script,"load_project_secrets",side_effect=AssertionError("private read")), \
+             patch.object(script.httpx,"Client",side_effect=AssertionError("HTTP opened")), \
+             patch.object(script,"make_role_runner",side_effect=AssertionError("runner created")):
+            report=await script.run(self.args,[])
+        nodes=report["definition"]["nodes"]
+        for node in nodes[:2]:
+            self.assertIn(job["title"],node["title"])
+            self.assertIn("Goal",node["instruction"])
+        contract_text=json.dumps(report["definition"]).lower()
+        for unrelated in ("csv audit","row errors","decimal totals","human export approval"):
+            self.assertNotIn(unrelated,contract_text)
+        self.assertEqual(report["network_requests"],0)
+        self.assertEqual(report["maximum_model_requests"],2)
+        self.assertFalse(Path(self.args.db).exists())
+
     async def test_missing_database_rejects_before_private_reads_or_http(self):
         self.args.approve = True
         with patch.object(script, "load_identities", side_effect=AssertionError("private read")), \
