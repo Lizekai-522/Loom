@@ -15,6 +15,7 @@ import pytest
 
 from loom.model_gateway import ModelGateway, ModelRoute
 from loom.store import Conflict
+from loom.review_decisions import ReviewDecisionService
 from tests.test_review_inputs import review_case
 from tests.test_reviewer_handoff import handoff, reviewer_claim, generate, approve_fix
 from tests.test_approved_execution import OP, WORKER
@@ -30,7 +31,13 @@ def test_review_fixer_retests_original_acceptance_in_real_docker(handoff, passes
     # The fixture's initial source uses a sandbox double. The actual fixer
     # below must produce a real host-frozen report matching that same digest.
     reviewed = asyncio.run(generate(b, reviewer_claim(b)))
-    artifact = b['artifacts'].get_artifact('a', b['target'], reviewed['artifact_id']); approve_fix(b, artifact)
+    decisions = ReviewDecisionService(b['store'])
+    params = ('a', b['target'], reviewed['artifact_id'])
+    preview = decisions.preview(*params)
+    decision = decisions.decide(*params, 'review-decision-docker', actor='subject:operator',
+        expected_preview_digest=preview['preview_digest'], decision='approve_fixer',
+        reason='核对精确审查版本后批准一次原宿主验收修复', target_task_id=b['target']+':fix')
+    assert decision['grant_id'] and not decision['model_dispatched']
     tests_file = tmp_path / 'host.json'
     tests_file.write_text(json.dumps({'tests': [{'name': t.name, 'input': t.input, 'expected': t.expected} for t in b['suite']]}), encoding='utf-8')
     args = SimpleNamespace(db=b['store'].path, tenant='a', run_id=b['target'], node_id='fix',

@@ -19,6 +19,7 @@ from .development_suites import DevelopmentSuiteService
 from .artifact_schemas import MAX_BODY_BYTES
 from .role_summary import submitted_role_source
 from .review_inputs import ReviewFindingsBody, ReviewInputService
+from .review_decisions import Decision, ReviewDecisionService
 from .operator import OperatorService
 from .local_console import allows_local_console, console_principal
 from .store import Claim, Conflict, InvalidInput, LoomError, NotFound, Store, canonical, digest
@@ -126,6 +127,13 @@ class AuxiliaryInputApproval(Input):
     expected_content_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
+class ReviewDecisionInput(Input):
+    expected_preview_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    decision: Decision
+    reason: str = Field(min_length=1, max_length=2000)
+    target_task_id: str | None = Field(default=None, min_length=1, max_length=200)
+
+
 def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[LocalIdentity, ...] = (), local_console: bool = False) -> FastAPI:
     registry = AuthRegistry(tenant_keys, identities)
     local_identity = console_principal(identities, local_console)
@@ -136,6 +144,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     artifacts = ArtifactService(store)
     suites = DevelopmentSuiteService(store)
     review_inputs = ReviewInputService(store)
+    review_decisions = ReviewDecisionService(store)
     security = HTTPBearer(auto_error=False)
 
     def principal(request: Request, credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)]) -> Principal:
@@ -329,6 +338,20 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     @app.get("/v1/runs/{run_id}/artifacts/{artifact_id}")
     def get_artifact(run_id: str, artifact_id: str, tenant: Tenant):
         return artifacts.get_artifact(tenant, run_id, artifact_id)
+
+    @app.get("/v1/runs/{run_id}/artifacts/{artifact_id}/review-decision-preview")
+    def preview_review_decision(run_id: str, artifact_id: str, tenant: Tenant):
+        return review_decisions.preview(tenant, run_id, artifact_id)
+
+    @app.get("/v1/runs/{run_id}/artifacts/{artifact_id}/review-decisions")
+    def review_decision_history(run_id: str, artifact_id: str, tenant: Tenant):
+        return review_decisions.history(tenant, run_id, artifact_id)
+
+    @app.post("/v1/runs/{run_id}/artifacts/{artifact_id}/review-decisions", status_code=201)
+    def record_review_decision(run_id: str, artifact_id: str, body: ReviewDecisionInput,
+                               identity: Controller, idempotency_key: Key):
+        return review_decisions.decide(identity.tenant_id, run_id, artifact_id, idempotency_key,
+            actor="subject:" + identity.subject_id, **body.model_dump())
 
     @app.post("/v1/runs/{run_id}/tasks/{task_id}/artifacts", status_code=201)
     def save_candidate(run_id: str, task_id: str, body: CandidateArtifactInput, identity: Submitter, idempotency_key: Key):

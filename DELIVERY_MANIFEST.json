@@ -1,16 +1,16 @@
 {
-  "version": "0.17.0",
-  "stage": "reviewer-fixer-handoff-alpha",
+  "version": "0.17.1",
+  "stage": "review-decision-alpha",
   "date": "2026-10-26",
-  "generated_at": "2026-10-26T01:44:10.585668+08:00",
-  "release_status": "bounded_reviewer_fixer_handoff_milestone_passed",
+  "generated_at": "2026-10-26T02:19:55.782822+08:00",
+  "release_status": "bounded_review_decision_milestone_passed",
   "production_ready": false,
-  "source_file_count_excluding_manifest": 220,
+  "source_file_count_excluding_manifest": 226,
   "files": [
     {
       "path": ".gitignore",
-      "bytes": 127,
-      "sha256": "83e792bcd56332b84f190c6e47fe284df55367f517b89b1aa243b9bcc05f19de"
+      "bytes": 134,
+      "sha256": "256fe06671c974869bef61263cf7d73dd1feb414de95224d0a38abea67b2572f"
     },
     {
       "path": "AGENTS.md",
@@ -19,8 +19,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 18087,
-      "sha256": "3325a09208795bc491d9b062af80f0bd716b72e195c13349493cb210f2ca8d61"
+      "bytes": 18155,
+      "sha256": "1fb16ffa3b81b4f9d0d06ae0166dcfc3ea48f3ff2f59611a5fdd9771bf60a576"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -84,8 +84,8 @@
     },
     {
       "path": "docs/api/openapi.json",
-      "bytes": 71062,
-      "sha256": "b1c22e65f5ad917e7e2149f053a2ad5aac42287fc05ec5415c20ca7332f50e1c"
+      "bytes": 76921,
+      "sha256": "bcbaeecbd04ace824a0feeff84e25297224b607aa937fda2e8870145c8402907"
     },
     {
       "path": "docs/approved-execution.md",
@@ -109,8 +109,8 @@
     },
     {
       "path": "docs/console.md",
-      "bytes": 14456,
-      "sha256": "d2c5f4e3943fd69438ea5cda85e0fbb6a94bea500f3583ccaf6ede3d88673d00"
+      "bytes": 14796,
+      "sha256": "2baf5d29ced42d8144d470aca678a7710df0253703ac1ade10df96c88fedf8d2"
     },
     {
       "path": "docs/coverage-s2.json",
@@ -129,8 +129,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 40596,
-      "sha256": "d61aa7a41db966ece56007a02836d5378e5372fe988f181ffac595b736e77c77"
+      "bytes": 41146,
+      "sha256": "46589aaeab2c868887d332716a3375a38dc576e86bb803c049c20dfebdd4146c"
     },
     {
       "path": "docs/local-auth.md",
@@ -169,8 +169,8 @@
     },
     {
       "path": "docs/progress-cycle.md",
-      "bytes": 17752,
-      "sha256": "130ff982ca594b7b81351b9115815bb30e7254efd7cee93e7a1e861977402284"
+      "bytes": 18903,
+      "sha256": "85df0122a867d7d46ff0f46a9be8b6b8768fb4f6d30b8c0b290f9c21f425dc95"
     },
     {
       "path": "docs/public-checks.md",
@@ -179,8 +179,13 @@
     },
     {
       "path": "docs/release-roadmap.md",
-      "bytes": 3978,
-      "sha256": "2e039b08e099f2f8af328d7efc1ffde6b71b4560fffa4fc540f9d3c87466e8e0"
+      "bytes": 4278,
+      "sha256": "26877469060ecd5b9ec700af57cc5a6549f6d64e31f518d9953402a88a3ebc14"
+    },
+    {
+      "path": "docs/review-decisions.md",
+      "bytes": 4051,
+      "sha256": "a304c1d1a3e7ffbb4b2622733b03ff9861504fb85d0642753d503d909721c30e"
     },
     {
       "path": "docs/review-resolution.md",
@@ -194,8 +199,8 @@
     },
     {
       "path": "docs/reviewer-execution.md",
-      "bytes": 4538,
-      "sha256": "274119720ecd19d9103833e3e4fcef702b776a956fc49e390ffb46ae5727aacf"
+      "bytes": 4727,
+      "sha256": "4269f3ae4b590481748692d113a03227890a58cf9be3487a9b97031ca229f2c4"
     },
     {
       "path": "docs/reviewer-input.md",
@@ -243,6 +248,11 @@
       "sha256": "aed10c4ae6ba79442ca7a0ae8b1ae6d714edd07f5226c11574b6e0a7351741bf"
     },
     {
+      "path": "docs/validation-0.17.md",
+      "bytes": 3576,
+      "sha256": "23184628ad5779fce0f68305a43f0e4019e413149b81e20cf2bf784690ed3b70"
+    },
+    {
       "path": "docs/validation-0.3.md",
       "bytes": 4056,
       "sha256": "95b8e50c114e15ebe4405559a3bb84cb64bab6c958e75f7332f37a688554e023"
@@ -279,8 +289,8 @@
     },
     {
       "path": "docs/validation.md",
-      "bytes": 3576,
-      "sha256": "23184628ad5779fce0f68305a43f0e4019e413149b81e20cf2bf784690ed3b70"
+      "bytes": 3685,
+      "sha256": "fa626054026be4db497736738e3319c6b9398d6b76a3a51dd40ab2cd9f2abe02"
     },
     {
       "path": "docs/workflow.md",
@@ -305,7 +315,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 771,
-      "sha256": "e9e86fbde42a15c3e6992e48655becc0c3493983b4c621b8439606f72d1cb67e"
+      "sha256": "da0721ce48dcfcce0b9122a09369b15e4f4039ed29993e1f28f2394e77db85b3"
     },
     {
       "path": "requirements.lock",
@@ -369,8 +379,8 @@
     },
     {
       "path": "scripts/check_s2.py",
-      "bytes": 5669,
-      "sha256": "9196131d9c72bb6d51c83d521473448a162a0dd8c11a720cec4ddbeabe0f5c83"
+      "bytes": 5662,
+      "sha256": "759e9e1e30a050c8b8091411e9d47be7166475649fa7b6f67fb9aeaaafe49f63"
     },
     {
       "path": "scripts/check_sandbox.py",
@@ -445,7 +455,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "1fdd4df8b591c2217483ff1c35f46b436c4d427601f8d4cd605042a59b3274e9"
+      "sha256": "e61206c20ea13521beed7314db053ee237144c2cc237596c5478e2e3eaa003a9"
     },
     {
       "path": "src/loom/__main__.py",
@@ -454,8 +464,8 @@
     },
     {
       "path": "src/loom/api.py",
-      "bytes": 22122,
-      "sha256": "360672e50e267026c3cfe37f99fe3a5897ec82023697102242df6c379796ec0a"
+      "bytes": 23387,
+      "sha256": "784b07229c3ac342b7e53e32adb1b07fa6da4c0d6931e1c35127f19c862eb6c0"
     },
     {
       "path": "src/loom/approved_execution.py",
@@ -553,6 +563,11 @@
       "sha256": "9ab12e9555af9de6192c9e0782a12fe9a62503eaa6e36aef66b510fdd992eaa7"
     },
     {
+      "path": "src/loom/review_decisions.py",
+      "bytes": 13594,
+      "sha256": "ae9df2e6eaa1bc141948628a090dfab5c5c94477199d1af72b04d64d56557828"
+    },
+    {
       "path": "src/loom/review_inputs.py",
       "bytes": 10235,
       "sha256": "7ecda8c56ffedcae8341138c07bcae8ca548dc6aa282e216cb8ce11b206512c3"
@@ -578,6 +593,11 @@
       "sha256": "a85369cac4813820d8a75f98b9ef4e386ef54d0ed720d29d014d97c4873c35f0"
     },
     {
+      "path": "src/loom/web/console-review-decisions.js",
+      "bytes": 9422,
+      "sha256": "bb3918e123a0c51a8dc4408cfe5dd011d7d754ff76a4075615aacb36664ef0b4"
+    },
+    {
       "path": "src/loom/web/console-suites.js",
       "bytes": 18525,
       "sha256": "7c15e3b654beb3cdc9ace3d24a95fde4871568b2042169ee458b405aa5b8e884"
@@ -589,18 +609,18 @@
     },
     {
       "path": "src/loom/web/console.css",
-      "bytes": 13866,
-      "sha256": "b909a639c05e574198ea1296888ffdeedd73bc14fa45821a29f6cdd0fc704416"
+      "bytes": 14023,
+      "sha256": "686e128a2c17cf5c638492af3092681f5bf50ad23c6da34ac6eb331975d75373"
     },
     {
       "path": "src/loom/web/console.js",
-      "bytes": 60467,
-      "sha256": "6cc0d2a7063d12cb5353977d01ab3318b777e26c72c985442175d1c6beaddb56"
+      "bytes": 60729,
+      "sha256": "87ea9127130b69c92304b15f70bb333d1b470d03fc17fcc8edc2ddb397704525"
     },
     {
       "path": "src/loom/web/index.html",
-      "bytes": 15838,
-      "sha256": "c1d56126bd3631aeced5ba69bbc5ce193720a4e575e7c9e4b8b5d125441a3d10"
+      "bytes": 17573,
+      "sha256": "04c3d1a16bce1053231592575a0d8cb221ec06a784452636f723917e67ce8151"
     },
     {
       "path": "src/loom/workflow.py",
@@ -653,6 +673,11 @@
       "sha256": "ef8a3f63bc313e362d7ff66fccab76c4b829f1c0857b99c0c32b77ef511b1398"
     },
     {
+      "path": "tests/integration/test_review_decisions_live.py",
+      "bytes": 3614,
+      "sha256": "1215f3c7bc70113f2fa3f490fd14b052d4274639c11140aa37babfca89b8ce0d"
+    },
+    {
       "path": "tests/integration/test_review_inputs_live.py",
       "bytes": 1405,
       "sha256": "f83210e0cc0a527d179eb5dbf7cc204ee374f468d7beab47f57ddb32c82a5fd8"
@@ -664,8 +689,8 @@
     },
     {
       "path": "tests/integration/test_reviewer_handoff_live.py",
-      "bytes": 4373,
-      "sha256": "cb5fbb33a1eb053e0464e93618fd3a65e61a408518bc318eee11b9add62fbfb0"
+      "bytes": 4826,
+      "sha256": "38b37f6e317b52130a5acbb3c0a86e6627fae7e8c691e3034b6962d51be52ceb"
     },
     {
       "path": "tests/integration/test_role_handoff_docker_live.py",
@@ -821,6 +846,11 @@
       "path": "tests/test_repair.py",
       "bytes": 29288,
       "sha256": "ab2603c03246c7caf112ca8a8bb2107021e96a6962b6d8eba5790682cc0502f6"
+    },
+    {
+      "path": "tests/test_review_decisions.py",
+      "bytes": 11954,
+      "sha256": "27189402d6e617d242e4518c4d6c5fd593c468e2cfd8f7c012a3932030e16655"
     },
     {
       "path": "tests/test_review_inputs.py",
@@ -1119,30 +1149,28 @@
   ],
   "validation": {
     "full_gate_passed": true,
-    "main_tests_passed": 898,
+    "main_tests_passed": 926,
     "subtests_passed": 396,
     "failures": 0,
     "skipped": 0,
-    "real_infrastructure_main_tests_included": 53,
-    "new_unit_main_tests": 30,
-    "new_real_docker_tests": 2,
-    "fresh_browser_assertions": 26,
-    "new_review_http_checks": 23,
+    "real_infrastructure_main_tests_included": 55,
+    "new_local_main_tests": 26,
+    "new_real_jetstream_main_tests": 2,
+    "existing_real_docker_fixer_paths_exercising_new_decision": 2,
+    "fresh_browser_assertions": 49,
+    "new_decision_http_checks": 45,
     "old_actual_execution_http_checks": 60,
-    "paid_review_dispatches": 1,
-    "paid_review_responses": 1,
-    "paid_review_tokens": 2141,
-    "paid_review_cost_upper_microusd": 979,
-    "paid_review_reservation_remaining": 0,
-    "fixer_provider_in_docker_tests": "HTTP mocks",
-    "actual_model_fixer_dispatched": false,
+    "new_paid_model_requests": 0,
+    "new_main_runs": 0,
+    "new_main_events": 1,
+    "new_main_review_decisions": 1,
     "main_database_counts": {
       "runs": 38,
-      "events": 572,
-      "development_suites": 1
+      "events": 573,
+      "development_suites": 1,
+      "review_decisions": 1
     },
-    "new_main_runs": 1,
-    "new_main_events": 18
+    "original_source_events_unchanged": true
   },
   "runtime": {
     "python": "3.13.12",
@@ -1153,19 +1181,23 @@
     "project_cache_workaround_reused": true,
     "normal_default_shortcut_startup_verified": false
   },
-  "real_models_used_this_milestone": true,
+  "real_models_used_this_milestone": false,
+  "real_prior_review_reused_read_only": true,
+  "actual_model_fixer_dispatched": false,
   "full_workflow_completed": false,
+  "complete_human_adjudication": false,
   "independent_second_model": "pending_configuration",
   "planned_release_candidate": "0.20",
   "planned_first_production_release": "1.0",
   "release_gates_passed": false,
   "notes": [
-    "Review-findings and an exact review_subject are frozen in new contracts; omitted optional fields preserve old plan hashes. Approval and every model admission/return/submission recheck the source implementation and host evidence.",
-    "Reviewer CLI uses an existing approved task, no code tools, strict JSON and gateway-bound provenance. Hidden host inputs, expected values, case names and stdout are excluded from reviewer/fixer prompts. Candidates are not independent verification.",
-    "Only a named operator can approve exact findings for the same-subject fixer. Explicit execution reapproves that exact input for epoch1 atomically with claiming. Original acceptance and one attempt are mandatory; drift, concurrency and audit failures stop or roll back.",
-    "Actual Docker with HTTP mock responses covers fixer success and failure. Success remains submitted. Failure report and human stop commit together rather than requeueing; original failed XML and fixture assertion corrections are preserved.",
-    "One new actual Flash review returned no_findings,2141tokens and979microusd upper accounting, no reserved balance. No actual fixer was dispatched; model review and automatic local operator do not constitute independent people, signatures or Goal success.",
-    "Fresh Chromium26 covers fixture review/approval11, existing main sources9 and actual no-findings denial6. Actual HTTP83 checks pass. Only the new review run and18events were added; original source events are unchanged.",
-    "Complete human adjudication, unified seven-role operation, actual model fixer effectiveness, independent second model, tools/quotas/context and production identity/recovery remain pending. All62original FR and the11/15deployment/11/20submission targets remain tracked."
+    "A named operator may defer, route no_findings to an independent-review wait, or approve exact findings as one fixer input. No model dispatch, task completion, dependency release or success signature is granted.",
+    "Current preview, candidate/subject pins, run/target eligibility, unknown effects and reservations are checked in the same authority transaction as input grant, decision record, audit event and idempotency receipt. Concurrency has one winner; audit failure rolls back.",
+    "Append-only history is bounded to32 with the last slot reserved for routing. Audit/projection mismatches are rejected; source drift blocks new decisions without rewriting historical records.",
+    "Chinese console has one review routing form, read-only history, late-response isolation and exact-request retry after unknown responses. A known receipt followed by read failure cannot trigger a duplicate write; reload still requires history reconciliation.",
+    "Real JetStream confirmation-loss/redelivery tests and existing actual Docker success/failure fixer paths pass. Provider responses in these tests are mocks. No paid request was added.",
+    "The existing actual Flash no_findings candidate received one authorized local automated operator wait record. This is not independent human or model verification; all572old events and task/model accounting tables remain unchanged.",
+    "Original failed test/fixture evidence is preserved and corrected; final926main/396subtests,105HTTP,49Chromium pass. Separate review report, FR tracking and implementation plan updated; original specification SHA unchanged.",
+    "Unified seven-role operation, complete adjudication, real fixer effectiveness, second model, tools/quotas/context and production identity/recovery remain pending. All62original FR and the11/15deployment/11/20submission targets remain tracked."
   ]
 }

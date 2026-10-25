@@ -11,4 +11,4 @@ dist/
 *.db-wal
 artifacts/
 .playwright-cli/
-
+output/

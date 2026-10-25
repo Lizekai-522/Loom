@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/console/assets/console.css">
   <script src="/console/assets/console-zh.js" defer></script>
   <script src="/console/assets/console-suites.js" defer></script>
+  <script src="/console/assets/console-review-decisions.js" defer></script>
   <script src="/console/assets/console.js" defer></script>
 </head>
 <body>
@@ -63,6 +64,20 @@
           <div class="section-heading"><h2>候选产物</h2><button id="artifacts-refresh" type="button">重新读取</button></div>
           <p class="field-help">候选可来自具名 执行器 提交或模型网关响应；模型来源记录与内容验证分别显示，候选仍未独立验证。批准辅助输入只供目标节点参考，不放行父任务或依赖。本次预览不会发起执行，实际绑定看“人工待办”中的执行记录。</p>
           <p id="artifacts-state" class="muted" role="status" aria-live="polite"></p><div id="artifact-list" class="artifact-list"></div><div id="artifact-detail"></div>
+          <section id="review-decision-panel" class="suite-panel" hidden aria-labelledby="review-decision-heading">
+            <div class="section-heading"><h2 id="review-decision-heading">审查处置</h2><button id="review-decision-refresh" type="button">刷新处置记录</button></div>
+            <p class="field-help">核对所选候选正文与精确版本，再记录处理去向。未发现问题仍需独立验收；第二模型待配置。处置仅记录待办或批准修复输入，不会发起模型、完成任务或放行依赖。</p>
+            <p id="review-decision-state" class="field-help" role="status" aria-live="polite"></p>
+            <p id="review-decision-binding" class="mono break-word"></p>
+            <form id="review-decision-form">
+              <label for="review-decision-action">处理方式</label><select id="review-decision-action"></select>
+              <div id="review-decision-target-row" hidden><label for="review-decision-target">单次修复目标</label><select id="review-decision-target"></select></div>
+              <label for="review-decision-reason">处置理由</label><textarea id="review-decision-reason" rows="3" maxlength="2000" required></textarea>
+              <label class="check-label"><input id="review-decision-reviewed" type="checkbox" required>我已核对候选正文、精确版本与处理方式；此操作不代表独立验收通过</label>
+              <button id="review-decision-submit" type="submit" class="primary">记录处置</button>
+            </form>
+            <h3 class="preview-heading">处置历史</h3><div id="review-decision-history"></div>
+          </section>
           <section id="suite-panel" class="suite-panel" hidden aria-labelledby="suite-heading">
             <h2 id="suite-heading">公开开发检查 · 单独审阅</h2>
             <p class="field-help">核对原始用例并选择需要的部分，再读取服务端编译摘要。冻结只记录审阅结果；来源仍未独立验证，旧计划和 宿主终验 终验不变。</p>

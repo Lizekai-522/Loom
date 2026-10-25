@@ -158,6 +158,7 @@
     document.querySelectorAll(".goal-button, .intervention-item button").forEach((button) => { button.disabled = state.busy; });
     refreshArtifactControls();
     suites.sync();
+    reviewDecisions.sync();
     return effects;
   }
 
@@ -422,9 +423,11 @@
   const sameArtifact = (left, right) => Boolean(left && right && artifactFields.every((key) => left[key] === right[key]));
   const suites = window.LoomSuitePanel({state, $, node, has, request, mutate, notify, publicError,
     exactBodyText, sameArtifact, runChecked, label});
+  const reviewDecisions = window.LoomReviewDecisions({state, $, node, has, request, publicError, sameArtifact, runChecked});
 
   function resetArtifacts() {
     suites.reset();
+    reviewDecisions.reset();
     state.artifactVersion += 1; state.detailVersion += 1; state.contextVersion += 1;
     state.artifacts = []; state.artifactStatus = "idle"; state.artifactError = "";
     state.artifactId = ""; state.artifactDetail = null; state.detailStatus = "idle"; state.detailError = "";
@@ -461,7 +464,7 @@
     $("context-refresh").disabled = locked || !targetTask() || state.contextStatus === "loading";
     document.querySelectorAll(".artifact-select").forEach((button) => { button.disabled = locked || state.artifactStatus !== "ready"; });
     const allowed = Boolean(approvalBody());
-    $("auxiliary-form").hidden = !has("control") || !state.principal?.roles?.includes("operator");
+    $("auxiliary-form").hidden = state.artifactDetail?.kind === "review-findings" || !has("control") || !state.principal?.roles?.includes("operator");
     $("auxiliary-reviewed").disabled = !allowed;
     $("auxiliary-approve").disabled = !allowed || !$("auxiliary-reviewed").checked;
     $("auxiliary-help").textContent = state.artifactDetail?.kind === "review-findings" && state.artifactDetail.body?.verdict === "no_findings"
@@ -496,6 +499,7 @@
 
   function renderArtifacts() {
     suites.sync();
+    reviewDecisions.sync();
     const status = state.artifactStatus;
     $("artifacts-state").textContent = status === "loading" ? "正在读取候选产物…"
       : status === "error" ? `候选产物读取失败，当前数量未知。${state.artifactError}`
