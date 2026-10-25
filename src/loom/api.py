@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -19,6 +19,7 @@ from .development_suites import DevelopmentSuiteService
 from .artifact_schemas import MAX_BODY_BYTES
 from .role_summary import submitted_role_source
 from .operator import OperatorService
+from .local_console import allows_local_console, console_principal
 from .store import Claim, Conflict, InvalidInput, LoomError, NotFound, Store, canonical, digest
 from .workflow import WorkflowDefinition, WorkflowService
 
@@ -124,8 +125,9 @@ class AuxiliaryInputApproval(Input):
     expected_content_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
-def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[LocalIdentity, ...] = ()) -> FastAPI:
+def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[LocalIdentity, ...] = (), local_console: bool = False) -> FastAPI:
     registry = AuthRegistry(tenant_keys, identities)
+    local_identity = console_principal(identities, local_console)
     app = FastAPI(title="Loom local kernel", version=__version__,
                   description="Local S1 development API. No real model or external write execution.")
     workflows = WorkflowService(store)
@@ -134,11 +136,13 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     suites = DevelopmentSuiteService(store)
     security = HTTPBearer(auto_error=False)
 
-    def principal(credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)]) -> Principal:
+    def principal(request: Request, credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)]) -> Principal:
         if credentials is not None:
             identity = registry.authenticate(credentials.credentials)
             if identity is not None:
                 return identity
+        if 'authorization' not in request.headers and local_identity is not None and allows_local_console(request):
+            return local_identity
         raise HTTPException(401, "valid tenant bearer token required", headers={"WWW-Authenticate": "Bearer"})
 
     def permitted(action):
@@ -185,10 +189,10 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
         return FileResponse(web / "index.html")
 
     @app.get("/v1/me")
-    def me(identity: Annotated[Principal, Depends(principal)]):
+    def me(request: Request, identity: Annotated[Principal, Depends(principal)]):
         return {"tenant_id": identity.tenant_id, "subject_id": identity.subject_id,
                 "roles": sorted(identity.roles), "capabilities": registry.capabilities(identity),
-                "authentication": "local-bearer", "production_identity": False}
+                "authentication": "local-console" if 'authorization' not in request.headers else "local-bearer", "production_identity": False}
 
     @app.exception_handler(LoomError)
     async def loom_error(_, exc: LoomError):

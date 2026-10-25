@@ -1,12 +1,12 @@
 # Loom
 
-基于 Loom v2.1 修订方案的 Agent 编排项目，当前版本 **0.14.0，suite-console-alpha**。工作台可逐项审阅公开用例、核对摘要、显式冻结、读取历史并生成新的执行计划草案。[工作台使用方法](docs/console.md)
+基于 Loom v2.1 修订方案的 Agent 编排项目，当前版本 **0.15.0**。本机工作台已取消手动访问凭据界面，打开即可自动进入；按钮、角色、事件与新默认任务模板采用中文。[工作台](docs/console.md)
 
-完整 **782主/396子，零失败/跳过**，含48项真实基础设施；本轮Chromium **60项**（suite43、旧角色来源17），既有真实运行API60项对账通过。未新增付费模型调用。[验证记录](docs/validation.md)
+已补齐**既有批准计划的本机执行入口**：先只读预览并核对宿主终验摘要，再显式执行，不重复创建目标、不修改原计划，拒绝来源失效、重复执行和未知调用。[使用步骤](docs/approved-execution.md)
 
-草案在新目标导入、保存和具名operator批准分开进行，不自动执行模型或代码；host用例须另行冻结、保存并由执行器核对，页面只收摘要。0.13的真实1Flash/3生成+4host通过记录保留，实际任务仍submitted、独立review pending，第二模型待配置。
+完整 **820主/396子、零失败/跳过**，含50项真实基础设施；实际Chromium84项、旧真实运行60项HTTP对账通过。新增正常/修复Docker实测使用提供方替身，本轮新增付费0。[验证记录](docs/validation.md)
 
-suite图形流程、审批API和本机执行CLI已接通；完整七角色/真实reviewer与fixer交接、生产身份/恢复及原62项功能继续推进。Docker继续用项目缓存与原盘，原系统目录问题仍保留。[启动](docs/local-execution.md)
+主库备份及历史真实来源保留，浏览器不接收模型密钥或Bearer凭据。第二模型按用户决定待配置，任务只submitted、独立review pending；完整七角色、生产身份与恢复、原62项功能继续推进。
 
 0.4.0新增Unicode任务通过 **5个冻结用例**，提供方返回 **452 tokens**，保守费用记账上界 **262µUSD**，并与工作台证据对账。0.3.0历史探针为4个用例、417 tokens、247µUSD。费用均为上界记账，非供应商账单。用户确认本阶段先使用 Flash，双签保持待配置；任务仍为 `submitted`，人工核对或操作控制都不代替独立验证，也不将完整 run 标为成功。[真实执行方式与边界](docs/local-execution.md)
 
@@ -60,13 +60,13 @@ python -m venv .venv
 & '../../work/loom-venv/Scripts/python.exe' '../../work/launch_loom_first_round.py'
 ```
 
-控制台入口为 <http://127.0.0.1:8796/console>，接口文档为 <http://127.0.0.1:8796/docs>。控制台使用 Loom 本地访问凭据，不接收模型 API 密钥。凭据只保存在页面内存，静态资源无 CDN，服务使用 CSP 禁止外部及内联脚本。重载或退出会清除内存中的待确认幂等键，须先核对列表再重发。[控制台](docs/console.md) · [本机身份](docs/local-auth.md)
+控制台入口为 <http://127.0.0.1:8796/console>，接口文档为 <http://127.0.0.1:8796/docs>。本机开发模式自动进入操作员界面，无需输入访问凭据；浏览器不接收Bearer或模型API密钥。静态资源无CDN，CSP禁止外部及内联脚本。重载或断开会清除待确认幂等键，须先核对列表再重发。[控制台](docs/console.md) · [本机身份](docs/local-auth.md)
 
 以下是独立安装后的通用启动方式，私有身份文件须按文档预先创建，路径位于源码及公开 outputs 之外；示例路径需替换为自己的私有文件。API health 的 stage 仍为 S1-local，表示 SQLite 本机内核边界：
 
 ```powershell
 $identities = 'C:\private\loom\local-identities.json'
-.\.venv\Scripts\python.exe -m loom serve --port 8796 --identities-file $identities
+.\.venv\Scripts\python.exe -m loom serve --port 8796 --identities-file $identities --local-console
 ```
 
 API 只绑定回环地址。`/health`、静态控制台和接口文档可无认证读取；业务接口按 token 解析主体、角色与租户，不接受请求自行指定租户。不同主体使用不同 token；`LOOM_TENANT_KEYS` 仍可选保留旧本地开发身份，但它不能取得新增 control 权限。
@@ -122,7 +122,7 @@ $image = (Get-Content '../../work/loom-sandbox-image.id' -Raw).Trim()
 | `src/loom/policy.py` | 确定性门禁、人工例外、进展判断、任务/Agent 选择与上下文预算 |
 | `src/loom/api.py` | FastAPI/Pydantic 本地认证 API |
 | `src/loom/auth.py`、`src/loom/operator.py` | 本机主体/角色、持久人工控制及未知模型调用核对 |
-| `src/loom/web/` | 无外部依赖的中文控制台、内存凭据与纯文本证据呈现 |
+| `src/loom/web/` | 无外部依赖的中文控制台、自动本机连接与纯文本证据呈现 |
 | `src/loom/workflow.py` | Goal 草案、版本化 DAG、审批与七角色冻结合同 |
 | `src/loom/artifact_schemas.py`、`src/loom/artifacts.py` | 结构化候选、精确辅助读取批准、只读预览与静态字节限制 |
 | `src/loom/model_gateway.py` | 私有配置、Flash JSON 模式、用量及受控错误边界 |

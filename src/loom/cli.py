@@ -19,6 +19,7 @@ def main():
     serve.add_argument("--db", default="artifacts/dev.db")
     serve.add_argument("--port", type=int, default=8796)
     serve.add_argument("--identities-file", type=Path, help="private named local identities; never put tokens in command arguments")
+    serve.add_argument("--local-console", action="store_true", help="本机开发模式：无需输入凭据，使用唯一已配置操作员；仅限回环访问")
     relay = commands.add_parser("queue-drain", help="publish pending events to a dedicated JetStream stream")
     relay.add_argument("--db", required=True)
     relay.add_argument("--server", default="nats://127.0.0.1:4223")
@@ -54,7 +55,7 @@ def main():
         import uvicorn
         try:
             identities = load_identities(args.identities_file) if args.identities_file else ()
-            app = create_app(Store(args.db), keys, identities=identities)
+            app = create_app(Store(args.db), keys, identities=identities, local_console=args.local_console)
         except (ValueError, AuthConfigError) as exc:
             parser.error(str(exc))
         # Bind exclusively to loopback. Internet/production serving is out of scope.

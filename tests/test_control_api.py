@@ -135,7 +135,7 @@ def test_worker_and_viewer_cannot_write_goals_plans_or_approve(api, role):
     run_id = api.managed_goal()
     assert api.request("POST", "/v1/goals", {"title": "x", "description": "x", "acceptance": ["tests.pass"]}, role=role, key="denied-goal").status_code == 403
     assert api.request("POST", "/v1/runs", {"acceptance": ["tests.pass"]}, role=role, key="denied-run").status_code == 403
-    assert api.request("PUT", f"/v1/goals/{run_id}/plan", {"expected_revision": 1, "definition": json.loads(PACK.read_text())}, role=role, key="denied-save").status_code == 403
+    assert api.request("PUT", f"/v1/goals/{run_id}/plan", {"expected_revision": 1, "definition": json.loads(PACK.read_text(encoding="utf-8"))}, role=role, key="denied-save").status_code == 403
     assert api.request("POST", f"/v1/goals/{run_id}/plan/approve", {"expected_revision": 1, "expected_digest": "0" * 64}, role=role, key="denied-approve").status_code == 403
     assert api.request("POST", f"/v1/runs/{run_id}/tasks", {"task_id": "injected", "title": "bad"}, role=role, key="denied-task").status_code == 403
 

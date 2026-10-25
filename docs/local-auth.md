@@ -73,3 +73,10 @@ Principal 是不可变的 tenant_id、subject_id 和 frozenset 角色，不包�
 公开检查套件新增精确预览GET、具名operator冻结POST和suite读取GET，OpenAPI27路径。suite.approve仅operator，不能由Worker/viewer/legacy或正文actor获取；冻结绑定精确review digest/选择及幂等头，计划/任务/费用不变。新增20项API测试，完整746主/396子零失败/跳过；独立副本39项实际HTTP和现有UI17项Chromium通过，无新付费。旧权限快照/HTTP路径夹具失败保留并已复测。
 
 下一步新草案suite来源引用与执行前核对，再真实development/repair和工作台；当前冻结不授执行权，生成case未执行、第二模型待配置、Goal未成功。原62项及部署日期继续追踪。
+
+
+## 0.15用户要求的本机免输入模式
+
+主启动器使用--local-console，并从私有身份配置选择唯一operator。页面自动进入，不再要求用户复制Bearer；Worker和模型秘密仍留在服务端/CLI的私有配置中。create_app默认不启用该模式，开启时须唯一具名operator；它不是远程匿名API或生产身份服务。同源本机标记不是秘密，其他本机程序可使用它；非回环、跨Origin/端口、转发头和伪造Host被拒绝。显式错误Bearer不能降级成自动operator。
+
+页面身份与原授权矩阵一致，不能凭operator取得Worker权限、生成签名或跳过已批准计划。正式部署须关闭开发便利模式并使用后续生产身份方案。原文中的手动浏览器登录步骤由本节取代，Bearer接口兼容保留供受控工具使用。

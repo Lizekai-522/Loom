@@ -3,7 +3,7 @@
 // Review data stays in this page's memory. The server owns compilation,
 // canonical hashes, identity, source freshness and all authority decisions.
 window.LoomSuitePanel = function ({state, $, node, has, request, mutate, notify, publicError,
-  exactBodyText, sameArtifact, runChecked}) {
+  exactBodyText, sameArtifact, runChecked, label}) {
   const hash = /^[0-9a-f]{64}$/;
   let binding = "", generation = 0, pending = false, preview = null, frozen = null, draft = null;
   let selected = [], error = "", receiptId = "";
@@ -80,8 +80,8 @@ window.LoomSuitePanel = function ({state, $, node, has, request, mutate, notify,
   }
   function displayReview(value, container) {
     container.replaceChildren();
-    container.append(node("p", "mono break-word", `来源运行 ${value.source.run_id} · 节点 ${value.source.node} · epoch ${value.source.epoch} · 修订 ${value.source.revision}`));
-    container.append(node("p", "field-help", `来源 ${value.source.origin} · 选中 ${value.case_count} 项：${value.selected_case_names.join(" / ")}`));
+    container.append(node("p", "mono break-word", `来源运行 ${value.source.run_id} · 节点 ${value.source.node} · 轮次 ${value.source.epoch} · 修订 ${value.source.revision}`));
+    container.append(node("p", "field-help", `来源 ${label(value.source.origin)} · 选中 ${value.case_count} 项：${value.selected_case_names.join(" / ")}`));
     for (const [key, label] of [["plan_digest", "原计划摘要"], ["body_hash", "原始正文摘要"], ["event_hash", "原始来源事件"]]) {
       container.append(node("p", "mono break-word", `${label} ${value.source[key]}`));
     }
@@ -221,7 +221,7 @@ window.LoomSuitePanel = function ({state, $, node, has, request, mutate, notify,
     if (!title || title.length > 500 || !instruction || instruction.length > 16000 || !hash.test(host) || /^0+$/.test(host)
         || host === frozen.development_digest || !Number.isSafeInteger(cost) || cost < 0 || cost > 999999999000
         || !Number.isSafeInteger(tokens) || tokens < 1 || tokens > 10000000 || ![1, 2].includes(repairs)) {
-      notify("请填写新任务需求、不同于开发套件的真实 host 摘要，以及有效的总预算和修复次数。", true); return;
+      notify("请填写新任务需求、不同于开发套件的真实 宿主终验 摘要，以及有效的总预算和修复次数。", true); return;
     }
     const inputSnapshot = JSON.stringify([title, instruction, host, cost, tokens, repairs]);
     read(async (current) => {
@@ -237,10 +237,10 @@ window.LoomSuitePanel = function ({state, $, node, has, request, mutate, notify,
           evaluation_digest: host, development_suite: value.execution_reference,
           repair: {schema_version: "loom.rebind/v1", development_digest: value.development_digest, max_repairs: repairs, stop_on_duplicate_source: true},
           limits: {cost_limit_microusd: cost, token_limit: tokens, max_attempts: 1 + repairs}},
-        {id: "independent_review", title: "Independent acceptance review", instruction: "Review original evidence independently before delivery.", role: "validator", depends: ["implement"], priority: 0, channel: "verification",
+        {id: "independent_review", title: "独立验收复核", instruction: "交付前独立审阅原始证据，未取得独立验证前不得判定成功。", role: "validator", depends: ["implement"], priority: 0, channel: "verification",
           limits: {cost_limit_microusd: 1000, token_limit: 1000, max_attempts: 1}}]};
       $("suite-draft-json").textContent = JSON.stringify(draft, null, 2);
-      $("suite-draft-help").textContent = `未保存、未批准的草案。新目标预算至少覆盖任务及独立复核：${cost + 1000} µUSD / ${tokens + 1000} tokens。下载后在“新建”目标的“计划”页导入、保存并单独审阅批准。host 用例仍须由本机执行器持有并核对摘要；当前双签待配置，不能最终成功。`;
+      $("suite-draft-help").textContent = `未保存、未批准的草案。新目标预算至少覆盖任务及独立复核：${cost + 1000} µUSD / ${tokens + 1000} 词元。下载后在“新建”目标的“计划”页导入、保存并单独审阅批准。宿主终验 用例仍须由本机执行器持有并核对摘要；当前双签待配置，不能最终成功。`;
       $("suite-draft-result").hidden = false;
     });
   });

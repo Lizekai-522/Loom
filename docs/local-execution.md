@@ -134,3 +134,12 @@ scripts/run_workflow_task.py与configs/workflow-task.example.json提供同run的
 产品CLI支持新引用任务，默认离线preview，显式approve须现有DB及私有operator/worker配置。自动载入注册表用例，拒绝混用raw development_tests；host验收单独冻结且失败不回流修复。GET suite给出当前execution_reference；API路线仍27条。
 
 完整782主/396子，0失败/跳过，含48真实基础设施。真实run7bf5b872-fae6-4c4d-a154-f2de9470846b，1Flash、3生成+4host用例通过，552tokens/342µUSD上界、预留0、未核对账单，目标submitted/独立review pending。27新+33旧HTTP和17Chromium通过；源码/包/凭据另核。suite图形表单和完整七角色/生产/双签仍未完成。
+
+
+## 0.15免输入、中文工作台及既有计划执行（2026-10-25）
+
+按用户最新要求取消手动凭据界面，启用回环/同源自动operator；不暴露Bearer，不授Worker/独立签名权限。界面标签与新默认任务模板中文化，历史冻结记录/协议标识不改。既有批准计划通过run_approved_task.py直接消费：只读预览、宿主摘要、当前preview pin、同事务指定节点领取；无新Goal，不自动恢复或重发。
+
+完整820主/396子，零失败/跳过，含50真实基础设施；新增36本地/2真实Docker已包含。Chromium84（套件44/中文自动进入14/旧来源17/主实例只读9）及旧真实运行60HTTP通过，新增付费0。主库仍37runs/554events/1suite，备份完整。首次UTF-8/浏览器替换及脚手架问题已修，失败记录保留。
+
+下一步reviewer候选schema、精确被审产物与受信证据绑定、operator批准到fixer的受限交接，先测停止/未知/预算/失租与旧签名，再必要真实调用；生产身份/人工处理及恢复并行按原计划推进。第二模型待配置，FR-051/052仍partial；原62项、11/15部署、11/20前提交不变。

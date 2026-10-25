@@ -78,8 +78,10 @@ class ExecutionContextError(Conflict):
 
 
 class ArtifactService:
-    def __init__(self, store: Store):
+    def __init__(self, store: Store, *, initialize=True):
         self.store = store
+        if not initialize:
+            return
         WorkflowService(store)
         with store.connect() as db:
             db.executescript(SCHEMA)

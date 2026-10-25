@@ -16,7 +16,10 @@ async (page) => {
   page.setDefaultTimeout(12000);
   await page.unrouteAll({behavior: 'wait'});
   await page.setViewportSize({width: 1440, height: 1000});
+  await page.setExtraHTTPHeaders({});
   await page.goto(origin + '/console');
+  await page.waitForFunction(() => !document.getElementById('workspace').hidden);
+  expect(await page.locator('input[type=password]').count() === 0, 'automatic_local_entry_has_no_credential_form');
   // Create genuine API records, without a gateway, model response, test result,
   // sandbox or forged provenance. JSON numeric lexemes are sent as raw text.
   const goal = await api('POST', '/v1/goals', {title: 'Browser suite ' + suffix, description: 'Public fixture only.', acceptance: ['tests.pass'], cost_limit_microusd: 1000000, token_limit: 2000000});
@@ -35,8 +38,8 @@ async (page) => {
   const candidate = await api('POST', base + '/tasks/' + claim.task_id + '/artifacts', '{"worker_id":"worker","epoch":' + claim.epoch + ',"kind":"public-checks","body":' + rawBody + '}', 'worker');
   const before = await api('GET', goalPath + '/plan');
   const login = async role => {
-    if (await page.locator('#logout-button').isVisible()) await page.locator('#logout-button').click();
-    await page.locator('#access-token').fill(token(role)); await page.locator('#login-button').click();
+    await page.setExtraHTTPHeaders(headers(role));
+    await page.goto(origin + '/console');
     await page.waitForFunction(() => !document.getElementById('workspace').hidden);
     await page.locator('#goal-list button').filter({hasText: goal.title || 'Browser suite ' + suffix}).click();
     await page.waitForFunction(id => document.getElementById('run-id').textContent === id && !document.querySelector('#run-content.loading'), goal.run_id);
@@ -72,7 +75,7 @@ async (page) => {
   let events = (await api('GET', base + '/events')).events;
   expect(events.filter(e => e.type === 'development.suite_frozen').length === 1, 'one_freeze_event_after_unknown_outcome_retry');
   expect((await page.locator('#suite-frozen').textContent()).includes('9007199254740993'), 'frozen_body_preserves_large_integer');
-  expect((await page.locator('#suite-frozen').textContent()).includes('authenticated-worker-submission'), 'worker_origin_is_not_forged_as_model_origin');
+  expect((await page.locator('#suite-frozen').textContent()).includes('已认证执行器提交'), 'worker_origin_is_not_forged_as_model_origin');
   expect((await api('GET', base + '/review')).counts_as_success === false, 'review_freeze_does_not_confer_success');
   // A GET failure after an acknowledged POST must not allow a new freeze.
   await page.locator('input[data-case-name="large-integer"]').uncheck();
@@ -106,7 +109,7 @@ async (page) => {
   expect(draft.nodes[0].limits.max_attempts === 3 && draft.nodes[0].repair.max_repairs === 2, 'draft_repairs_share_bounded_task_contract');
   expect(draft.nodes[1].depends[0] === 'implement' && draft.nodes[1].channel === 'verification', 'draft_preserves_independent_review_dependency');
   expect(!draftText.includes('float-and-markup') && !draftText.includes('<img') && !draftText.includes('model_provenance'), 'draft_contains_reference_without_copied_candidate_origin_or_cases');
-  expect((await page.locator('#suite-draft-help').textContent()).includes('501000 µUSD / 1101000 tokens'), 'draft_displays_total_goal_budget_requirement');
+  expect((await page.locator('#suite-draft-help').textContent()).includes('501000 µUSD / 1101000 词元'), 'draft_displays_total_goal_budget_requirement');
   await page.locator('#suite-prepare').scrollIntoViewIfNeeded();
   await page.screenshot({path: 'output/playwright/suite-console-desktop.png'});
   const downloadPromise = page.waitForEvent('download'); await page.locator('#suite-download').click();
@@ -130,7 +133,7 @@ async (page) => {
   expect(targetPlan.status === 'draft' && targetPlan.definition.nodes[0].development_suite.suite_id === suiteId, 'generated_plan_saves_on_new_goal_without_approval');
   expect((await api('GET', '/v1/runs/' + targetId + '/review')).tasks.length === 0, 'draft_save_creates_no_execution_tasks');
   // Legacy may save a draft, but this suite plan requires a named operator.
-  await page.locator('#logout-button').click(); await page.locator('#access-token').fill(token('legacy')); await page.locator('#login-button').click();
+  await page.setExtraHTTPHeaders(headers('legacy')); await page.goto(origin + '/console');
   await page.waitForFunction(() => !document.getElementById('workspace').hidden);
   await page.locator('#goal-list button').filter({hasText: 'Imported plan ' + suffix}).click();
   await page.waitForFunction(id => document.getElementById('run-id').textContent === id && !document.querySelector('#run-content.loading'), targetId);
@@ -139,7 +142,7 @@ async (page) => {
   let legacyWrites = 0; const countLegacy = req => { if (req.method() === 'POST') legacyWrites++; }; page.on('request', countLegacy);
   await page.locator('#plan-reviewed').evaluate(input => { input.checked = true; }); await page.locator('#approve-plan-form').dispatchEvent('submit');
   expect(legacyWrites === 0, 'forced_legacy_plan_approval_sends_no_write'); page.off('request', countLegacy);
-  await page.locator('#logout-button').click(); await page.locator('#access-token').fill(token('operator')); await page.locator('#login-button').click();
+  await page.setExtraHTTPHeaders(headers('operator')); await page.goto(origin + '/console');
   await page.waitForFunction(() => !document.getElementById('workspace').hidden);
   await page.locator('#goal-list button').filter({hasText: 'Imported plan ' + suffix}).click();
   await page.waitForFunction(id => document.getElementById('run-id').textContent === id && !document.querySelector('#run-content.loading'), targetId);
@@ -191,7 +194,7 @@ async (page) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'suite_mobile_layout_has_no_page_overflow');
   await page.locator('#suite-frozen').scrollIntoViewIfNeeded();
   await page.screenshot({path: 'output/playwright/suite-console-mobile.png'});
-  expect(await page.evaluate(() => localStorage.length === 0 && sessionStorage.length === 0 && document.getElementById('access-token').value === ''), 'no_credential_persistence');
+  expect(await page.evaluate(() => localStorage.length === 0 && sessionStorage.length === 0 && document.querySelector('input[type=password]') === null), 'no_credential_persistence');
   await page.locator('#logout-button').click();
   expect(await page.locator('#suite-panel').isHidden() && await page.locator('#suite-draft-json').textContent() === '', 'logout_clears_review_and_draft');
   expect(errors.length === 0, 'no_unhandled_browser_exceptions');

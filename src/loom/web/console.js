@@ -23,7 +23,7 @@
     }, 2);
   }
   const state = {
-    token: "", principal: null, goals: [], interventions: [], runId: null,
+    principal: null, goals: [], interventions: [], runId: null,
     goal: null, snapshot: null, plan: null, review: null, tab: "tasks",
     busy: false, loading: false, pendingRunId: null, loadedSelection: 0,
     interventionsError: false, noticeKind: null, session: 0, selection: 0, controllers: new Set(), keys: new Map(),
@@ -32,6 +32,7 @@
     artifactVersion: 0, detailVersion: 0, contextVersion: 0, artifactsSelection: 0,
     contextBindingChanged: false,
   };
+  const label = window.LoomZH.label;
   const statusNames = {
     draft: "草案", open: "运行开放", paused: "已暂停", awaiting_human: "待人工处理",
     pending: "等待执行", running: "执行中", submitted: "待独立复核", done: "已验证",
@@ -73,7 +74,7 @@
   }
 
   function publicError(error) {
-    if (error.status === 401) return "访问凭据无效或已撤销，请重新登录。";
+    if (error.status === 401) return "未启用本机开发入口，请使用项目启动器启动服务，再点击“重新连接”。";
     if (error.status === 403) return "当前身份没有执行此操作的权限。";
     if (error.status === 404) return "目标已不存在，或不属于当前身份可访问的范围。";
     if (error.status === 409) return "操作被拒绝：运行状态、计划版本或核对条件已改变。可点击工作台“刷新”核对；同页面重提相同内容沿用原幂等键。退出或重载页面后须先核对列表，再决定是否重发。";
@@ -89,7 +90,7 @@
     state.controllers.add(controller);
     const timer = setTimeout(() => controller.abort(), 15000);
     try {
-      const headers = {Accept: "application/json", Authorization: `Bearer ${state.token}`};
+      const headers = {Accept: "application/json", "X-Loom-Console": "local"};
       if (body !== undefined) headers["Content-Type"] = "application/json";
       if (key) headers["Idempotency-Key"] = key;
       const response = await fetch(path, {
@@ -165,7 +166,6 @@
     state.selection += 1;
     state.controllers.forEach((controller) => controller.abort());
     state.controllers.clear();
-    state.token = "";
     state.principal = null;
     state.goals = [];
     state.interventions = [];
@@ -178,7 +178,6 @@
     state.loadedSelection = 0;
     state.interventionsError = false;
     resetArtifacts();
-    $("access-token").value = "";
     $("login-panel").hidden = false;
     $("workspace").hidden = true;
     $("logout-button").hidden = $("refresh-button").hidden = true;
@@ -196,8 +195,8 @@
     $("goal-form").reset();
     $("goal-dialog").close();
     $("login-button").disabled = false;
-    if (showNotice) notify("已退出，页面内存中的访问凭据已清除。");
-    $("access-token").focus();
+    if (showNotice) notify("已断开本机工作台。点击“重新连接”即可继续。");
+    $("login-button").focus();
   }
 
   function renderGoals() {
@@ -233,12 +232,12 @@
       const row = node("article", "task-row");
       const content = node("div");
       content.append(node("span", "task-title", task.title || task.id));
-      const detail = [task.role, task.model_alias, `epoch ${str(task.epoch, "0")}`, task.channel].filter(Boolean).join(" · ");
+      const detail = [label(task.role), task.model_alias, `轮次 ${str(task.epoch, "0")}`, label(task.channel)].filter(Boolean).join(" · ");
       content.append(node("div", "task-detail", detail));
       const artifact = task.artifact;
       if (artifact) {
         const cases = Array.isArray(artifact.cases) ? artifact.cases : [];
-        const summary = [artifact.kind, cases.length ? `冻结用例 ${cases.filter((item) => item.passed === true).length}/${cases.length}` : "", artifact.verification === "awaiting_independent_models" ? "等待独立模型复核" : artifact.verification].filter(Boolean).join(" · ");
+        const summary = [label(artifact.kind), cases.length ? `冻结用例 ${cases.filter((item) => item.passed === true).length}/${cases.length}` : "", artifact.verification === "awaiting_independent_models" ? "等待独立模型复核" : label(artifact.verification)].filter(Boolean).join(" · ");
         content.append(node("div", "task-detail", summary));
         if (artifact.content_hash) content.append(node("div", "task-detail mono", `${artifact.kind === "role-artifact" ? "任务输出摘要" : "产物"} ${artifact.content_hash}`));
         if (artifact.kind === "role-artifact") {
@@ -292,12 +291,12 @@
     if (!effects.length) summary.append(node("p", "muted", "没有模型外部调用记录。"));
     for (const effect of effects) {
       const article = node("article", "intervention-item");
-      article.append(node("strong", "mono", effect.call_id), badge(effect.state), node("p", "muted", `任务 ${str(effect.task_id)} · epoch ${str(effect.epoch)}`));
+      article.append(node("strong", "mono", effect.call_id), badge(effect.state), node("p", "muted", `任务 ${str(effect.task_id)} · 轮次 ${str(effect.epoch)}`));
       summary.append(article);
     }
     for (const reservation of Array.isArray(review.reservations) ? review.reservations : []) {
       const article = node("article", "intervention-item");
-      article.append(node("strong", "mono", reservation.reservation_id), badge(reservation.state), node("p", "muted", `预留 ${amount(reservation.cost)} / ${count(reservation.tokens)} tokens；已核实 ${amount(reservation.actual_cost)} / ${count(reservation.actual_tokens)} tokens`));
+      article.append(node("strong", "mono", reservation.reservation_id), badge(reservation.state), node("p", "muted", `预留 ${amount(reservation.cost)} / ${count(reservation.tokens)} 词元；已核实 ${amount(reservation.actual_cost)} / ${count(reservation.actual_tokens)} 词元`));
       summary.append(article);
     }
     const attempts = Array.isArray(review.attempts) ? review.attempts : [];
@@ -313,14 +312,14 @@
         && integer(attempt.context_item_count) && attempt.context_item_count <= 8
         && attempt.untrusted_data === true && attempt.producer_verified === false && attempt.counts_as_success === false;
       article.append(node("strong", "", roleEvent ? roleSource ? "模型生成候选来源已绑定执行记录" : "模型来源记录待核对"
-        : contextEvent ? contextValid ? "本次尝试已绑定辅助上下文" : "辅助上下文绑定记录待核对" : attempt.event_type));
-      const detail = [attempt.task_id, attempt.epoch === undefined ? "" : `epoch ${attempt.epoch}`,
-        ...(contextEvent || roleEvent ? [] : [attempt.primitive, attempt.family, attempt.code, attempt.reason, attempt.stage])].filter(Boolean).join(" · ");
+        : contextEvent ? contextValid ? "本次尝试已绑定辅助上下文" : "辅助上下文绑定记录待核对" : label(attempt.event_type)));
+      const detail = [attempt.task_id, attempt.epoch === undefined ? "" : `轮次 ${attempt.epoch}`,
+        ...(contextEvent || roleEvent ? [] : [...[attempt.primitive, attempt.family, attempt.code, attempt.reason, attempt.stage].map(label)])].filter(Boolean).join(" · ");
       article.append(node("p", "muted", detail));
       if (roleEvent) {
         article.append(roleSourceDisplay(roleSource, "unavailable"));
         const currentTask = (review.tasks || []).find((task) => task.id === attempt.task_id);
-        if (currentTask && currentTask.epoch !== attempt.epoch) article.append(node("p", "muted", `历史模型来源记录 · 当前任务 epoch ${str(currentTask.epoch)}`));
+        if (currentTask && currentTask.epoch !== attempt.epoch) article.append(node("p", "muted", `历史模型来源记录 · 当前任务 轮次 ${str(currentTask.epoch)}`));
         article.append(node("p", "field-help", "来源记录仅关联本机网关的模型响应，不证明内容正确、供应商账单已核验或独立验收通过。"));
       } else if (contextEvent) {
         if (contextValid) {
@@ -328,7 +327,7 @@
             node("p", "muted", `${count(attempt.context_bytes)} UTF-8 字节 · ${count(attempt.context_item_count)} 个辅助条目 · 不可信数据 · 未验证`));
         } else article.append(node("p", "inline-error", "绑定摘要字段不完整或不合法，未据此确认绑定。请刷新并核对执行证据。"));
         const currentTask = (review.tasks || []).find((task) => task.id === attempt.task_id);
-        if (currentTask && currentTask.epoch !== attempt.epoch) article.append(node("p", "muted", `历史尝试记录 · 当前任务 epoch ${str(currentTask.epoch)}`));
+        if (currentTask && currentTask.epoch !== attempt.epoch) article.append(node("p", "muted", `历史尝试记录 · 当前任务 轮次 ${str(currentTask.epoch)}`));
         article.append(node("p", "field-help", "此记录仅表示本次尝试获准使用该辅助上下文，不证明提供方已收到或执行完成；不验证内容、不放行依赖，也不代替独立验收。"));
       } else if (attempt.from_epoch !== undefined || attempt.to_epoch !== undefined) {
         article.append(node("p", "muted", `尝试 ${str(attempt.from_epoch)} → ${str(attempt.to_epoch)}`));
@@ -403,15 +402,15 @@
 
   function roleSourceDisplay(source, status, compact = false) {
     const block = node("div", "artifact-metadata");
-    const labels = {version_mismatch: "版本不匹配，未确认当前来源", worker_submission: "未取得匹配执行记录（Worker 提交）", unavailable: "证据暂不可用"};
+    const labels = {version_mismatch: "版本不匹配，未确认当前来源", worker_submission: "未取得匹配执行记录（执行器 提交）", unavailable: "证据暂不可用"};
     block.append(node("p", "task-detail", `模型来源：${source ? "已绑定执行记录" : labels[status] || "证据摘要待核对"}`),
       node("p", "task-detail", "内容：未独立验证"));
     if (source) {
-      block.append(node("p", "task-detail", `${source.role} · ${source.provider} / ${source.model} · 路由 ${source.route}`));
+      block.append(node("p", "task-detail", `${label(source.role)} · ${source.provider} / ${source.model} · 路由 ${source.route}`));
       if (source.kind === "public-checks") block.append(node("p", "task-detail", "公开开发检查候选：用例未执行，未作为冻结验收。"));
       if (!compact) {
         for (const [key, label] of [["artifact_id", "候选"], ["artifact_content_hash", "候选正文摘要"], ["call_id", "模型调用"], ["source_event_hash", "来源事件"]]) block.append(node("p", "mono break-word", `${label} ${source[key]}`));
-        block.append(node("p", "task-detail", `已知用量 ${count(source.prompt_tokens)} 输入 + ${count(source.completion_tokens)} 输出 = ${count(source.total_tokens)} tokens；费用上界 ${amount(source.usage_cost_upper_microusd)}，非供应商账单。`));
+        block.append(node("p", "task-detail", `已知用量 ${count(source.prompt_tokens)} 输入 + ${count(source.completion_tokens)} 输出 = ${count(source.total_tokens)} 词元；费用上界 ${amount(source.usage_cost_upper_microusd)}，非供应商账单。`));
       }
     }
     return block;
@@ -422,7 +421,7 @@
   const targetTask = () => state.review?.tasks?.find((task) => task.id === state.targetId);
   const sameArtifact = (left, right) => Boolean(left && right && artifactFields.every((key) => left[key] === right[key]));
   const suites = window.LoomSuitePanel({state, $, node, has, request, mutate, notify, publicError,
-    exactBodyText, sameArtifact, runChecked});
+    exactBodyText, sameArtifact, runChecked, label});
 
   function resetArtifacts() {
     suites.reset();
@@ -470,7 +469,7 @@
 
   function boundedBody(body) {
     const details = node("details", "artifact-body");
-    details.append(node("summary", "", "展开不可信 typed 正文（纯文本）"));
+    details.append(node("summary", "", "展开不可信 结构化 正文（纯文本）"));
     let text;
     try { text = exactBodyText(body) || ""; }
     catch {
@@ -484,7 +483,7 @@
 
   function artifactMetadata(item) {
     const block = node("div", "artifact-metadata");
-    block.append(node("p", "muted", `${str(item.kind)} · ${str(item.schema_version)} · 节点 ${str(item.source_node)} · 源 epoch ${str(item.source_epoch)} · 修订 ${str(item.revision)}`));
+    block.append(node("p", "muted", `${label(item.kind)} · ${str(item.schema_version)} · 节点 ${str(item.source_node)} · 源 轮次 ${str(item.source_epoch)} · 修订 ${str(item.revision)}`));
     for (const [key, label] of [["artifact_id", "候选"], ["source_task_id", "源任务"], ["content_hash", "内容摘要"], ["plan_digest", "计划摘要"], ["source_event_hash", "来源事件"]]) {
       block.append(node("p", "mono break-word", `${label} ${str(item[key])}`));
     }
@@ -503,8 +502,8 @@
     if (status === "ready" && !state.artifacts.length) list.append(node("p", "inline-empty", "当前运行尚无候选产物。"));
     if (status === "ready") for (const item of state.artifacts.slice(-100).reverse()) {
       const article = node("article", "artifact-card");
-      article.append(node("strong", "", `${str(item.kind)} · 修订 ${str(item.revision)}`), node("span", "badge attention-state", item.stale ? "已失效 · 未验证" : "候选 · 未验证"));
-      article.append(node("p", "muted", `${item.origin === "model-gateway-response" ? "模型网关响应候选" : item.origin === "authenticated-worker-submission" ? "已认证 Worker 提交" : "来源待核对"} · 节点 ${str(item.source_node)} · 源 epoch ${str(item.source_epoch)}`));
+      article.append(node("strong", "", `${label(item.kind)} · 修订 ${str(item.revision)}`), node("span", "badge attention-state", item.stale ? "已失效 · 未验证" : "候选 · 未验证"));
+      article.append(node("p", "muted", `${item.origin === "model-gateway-response" ? "模型网关响应候选" : item.origin === "authenticated-worker-submission" ? "已认证 执行器 提交" : "来源待核对"} · 节点 ${str(item.source_node)} · 源 轮次 ${str(item.source_epoch)}`));
       article.append(roleSourceDisplay(candidateRoleSource(item), item.origin === "authenticated-worker-submission" ? "worker_submission" : "unavailable", true));
       article.append(node("p", "mono break-word", `内容摘要 ${str(item.content_hash)}`));
       const button = node("button", "artifact-select", item.artifact_id === state.artifactId ? "已选候选 · 重新读取" : "查看并选择候选");
@@ -522,7 +521,7 @@
     }
     const tasks = Array.isArray(state.review?.tasks) ? state.review.tasks : [];
     $("input-target").replaceChildren(...tasks.map((task) => {
-      const option = node("option", "", `${task.title || task.id} · epoch ${str(task.epoch)}`); option.value = task.id; return option;
+      const option = node("option", "", `${task.title || task.id} · 轮次 ${str(task.epoch)}`); option.value = task.id; return option;
     }));
     $("input-target").value = state.targetId;
     const task = targetTask(), selectors = task?.input_artifacts || [];
@@ -530,7 +529,7 @@
       : !task ? "暂无目标任务。" : !selectors.length ? "此目标未声明辅助输入选择器，不能批准候选给它。"
       : selectors.map((selector) => `${selector.source_node} / ${selector.kind} / ${selector.schema_version} · ${selector.required ? "必需" : "可选"}`).join("；");
     const item = state.artifactDetail;
-    $("auxiliary-binding").textContent = item && task ? `目标 ${task.id} · 目标 epoch ${task.epoch}\n源 epoch ${item.source_epoch} · 修订 ${item.revision}\n内容 ${item.content_hash}\n计划 ${item.plan_digest}` : "先读取候选并选择目标任务。";
+    $("auxiliary-binding").textContent = item && task ? `目标 ${task.id} · 目标 轮次 ${task.epoch}\n源 轮次 ${item.source_epoch} · 修订 ${item.revision}\n内容 ${item.content_hash}\n计划 ${item.plan_digest}` : "先读取候选并选择目标任务。";
     renderContext(); refreshArtifactControls();
   }
 
@@ -538,7 +537,7 @@
     const status = state.contextStatus, preview = state.context;
     $("context-state").textContent = status === "loading" ? "正在读取目标辅助输入预览…"
       : status === "error" ? `预览读取失败，输入状态未知。${state.contextError}`
-      : status === "ready" ? `${preview.ready ? "辅助数据齐备" : "仍缺必需辅助输入"} · 目标 epoch ${preview.target_epoch} · ${preview.bytes} / ${preview.max_bytes} UTF-8 字节 · 本次预览不会发起执行，实际绑定看人工待办中的执行记录`
+      : status === "ready" ? `${preview.ready ? "辅助数据齐备" : "仍缺必需辅助输入"} · 目标 轮次 ${preview.target_epoch} · ${preview.bytes} / ${preview.max_bytes} UTF-8 字节 · 本次预览不会发起执行，实际绑定看人工待办中的执行记录`
       : "选择目标任务后读取预览。";
     const panel = $("context-preview"); panel.replaceChildren();
     if (status !== "ready") return;
@@ -609,7 +608,7 @@
     } catch (error) {
       if (!current() || error.code === "SESSION_CHANGED") return;
       state.contextStatus = "error"; state.contextError = error.code === "CONTEXT_BINDING_CHANGED"
-        ? "目标 epoch 或计划摘要已改变，批准已停用。请点击工作台“刷新”重新读取运行和合同后再审阅。" : publicError(error);
+        ? "目标 轮次 或计划摘要已改变，批准已停用。请点击工作台“刷新”重新读取运行和合同后再审阅。" : publicError(error);
       renderContext(); refreshArtifactControls();
     }
   }
@@ -628,7 +627,7 @@
       $("event-list").replaceChildren(...events.map((event) => {
         const item = node("li", "event-row");
         const head = node("div", "event-head");
-        head.append(node("span", "mono", `#${str(event.seq)}`), node("strong", "", event.type));
+        head.append(node("span", "mono", `#${str(event.seq)}`), node("strong", "", label(event.type)));
         item.append(head, node("p", "event-meta", [event.timestamp || event.occurred_at, event.actor || event.actor_id].filter(Boolean).join(" · ")));
         const details = node("details");
         details.append(node("summary", "", "查看事件数据"), node("pre", "", JSON.stringify(event.payload || {}, null, 2)));
@@ -762,26 +761,21 @@
     }
   }
 
-  $("login-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const token = $("access-token").value.trim();
-    $("access-token").value = "";
-    if (!token) return;
+  async function connect() {
     const session = ++state.session;
-    state.token = token;
     $("login-button").disabled = true;
-    notify("正在验证本地身份…");
+    notify("正在连接本机工作台…");
     try {
       const principal = await request("GET", "/v1/me");
       if (session !== state.session) return;
       if (!principal || !Array.isArray(principal.roles) || !Array.isArray(principal.capabilities)) throw Object.assign(new Error(), {code: "BAD_JSON"});
       state.principal = principal;
-      $("identity-label").textContent = `${str(principal.subject_id)} · ${principal.roles.map((role) => roleNames[role] || role).join(" / ")}`;
+      $("identity-label").textContent = `${principal.authentication === "local-console" ? "本机开发 · " : ""}${principal.roles.map((role) => roleNames[role] || role).join(" / ")}`;
       $("login-panel").hidden = true;
       $("workspace").hidden = false;
       $("logout-button").hidden = $("refresh-button").hidden = false;
       refreshControls();
-      notify(`已连接租户 ${str(principal.tenant_id)}。`);
+      notify("已连接本机工作台。");
       await refreshAll();
       $("workspace").focus();
     } catch (error) {
@@ -789,7 +783,8 @@
       logout(false);
       notify(publicError(error), true);
     } finally { if (session === state.session) $("login-button").disabled = false; }
-  });
+  }
+  $("login-form").addEventListener("submit", (event) => { event.preventDefault(); connect(); });
   $("logout-button").addEventListener("click", () => logout());
   $("refresh-button").addEventListener("click", () => refreshAll());
   $("goal-search").addEventListener("input", renderGoals);
@@ -897,4 +892,5 @@
     });
   });
   refreshControls();
+  connect();
 })();
