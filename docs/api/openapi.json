@@ -3,7 +3,7 @@
   "info": {
     "title": "Loom local kernel",
     "description": "Local S1 development API. No real model or external write execution.",
-    "version": "0.15.0"
+    "version": "0.16.0"
   },
   "paths": {
     "/v1/me": {
@@ -663,6 +663,128 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/runs/{run_id}/tasks/{task_id}/review-input": {
+      "get": {
+        "summary": "Preview Review Input",
+        "operationId": "preview_review_input_v1_runs__run_id__tasks__task_id__review_input_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "include_source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Source"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/runs/{run_id}/tasks/{task_id}/review-findings/validate": {
+      "post": {
+        "summary": "Validate Review Findings",
+        "operationId": "validate_review_findings_v1_runs__run_id__tasks__task_id__review_findings_validate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewFindingsBody"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2002,6 +2124,183 @@
           "actual_tokens"
         ],
         "title": "ReconciliationInput"
+      },
+      "ReviewFinding": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 48,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "title": "Id"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "blocker",
+              "major",
+              "minor",
+              "info"
+            ],
+            "title": "Severity"
+          },
+          "path": {
+            "type": "string",
+            "const": "main.py",
+            "title": "Path"
+          },
+          "start_line": {
+            "type": "integer",
+            "maximum": 262144.0,
+            "minimum": 1.0,
+            "title": "Start Line"
+          },
+          "end_line": {
+            "type": "integer",
+            "maximum": 262144.0,
+            "minimum": 1.0,
+            "title": "End Line"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Description"
+          },
+          "recommendation": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Recommendation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "severity",
+          "path",
+          "start_line",
+          "end_line",
+          "description",
+          "recommendation"
+        ],
+        "title": "ReviewFinding"
+      },
+      "ReviewFindingsBody": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "loom.review-findings/v1",
+            "title": "Schema Version"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/ReviewSubjectReference"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Summary"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "findings",
+              "no_findings"
+            ],
+            "title": "Verdict"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewFinding"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Findings"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "subject",
+          "summary",
+          "verdict",
+          "findings"
+        ],
+        "title": "ReviewFindingsBody"
+      },
+      "ReviewSubjectReference": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "loom.review-subject-ref/v1",
+            "title": "Schema Version"
+          },
+          "run_id": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Run Id"
+          },
+          "task_id": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Task Id"
+          },
+          "epoch": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Epoch"
+          },
+          "plan_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Plan Digest"
+          },
+          "content_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Content Hash"
+          },
+          "source_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Source Sha256"
+          },
+          "evaluation_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Evaluation Digest"
+          },
+          "evaluation_event_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Evaluation Event Hash"
+          },
+          "submission_event_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Submission Event Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "run_id",
+          "task_id",
+          "epoch",
+          "plan_digest",
+          "content_hash",
+          "source_sha256",
+          "evaluation_digest",
+          "evaluation_event_hash",
+          "submission_event_hash"
+        ],
+        "title": "ReviewSubjectReference"
       },
       "RoleOutput": {
         "properties": {

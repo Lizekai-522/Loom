@@ -18,6 +18,7 @@ from .artifacts import ArtifactService
 from .development_suites import DevelopmentSuiteService
 from .artifact_schemas import MAX_BODY_BYTES
 from .role_summary import submitted_role_source
+from .review_inputs import ReviewFindingsBody, ReviewInputService
 from .operator import OperatorService
 from .local_console import allows_local_console, console_principal
 from .store import Claim, Conflict, InvalidInput, LoomError, NotFound, Store, canonical, digest
@@ -134,6 +135,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     operators = OperatorService(store)
     artifacts = ArtifactService(store)
     suites = DevelopmentSuiteService(store)
+    review_inputs = ReviewInputService(store)
     security = HTTPBearer(auto_error=False)
 
     def principal(request: Request, credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)]) -> Principal:
@@ -313,6 +315,15 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     def list_artifacts(run_id: str, tenant: Tenant, task_id: str | None = None):
         return {"items": artifacts.list_artifacts(tenant, run_id, task_id=task_id),
                 "producer_verified": False, "counts_as_success": False}
+
+    @app.get("/v1/runs/{run_id}/tasks/{task_id}/review-input")
+    def preview_review_input(run_id: str, task_id: str, tenant: Tenant, include_source: bool = False):
+        return review_inputs.preview(tenant, run_id, task_id, include_source=include_source)
+
+    @app.post("/v1/runs/{run_id}/tasks/{task_id}/review-findings/validate")
+    def validate_review_findings(run_id: str, task_id: str, body: ReviewFindingsBody, tenant: Tenant):
+        # Pure validation: no candidate persistence, operator approval or dispatch.
+        return review_inputs.validate_findings(tenant, run_id, task_id, body.model_dump(mode="json"))
 
     @app.get("/v1/runs/{run_id}/artifacts/{artifact_id}")
     def get_artifact(run_id: str, artifact_id: str, tenant: Tenant):

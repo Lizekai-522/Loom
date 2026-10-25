@@ -1,11 +1,11 @@
 {
-  "version": "0.15.0",
-  "stage": "local-chinese-approved-execution-alpha",
+  "version": "0.16.0",
+  "stage": "review-input-alpha",
   "date": "2026-10-25",
-  "generated_at": "2026-10-25T20:26:56.762658+08:00",
-  "release_status": "bounded_local_chinese_execution_milestone_passed",
+  "generated_at": "2026-10-25T21:09:24.808382+08:00",
+  "release_status": "bounded_review_input_milestone_passed",
   "production_ready": false,
-  "source_file_count_excluding_manifest": 208,
+  "source_file_count_excluding_manifest": 215,
   "files": [
     {
       "path": ".gitignore",
@@ -19,8 +19,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 18661,
-      "sha256": "935a0a4f3d757a1f69c1adc043cd13b3b9c468f3a67910d5046f64a298612fc2"
+      "bytes": 18414,
+      "sha256": "b93f97b332d0ae0a1d2f5a84354b99a8eb9f072b7b494db802a61e2fb5569c64"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -84,8 +84,8 @@
     },
     {
       "path": "docs/api/openapi.json",
-      "bytes": 62589,
-      "sha256": "06cba2aa6699a526777b11d6445aafb6eb3197934ae32ca169287120cc33b237"
+      "bytes": 70738,
+      "sha256": "40dbec0f7dfdd181dc796650eca7ee4b38bec8a55d6252f1a536077020fe9de7"
     },
     {
       "path": "docs/approved-execution.md",
@@ -129,8 +129,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 37431,
-      "sha256": "915c500c4ed172e3429234e895b4ff0332e960f321c4f15752fea08e74a62df1"
+      "bytes": 38854,
+      "sha256": "194e029aaff44648aa3c46be22ace400a18af945b6e670b0094a7fc49415f421"
     },
     {
       "path": "docs/local-auth.md",
@@ -169,13 +169,18 @@
     },
     {
       "path": "docs/progress-cycle.md",
-      "bytes": 15421,
-      "sha256": "c0560c1dacbe7a131d53e6301067908a444733ad5d5d6976b853a785e655b442"
+      "bytes": 16461,
+      "sha256": "c3b7d0d421bdd6b869601d22e3326c7a80575e86e3977c767f98154ae4ebf786"
     },
     {
       "path": "docs/public-checks.md",
       "bytes": 12195,
       "sha256": "15e4508afd2e9d1934b8705501f97be47d37dbe4a42303a1fb4cae4bc72f1567"
+    },
+    {
+      "path": "docs/release-roadmap.md",
+      "bytes": 3760,
+      "sha256": "6b00802ae8e0c8f0f40f1c2557ac2e9c07e03d870c412b243f83f8fd338f91bb"
     },
     {
       "path": "docs/review-resolution.md",
@@ -186,6 +191,11 @@
       "path": "docs/review.md",
       "bytes": 35609,
       "sha256": "1a7df1527a427c117696ea1501abd56c0bb1363d0569f2fba9cf71ca55efc193"
+    },
+    {
+      "path": "docs/reviewer-input.md",
+      "bytes": 3559,
+      "sha256": "723976cb25404afda87265417e429806b7af7dfde57264584b53d890f9715e7f"
     },
     {
       "path": "docs/third-party-notices.md",
@@ -216,6 +226,11 @@
       "path": "docs/validation-0.14.md",
       "bytes": 4908,
       "sha256": "2be7cef7ef2c3048f1e53222171f3b8d47922f06b9c4247d8fa98d7fb825d9e9"
+    },
+    {
+      "path": "docs/validation-0.15.md",
+      "bytes": 3819,
+      "sha256": "d496316a53f70f1b2141a93f224b624c70cb60e6c7b67137a5e2ad7527513fa3"
     },
     {
       "path": "docs/validation-0.3.md",
@@ -254,8 +269,8 @@
     },
     {
       "path": "docs/validation.md",
-      "bytes": 3819,
-      "sha256": "d496316a53f70f1b2141a93f224b624c70cb60e6c7b67137a5e2ad7527513fa3"
+      "bytes": 2893,
+      "sha256": "aed10c4ae6ba79442ca7a0ae8b1ae6d714edd07f5226c11574b6e0a7351741bf"
     },
     {
       "path": "docs/workflow.md",
@@ -280,7 +295,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 771,
-      "sha256": "ac9410a585cc793e466c4e269d85cf249ec8b3b133fc1ba86a67d12546b7923f"
+      "sha256": "cc35d8775e64c3f88534fd5fb2a4c453dbdaad4b1477f31ad16865600f4b5be1"
     },
     {
       "path": "requirements.lock",
@@ -344,8 +359,8 @@
     },
     {
       "path": "scripts/check_s2.py",
-      "bytes": 5641,
-      "sha256": "7c3bf9abcce5b7be7fb1a64a74e391c586804a66308011b5a74e30949df90b6f"
+      "bytes": 5659,
+      "sha256": "ad809448e67d671f4603ec384bfdb2154a0b9605750bcdbfd1988a5e140bf2a2"
     },
     {
       "path": "scripts/check_sandbox.py",
@@ -371,6 +386,11 @@
       "path": "scripts/preview_public_checks.py",
       "bytes": 1557,
       "sha256": "c27ae59f50802f2ea5b0e2ee01bb86ec8379341970430aa9d08d98ec1956e4ce"
+    },
+    {
+      "path": "scripts/preview_review_input.py",
+      "bytes": 2007,
+      "sha256": "1c0ec83bc1c2958db65e811d9ffab1087845bfadf2e38f086cabbe337daf8c32"
     },
     {
       "path": "scripts/run_approved_task.py",
@@ -410,7 +430,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "f543424212ceedad78c71c7fb79fd8ede930b162b798b9f4c62e6e056b13d73c"
+      "sha256": "1717f20c122955de24f66bf8a96e20c1bc6247fc8d15039afebc46422f32f37c"
     },
     {
       "path": "src/loom/__main__.py",
@@ -419,8 +439,8 @@
     },
     {
       "path": "src/loom/api.py",
-      "bytes": 21326,
-      "sha256": "d249157c1376a9354f426de05a999814c899aec52c5dd352bd03eaf837747604"
+      "bytes": 22064,
+      "sha256": "9b8a0fa796a3d72d0e6fde12fc8bc681aea859abd8bcd4043badfc6524c691c9"
     },
     {
       "path": "src/loom/approved_execution.py",
@@ -518,6 +538,11 @@
       "sha256": "9ab12e9555af9de6192c9e0782a12fe9a62503eaa6e36aef66b510fdd992eaa7"
     },
     {
+      "path": "src/loom/review_inputs.py",
+      "bytes": 11030,
+      "sha256": "546e05ac844bce8cd6737277ab309b96b181d0c38f758101937cb3d3566f1c8a"
+    },
+    {
       "path": "src/loom/role_execution.py",
       "bytes": 7450,
       "sha256": "024cf766e0d2f2569d4f5bfbbf826404e2d08740a070ace1ca7c64ca5cc6b622"
@@ -611,6 +636,11 @@
       "path": "tests/integration/test_repair_live.py",
       "bytes": 17253,
       "sha256": "ef8a3f63bc313e362d7ff66fccab76c4b829f1c0857b99c0c32b77ef511b1398"
+    },
+    {
+      "path": "tests/integration/test_review_inputs_live.py",
+      "bytes": 1405,
+      "sha256": "f83210e0cc0a527d179eb5dbf7cc204ee374f468d7beab47f57ddb32c82a5fd8"
     },
     {
       "path": "tests/integration/test_reviewed_suite_live.py",
@@ -773,6 +803,11 @@
       "sha256": "ab2603c03246c7caf112ca8a8bb2107021e96a6962b6d8eba5790682cc0502f6"
     },
     {
+      "path": "tests/test_review_inputs.py",
+      "bytes": 13778,
+      "sha256": "2fb3eb1e11670a91e8b1bb9266089fe554d2ca476ba12ccf35c56fdcd068fa65"
+    },
+    {
       "path": "tests/test_reviewed_execution.py",
       "bytes": 10322,
       "sha256": "56dfab9685841e32b27fec633573ec0a31841458fa2e63ab2f57f6bd3e4d13d3"
@@ -809,8 +844,8 @@
     },
     {
       "path": "tests/test_store.py",
-      "bytes": 11745,
-      "sha256": "675e0f35ff0aec399fd7a629e5262e7753b4e9d0cd1803f3e79a8303626d6ae0"
+      "bytes": 12009,
+      "sha256": "b4761374b90bca48d9e33c37c588c0e541a987a4efb14c68bb28967f72f9ba3c"
     },
     {
       "path": "tests/test_store_admission.py",
@@ -1059,28 +1094,25 @@
   ],
   "validation": {
     "full_gate_passed": true,
-    "main_tests_passed": 820,
+    "main_tests_passed": 866,
     "subtests_passed": 396,
     "failures": 0,
     "skipped": 0,
-    "real_infrastructure_main_tests_included": 50,
-    "new_unit_main_tests": 36,
-    "new_real_docker_tests": 2,
-    "fresh_browser_assertions": 84,
-    "new_suite_browser_assertions": 44,
-    "chinese_automatic_entry_browser_assertions": 14,
-    "old_role_browser_assertions": 17,
-    "main_instance_browser_assertions": 9,
-    "fresh_existing_reviewed_execution_http_checks": 27,
-    "fresh_old_four_role_http_checks": 33,
+    "real_infrastructure_main_tests_included": 51,
+    "new_unit_main_tests": 45,
+    "new_real_docker_tests": 1,
+    "fresh_main_browser_assertions": 9,
+    "unchanged_ui_prior_browser_assertions_reused": 84,
+    "fresh_review_input_http_checks": 23,
+    "fresh_existing_execution_http_checks": 60,
     "new_paid_model_requests": 0,
-    "new_main_source_freezes": 0,
-    "new_main_goals": 0,
-    "new_main_events": 0,
-    "prior_real_model_evidence_read_only": true,
-    "prior_paid_evidence": "0.13 reviewed-suite execution",
-    "fixture_host_digest_is_test_placeholder": true,
-    "production_ready": false
+    "main_database_counts": {
+      "runs": 37,
+      "events": 554,
+      "development_suites": 1
+    },
+    "first_failed_full_gate_preserved": true,
+    "old_lease_timing_test_corrected": true
   },
   "runtime": {
     "python": "3.13.12",
@@ -1094,15 +1126,16 @@
   "real_models_used_this_milestone": false,
   "full_workflow_completed": false,
   "independent_second_model": "pending_configuration",
+  "planned_release_candidate": "0.20",
+  "planned_first_production_release": "1.0",
+  "release_gates_passed": false,
   "notes": [
-    "The user-requested credential input screen is removed. Opt-in loopback development mode automatically uses the unique configured operator; the browser receives or stores no bearer/model credentials.",
-    "The non-secret same-origin header requires a loopback peer and local Host; cross-origin, mismatched port, rebinding Host, forwarding headers and invalid bearer downgrade are rejected. Operator cannot acquire worker or verifier rights. This mode is not production identity.",
-    "UI labels, roles, channels, event names and new default seven-role task titles/instructions are Chinese. Raw protocol fields and frozen historical data remain unchanged for exact reconciliation.",
-    "The new local CLI previews an existing approved run with a read-only SQLite connection, exact host tests and source pins before secret/config/network access. Explicit execution rechecks and atomically claims the specified task, with no new Goal or plan modification.",
-    "Prior/unknown effects, started tasks, blocked dependencies, source drift, insufficient budgets, mismatched preview, capacity exhaustion or wrong identities stop execution. Concurrent claims admit one owner; audit failure rolls back.",
-    "The complete 820/396 gate has 36 new local and two new real Docker tests included, 50 total infrastructure tests. Normal existing-run execution and one bounded repair pass real Docker; provider responses in this gate are mocks, with no new paid calls.",
-    "Actual Chromium84 passes: suite44, automatic Chinese workflow14, old source UI17 and real main-instance read-only9. Old actual model records also pass60 HTTP reconciliations. Main run/event/suite counts remain37/554/1; database backup and integrity are checked.",
-    "UTF-8 reading, overbroad text replacement and test fixture/timing/selector failures are retained and corrected in the separate review report. No failed case is skipped. Wheel/source/manifest/HEAD and actual private UTF-8/UTF-16LE values are checked before delivery.",
-    "Complete reviewer/fixer and seven-role collaboration, independent second model, production identity/recovery, complete PG Store and scenario evaluation remain pending. No source is pushed or published."
+    "Read-only review inputs reconstruct the frozen approved executable contract and bind the current implementation, epoch, source/test digests, claim identity, exact executor/submission events and locally consistent event chain in one SQLite read snapshot.",
+    "The default preview contains metadata only. Explicit source inclusion has the same full input digest. Hidden case names, input/expected/stdout/stderr/diagnostics never enter the reviewer context; oversized static contexts stop.",
+    "Strict findings bind every subject pin, unique IDs, allowed severities, main.py and valid source line ranges. API/CLI validate only; no model generation, persistence, approval, execution or fake independent success is provided.",
+    "Forty-five new local and one real Docker case are included in866/396. Model HTTP uses mocks; historical actual Flash outputs are reconciled read-only with no repeated paid probes.",
+    "The first full gate failed in an existing test using a50ms wall-clock lease. The failure is preserved; explicit fixture expiry removes timing dependence while preserving unknown-effect and stale-claim assertions. Production lease code is unchanged.",
+    "The Chinese automatic local console is unchanged. Fresh9 Chromium checks and exact asset hashes support reuse of0.15 UI evidence; prior84 assertions are not claimed as newly run.",
+    "The0.20 release-candidate and1.0 production numbers are a conditional roadmap. All first-release P0, real independent models, deployment identities, recovery, isolation and evaluation gates must actually pass. The original62 FR remain tracked; no production or full-requirements completion is claimed."
   ]
 }

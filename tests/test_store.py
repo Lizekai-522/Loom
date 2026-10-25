@@ -143,13 +143,16 @@ class StoreTests(unittest.TestCase):
 
     def test_unknown_effect_is_never_granted_twice(self):
         self.task()
-        c = self.claim(lease_seconds=0.05)
+        c = self.claim()
         first = self.store.begin_effect(c, "fixed-operation", {"amount": 1})
         self.assertTrue(first["dispatch"])
         self.assertFalse(self.store.begin_effect(c, "fixed-operation", {"amount": 1})["dispatch"])
         with self.assertRaises(Conflict):
             self.complete(c, "premature", {"ok": True})
-        time.sleep(0.08)
+        # Expire only after the duplicate-admission assertions. A 50 ms wall
+        # clock lease can expire during SQLite I/O on a busy Windows machine.
+        with self.store.transaction() as db:
+            db.execute("UPDATE tasks SET lease_until=0 WHERE tenant=? AND id=?", (c.tenant_id, c.task_id))
         self.assertIsNone(self.claim("replacement"))
         snapshot = self.store.snapshot("tenant-a", self.run_id)
         self.assertEqual(snapshot["tasks"][0]["status"], "indeterminate")
