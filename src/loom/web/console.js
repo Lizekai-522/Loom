@@ -147,7 +147,8 @@
     $("save-plan-button").disabled = state.busy || unchecked || !has("goal.write") || !state.plan || approved || status !== "draft";
     $("plan-file").disabled = $("save-plan-button").disabled;
     $("plan-definition").readOnly = $("save-plan-button").disabled;
-    $("approve-plan-button").disabled = state.busy || unchecked || !has("plan.approve") || !state.plan?.digest || approved || status !== "draft";
+    const suiteApprovalMissing = state.plan?.definition?.nodes?.some((task) => task.development_suite) && !has("suite.approve");
+    $("approve-plan-button").disabled = state.busy || unchecked || !has("plan.approve") || suiteApprovalMissing || !state.plan?.digest || approved || status !== "draft";
     $("plan-reviewed").disabled = $("approve-plan-button").disabled;
     const effects = (state.review?.effects || []).filter((effect) => unknownStates.has(effect.state) && effect.model_generation === true);
     $("reconcile-section").hidden = !selected || !has("control") || effects.length === 0;
@@ -155,6 +156,7 @@
     $("refresh-button").disabled = state.busy;
     document.querySelectorAll(".goal-button, .intervention-item button").forEach((button) => { button.disabled = state.busy; });
     refreshArtifactControls();
+    suites.sync();
     return effects;
   }
 
@@ -419,8 +421,11 @@
     && state.loadedSelection === state.selection && (state.snapshot.id || state.snapshot.run_id) === state.runId);
   const targetTask = () => state.review?.tasks?.find((task) => task.id === state.targetId);
   const sameArtifact = (left, right) => Boolean(left && right && artifactFields.every((key) => left[key] === right[key]));
+  const suites = window.LoomSuitePanel({state, $, node, has, request, mutate, notify, publicError,
+    exactBodyText, sameArtifact, runChecked});
 
   function resetArtifacts() {
+    suites.reset();
     state.artifactVersion += 1; state.detailVersion += 1; state.contextVersion += 1;
     state.artifacts = []; state.artifactStatus = "idle"; state.artifactError = "";
     state.artifactId = ""; state.artifactDetail = null; state.detailStatus = "idle"; state.detailError = "";
@@ -488,6 +493,7 @@
   }
 
   function renderArtifacts() {
+    suites.sync();
     const status = state.artifactStatus;
     $("artifacts-state").textContent = status === "loading" ? "正在读取候选产物…"
       : status === "error" ? `候选产物读取失败，当前数量未知。${state.artifactError}`
@@ -853,6 +859,9 @@
   $("approve-plan-form").addEventListener("submit", (event) => {
     event.preventDefault();
     if (!has("plan.approve") || !state.plan?.digest || !$("plan-reviewed").checked) return;
+    if (state.plan.definition?.nodes?.some((task) => task.development_suite) && !has("suite.approve")) {
+      notify("此计划引用审阅套件，需要具名操作员的套件批准权限。", true); return;
+    }
     let edited;
     try { edited = JSON.parse($("plan-definition").value); } catch { edited = null; }
     if (JSON.stringify(edited) !== JSON.stringify(state.plan.definition)) { notify("计划文本有未保存的修改，请先保存并重新审阅摘要。", true); return; }

@@ -6,6 +6,7 @@
   <meta name="referrer" content="no-referrer">
   <title>Loom · 本机工作台</title>
   <link rel="stylesheet" href="/console/assets/console.css">
+  <script src="/console/assets/console-suites.js" defer></script>
   <script src="/console/assets/console.js" defer></script>
 </head>
 <body>
@@ -63,6 +64,32 @@
           <div class="section-heading"><h2>候选产物</h2><button id="artifacts-refresh" type="button">重新读取</button></div>
           <p class="field-help">候选可来自具名 Worker 提交或模型网关响应；模型来源记录与内容验证分别显示，候选仍未独立验证。批准辅助输入只供目标节点参考，不放行父任务或依赖。本次预览不会发起执行，实际绑定看“人工待办”中的执行记录。</p>
           <p id="artifacts-state" class="muted" role="status" aria-live="polite"></p><div id="artifact-list" class="artifact-list"></div><div id="artifact-detail"></div>
+          <section id="suite-panel" class="suite-panel" hidden aria-labelledby="suite-heading">
+            <h2 id="suite-heading">公开开发检查 · 单独审阅</h2>
+            <p class="field-help">核对原始用例并选择需要的部分，再读取服务端编译摘要。冻结只记录审阅结果；来源仍未独立验证，旧计划和 host 终验不变。</p>
+            <div id="suite-cases"></div>
+            <button id="suite-preview" type="button">核对选中用例</button>
+            <p id="suite-state" class="field-help" role="status" aria-live="polite"></p><div id="suite-review"></div>
+            <form id="suite-freeze-form" class="approval-form" hidden>
+              <label class="check-label"><input id="suite-reviewed" type="checkbox" required>我已逐项核对选中用例、原始来源与编译摘要，仅冻结为公开开发检查</label>
+              <button id="suite-freeze" type="submit" class="primary">冻结选中用例</button>
+            </form>
+            <div class="suite-history">
+              <button id="suite-history" type="button">读取此候选的冻结记录</button><p id="suite-history-state" class="field-help" role="status"></p><div id="suite-history-list"></div>
+            </div>
+            <div id="suite-frozen"></div>
+            <form id="suite-draft-form" class="approval-form" hidden>
+              <h3>准备新的执行计划</h3>
+              <p class="field-help">生成可导入新目标的 JSON 草案。请先在本机用 freeze_tests 冻结单独保存的 host 用例，将其 evaluation_digest 填在下方；不要把 host 正文填入模型需求。此页面不生成 host 测试结果。</p>
+              <label for="suite-draft-title">新任务标题</label><input id="suite-draft-title" maxlength="500" required>
+              <label for="suite-draft-instruction">开发需求（仅公开内容）</label><textarea id="suite-draft-instruction" rows="4" maxlength="16000" required></textarea>
+              <label for="suite-host-digest">冻结的 host 验收摘要</label><input id="suite-host-digest" class="mono" minlength="64" maxlength="64" pattern="[0-9a-f]{64}" required autocomplete="off" spellcheck="false">
+              <div class="two-fields"><div><label for="suite-cost">任务总费用上限（微美元）</label><input id="suite-cost" type="number" min="0" max="999999999000" step="1" value="500000" required></div><div><label for="suite-tokens">任务总 token 上限</label><input id="suite-tokens" type="number" min="1" max="10000000" step="1" value="1100000" required></div></div>
+              <label for="suite-repairs">最多修复次数（共用任务预算）</label><select id="suite-repairs"><option value="1">1 次</option><option value="2">2 次</option></select>
+              <button id="suite-prepare" type="submit">重新核对来源并生成草案</button>
+            </form>
+            <div id="suite-draft-result" hidden><p id="suite-draft-help" class="field-help"></p><pre id="suite-draft-json" tabindex="0" aria-label="未批准的新执行计划 JSON"></pre><button id="suite-download" type="button">下载未批准的计划 JSON</button></div>
+          </section>
           <div class="input-preview-panel">
             <h2>目标节点的辅助输入</h2><label for="input-target">目标任务</label><select id="input-target" aria-describedby="input-selectors"></select><p id="input-selectors" class="field-help"></p>
             <form id="auxiliary-form" class="approval-form">

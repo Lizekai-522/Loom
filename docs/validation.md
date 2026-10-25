@@ -1,6 +1,6 @@
-# Loom 0.13 验证记录
+# Loom 0.14 验证记录
 
-2026-10-25，0.13.0，reviewed-suite-execution-alpha。完成冻结生成用例→新执行计划→执行前核对→development/有界repair→不同宿主验收的本机链路。[0.12历史](validation-0.12.md)
+2026-10-25，0.14.0，suite-console-alpha。工作台完成公开检查逐项审阅、精确预览、显式冻结、历史读取与新计划草案导出。[0.13历史](validation-0.13.md)
 
 | 完整阶段 | 主测试 | 子测试 | 失败 | 跳过 |
 |---|---:|---:|---:|---:|
@@ -8,22 +8,30 @@
 | real-infrastructure | 48 | 14 | 0 | 0 |
 | 合计 | 782 | 396 | 0 | 0 |
 
-本轮新增32项本地与4项真实Docker主测试，已含在上述总数。相关专项与完整范围重叠，不叠加。完整套件模型HTTP均为替身。旧基线源码/包/HEAD逐文件一致，开发前另做118专项、33实际只读HTTP和固定runner预检，无重复旧付费。
+本轮没有新增后端执行语义或主测试；新增UI验收单独登记，不能叠加到pytest总数。完整套件仍实测Docker、NATS和PostgreSQL，模型HTTP均为替身。开发前核验0.13提交/源码包/清单一致，fresh56主/65子和60项真实运行API对账通过；不重做旧付费调用。
 
-## 实际模型与容器
+## 浏览器验收
 
-run 7bf5b872-fae6-4c4d-a154-f2de9470846b：1次真实Flash响应，审阅冻结的3个旧tester生成用例、4个不同输入的host验收全部通过，7个实际Docker用例，无repair/retry。552tokens、342µUSD上界记账、预留0，未核对供应商账单。
+实际Chromium60项：新增suite界面43项、原四角色来源界面17项。新fixture通过真实回环API建立Worker来源候选及冻结记录，保留9007199254740993和1.0；HTML当纯文本，缺少原样JSON支持时禁止冻结。顺序子集与服务端来源/编译摘要核对、显式操作员权限、双击/幂等、成功回执丢失、POST成功后GET失败、读取历史和来源换版均有反例。
 
-原0.9来源run58614923-b31f-43a7-90ea-897703443390及正文不改；先按明确小领域规格核对3个case，再由本机具名operator经API冻结，GET返回execution_reference，产品CLI建立新Goal/计划并以具名operator批准，worker领取后自动从注册表载入精确用例。source model origin只留在原候选，不在新run伪造model-gateway候选。
+草案只含精确execution_reference和独立host摘要，不复制候选正文或模型来源。预算/修复次数编辑使旧导出失效，生成前重新GET来源；在新目标导入、保存与操作员批准分别验证，旧计划不改。legacy即便强制提交也不发送suite计划批准。新任务仍pending，花费和effects为0，没有自动调用模型、容器或生成测试结果。此fixture的host摘要是占位测试数据，不是实际host用例的验证；真实执行器仍必须持有原用例并核对digest。
 
-新的27项实际HTTP核对原来源、suite/合同/context/effect摘要、3个development与4个host报告、1次已知响应、账本和legacy审批拒绝；另33项原四角色只读回归通过。新任务只submitted，review pending，Goal open，第二模型待配置。3个case“已执行”只属于新目标执行，原tester生成任务的历史输出仍表示当时未执行。
+跨运行迟到响应、viewer/worker/legacy强制动作、移动390px布局、下载在CSP下可用、退出清理和无未处理JS异常通过。原四角色17项继续验证模型来源与未验证内容分开、tester历史未执行、受信host证据和依赖屏障。浏览器断网用例有预期ERR_FAILED日志，不记作业务通过或忽略未处理异常。
 
-## 边界与反例
+## 发现与修复
 
-源epoch/revision/事件/内容、compiler和suite pins不符，存草案/批准/执行必须停止。计划批准要求具名operator；不能在旧批准计划上补字段。suite-only的零辅助item上下文也参与预算/intent/审计同事务；漏传或替换snapshot拒绝，审计失败全部回滚。Rebind前再核对，源换代不能取得新epoch；已知费用保留，已发intent的未知状态保留预留并标usage_complete=false。
+1. 浏览器首次运行发现模块在const sameArtifact/runChecked初始化前取引用，整页无法加载；调整初始化顺序后正常及反例均通过。原日志保留。
+2. 审查发现POST成功、随后GET失败时若重新启用冻结，会丢失已知成功回执而重复记录；收尾审查进一步发现连续历史GET失败仍可能清除内存确认。现在用独立receipt ID保留成功事实，阻止同一选择重新预览/冻结，历史重读可恢复；实际连续断网反例通过。初次归档作为已替代开发检查点保留。
+3. 现有legacy有普通plan.approve能力，但不能批准suite计划；补前端显式判断与最终发送拦截，服务端原403保持。真实浏览器强制提交无写入。
+4. 准备计划时为独立复核保留1000µUSD，任务预算最大999999999000，避免总额超过Goal上限；修复共用任务总预算。
+5. 首次安装使用no-build-isolation但本机venv无setuptools后端而失败，改标准隔离构建且不升级运行依赖，安装/依赖核对通过。最终wheel重建遇代理连接重置，只在构建子进程移除HTTP代理后隔离构建通过，不改全局代理设置。浏览器fixture第一次误以为新Goal有默认definition，改显式构造fixture后通过。失败记录保留，未转skip。
 
-真实Docker专项包含3case/host执行、有界repair、隐藏失败不反馈/不追加模型和源变更后不启容器。宿主用例只与开发套件输入不同，来自人工操作器固定样例，不构成统计有效的held-out评测或独立模型证明。
+## 当前真实运行与限制
 
-CLI还修复静态发现的real_model_used固定true：现在从实际intent/done事件区分未发起、已返回和未知，并用发起前停止反例验证。异步测试初次误用未安装插件，改标准库asyncio运行，未增加依赖；原7个脚手架失败XML保留，没有转skip。
+当前服务仍用原主库；旧四角色33项和0.13实际审阅执行27项重新核对。0.13真实run7bf5b872-fae6-4c4d-a154-f2de9470846b曾取得1次Flash响应，3生成+4host实际Docker通过，552tokens/342µUSD费用上界、预留0；本轮不增加付费、重跑模型或用浏览器fixture冒充真实模型验证。
 
-现有控制台17项Chromium检查通过，模型/沙箱为公开fixture替身；相同JS的16项数值精度证据复用、不算本轮新断言。API27路径；suite专用图形审阅/执行草案表单尚待接入。SQLite单实例、生产身份/恢复、完整PG Store、完整七角色与独立双签仍未完成。
+第二模型按用户决定待配置，目标仍submitted/独立review pending，不能宣称最终成功。完整七角色及reviewer/fixer真实交接、生产身份/恢复、完整PG Store、通用隔离工具和场景评测仍未验收。原62项FR和11/15部署、11/20前提交目标不变。
+
+工作台只验收新计划准备/保存/批准，没有直接执行按钮。现有run_local_task.py从job创建自己的新Goal，不消费工作台已批准的run；既有计划到本机执行器、配对冻结host文件的显式入口继续追踪，不宣称图形执行全通。
+
+追加连续断网回归在复用fixture中首次超时，后续重跑暴露历史running claim累积占满容量；未忽略该失败。验收脚本补清理模拟路由、在成功后提交未验证fixture输出释放本轮claim，并在新可丢弃库连续两轮复测通过；旧库、超时及claim-null记录保留。最终库active business running=0，本机真实主库未受影响。完整后端/基础设施门槛未改动；收尾仅修改UI、浏览器脚本及说明，重跑相应浏览器与资源校验。

@@ -1,6 +1,6 @@
 # 公开检查的编译、审阅、冻结与执行
 
-当前已实现纯编译、具名operator审阅/冻结API、精确execution_reference、新执行草案批准和本机CLI的development/有界repair/宿主验收。来源变更后停止，不能修改旧计划、复制新模型来源或用input grant晋升执行权。suite图形表单仍待接入。
+当前已实现纯编译、具名operator审阅/冻结API、精确execution_reference、新执行草案批准和本机CLI的development/有界repair/宿主验收。来源变更后停止，不能修改旧计划、复制新模型来源或用input grant晋升执行权。0.14工作台已支持审阅、冻结与新执行计划草案准备，使用见console.md。
 
 ## 已实现：纯转换和预览
 
@@ -36,7 +36,7 @@ preview重新核对ArtifactService完整来源，生成review_digest，绑定源
 
 get_suite重新核对suite和freeze事件的完整绑定，默认不返回正文；include_body显式返回新拷贝。源换代或暂停等情况保留历史、标stale，新的冻结拒绝；同键历史重放只返回原回执，没有新授权。记录frozen=true同时execution_connected=false、confers_authority=false、producer_verified=false、independently_verified=false；不会放行原依赖或将Goal置成功。
 
-22项注册表测试和真实NATS确认丢失重投/重启测试通过；两个既有真实模型来源在隔离DB副本验证，主库未执行冻结。API角色认证在0.12完成；0.13已接入新草案和受限执行，suite工作台待接入。
+22项注册表测试和真实NATS确认丢失重投/重启测试通过；两个既有真实模型来源在隔离DB副本验证，主库未执行冻结。API角色认证在0.12完成；0.13已接入新草案和受限执行，suite工作台已在0.14接入。
 
 
 ## 0.12已实现：具名operator审批API
@@ -51,9 +51,9 @@ get_suite重新核对suite和freeze事件的完整绑定，默认不返回正文
 
 冻结前同时审阅原artifact正文（既有GET artifact或工作台候选详情）、完整来源和选定case；摘要只保证所选记录一致，不证明内容正确。POST必须使用相同选择的preview digest，不能用all-case摘要批准子集。actor完全从认证主体派生。Worker、viewer和legacy developer无suite.approve；未知套件和跨tenant读取404；暂停/换代后409；错误schema/伪造权限字段422。
 
-这三个接口不加载模型秘密、不调用模型/沙箱、不建立执行计划，也不改变原plan/hard depends/状态/费用。新suite.approve只属于本机operator能力，不代表生产OIDC、独立人员或独立模型验证。主库升级只初始化空suite表，实际HTTP冻结验收在隔离副本完成，当前控制台没有suite冻结表单。
+这三个接口不加载模型秘密、不调用模型/沙箱、不建立执行计划，也不改变原plan/hard depends/状态/费用。新suite.approve只属于本机operator能力，不代表生产OIDC、独立人员或独立模型验证。0.12初期冻结在隔离副本验收；0.13主库已有单独审阅的真实suite，0.14控制台可显式冻结并读取历史，不重复旧付费执行。
 
-0.13已实现下述新草案和执行核对；suite图形表单继续待接入。
+0.13已实现下述新草案和执行核对；0.14已另加suite图形审阅与草案准备，不自动运行。
 
 
 ## 0.13已实现：新执行合同和本机入口
@@ -71,3 +71,12 @@ get_suite重新核对suite和freeze事件的完整绑定，默认不返回正文
 默认仅离线预览，不开DB、不读身份/秘密配置、不调用模型或Docker。显式--approve才检查当前来源和本机operator/worker配置、创建新执行Goal并发起付费；追加--max-output-tokens 768可限制输出，1次修复意味着最多2次请求，隐藏host失败不自动重试。私有身份文件不证明两名独立人员，调用API还须具名operator的真实bearer权限。
 
 真实主库验收run7bf5b872-fae6-4c4d-a154-f2de9470846b：原0.9模型生成3cases经本机审阅冻结，在新计划执行3个development与4个不同输入的host用例通过。1Flash/552tokens/342µUSD上界、预留0，尚未核对账单。目标只submitted，独立review仍等待。
+
+
+## 0.14工作台入口
+
+在“产物 / 输入预览”选择public-checks候选后，逐项纯文本审阅原JSON，选择子集并点击“核对选中用例”。服务端返回来源、review_digest、编译版本与development_digest；选择改变即清除旧审阅。具名operator勾选确认后才能冻结，viewer/worker/legacy只读预览。
+
+可从“读取此候选的冻结记录”恢复记录，再填独立host evaluation_digest、需求、预算及修复次数。生成草案前重新GET核对来源；来源失效拒绝。下载只含workflow定义与原suite引用，不能当执行批准，不能从开发用例推导黄金答案。
+
+然后在新目标中导入、保存并独立批准；实际执行仍须执行器持有冻结host用例、匹配批准合同和预算。此图形流程没有付费调用入口，也不会创建done或签名；第二模型保持待配置。详见[工作台](console.md)。
