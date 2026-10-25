@@ -1,6 +1,6 @@
 # 既有批准计划的本机执行
 
-0.15新增scripts/run_approved_task.py，不创建新Goal，不修改工作台已经批准的合同。只支持尚未开始、带审阅套件及有界修复、没有辅助输入选择器的developer/fixer节点；复杂辅助交接继续通过原入口。第二模型未配置时只提交候选，不最终成功。
+0.15新增scripts/run_approved_task.py，不创建新Goal，不修改工作台已经批准的合同。原路径支持尚未开始、带审阅套件及有界修复、没有辅助输入选择器的developer/fixer；0.17另支持精确批准审查意见后的单次fixer，保留原宿主判据。reviewer生成使用独立CLI。[审查修复步骤](reviewer-execution.md)。第二模型未配置时只提交候选，不最终成功。
 
 ## 1. 冻结独立宿主用例
 

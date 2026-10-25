@@ -130,3 +130,12 @@ API/控制台当前0.9；生成checks未执行，四父submitted、review pendin
 ReviewInputService在同一只读事务核对冻结合同、当前implementation/epoch、源码/测试摘要、完整本地事件链及精确claim/evaluation/submission。默认摘要，显式源码，隐藏case输入/答案/输出不提供。严格意见schema逐字段pin与行号绑定；API/CLI仅校验，不保存/审批/执行。45新增本地/1真实Docker已含完整866/396；首次旧50ms租期测试失败已保留并改为确定性过期，生产规则不改。
 
 下一步0.17：将精确引用冻结入reviewer执行合同，复用预算/intent/上下文原子准入，模型返回与提交前复核；随后具名operator批准候选到fixer有界任务。先测来源变化、暂停/终止/失租、未知调用、预算和旧签名，再做必要真实调用。0.18–0.20按release-roadmap推进工具与首发P0、真实独立验收、身份/恢复、部署预演；不是按五次小更新保证上线。全部62项需求仍保留，FR-051/052保持partial。
+
+
+## 0.17受限审查与修复交接（2026-10-26）
+
+review_subject冻结现有另一run的精确implementation/host证据，审批及运行上下文同事务复核；review-findings可生成/保存/审阅，仍不具验收或执行权。只有具名operator能批准；fixer须同subject/原evaluation_digest、一次尝试。显式execute将精确grant在认领事务重批到epoch1，原输入/预览漂移拒绝。成功只submitted，失败报告与转人工同事务；没有自动重排/放行硬依赖。
+
+完整898主/396子、53真实基础设施、83HTTP、26Chromium通过。新1Flash审查run9ffdcf62-ffc0-43f0-bff7-2eec709c5d35返回no_findings，2141tokens/979µUSD上界、预留0，没有模型fixer调用。主库38/572/1，仅新审查run和18事件，原来源事件不变。原失败与修复报告保留，私密配置不进入输出/容器。
+
+下一步0.17.x：补完整人工裁决/no_findings分支及统一七角色操作入口，选择确有问题的新任务做必要真实fixer验证，先测恢复/未知/预算/失租与旧签名；用户待配第二模型不伪造通过。随后按0.18工具/配额/上下文、0.19独立验证/身份/恢复、0.20候选部署验收推进。FR-051/052仍partial，不把本机受限链升级为全功能或生产验收。

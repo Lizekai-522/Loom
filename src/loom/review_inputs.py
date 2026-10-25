@@ -7,62 +7,15 @@ Hidden case names, inputs, expectations, stdout and diagnostics stay private.
 from __future__ import annotations
 
 import json
-from typing import Annotated, Literal
 
-from pydantic import Field, ValidationError, model_validator
+from pydantic import ValidationError
 
-from .artifact_schemas import ArtifactModel, MAX_CONTEXT_BYTES, Name, Text
+from .artifact_schemas import (MAX_CONTEXT_BYTES, ReviewSubjectReference, ReviewFinding,
+                               ReviewFindingsBody)
 from .artifacts import ArtifactService
 from .sandbox import RUNNER_SHA256
 from .store import Conflict, InvalidInput, NotFound, canonical, digest
 
-
-Hash = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
-Identifier = Annotated[str, Field(min_length=1, max_length=200)]
-
-
-class ReviewSubjectReference(ArtifactModel):
-    schema_version: Literal["loom.review-subject-ref/v1"]
-    run_id: Identifier
-    task_id: Identifier
-    epoch: int = Field(ge=1)
-    plan_digest: Hash
-    content_hash: Hash
-    source_sha256: Hash
-    evaluation_digest: Hash
-    evaluation_event_hash: Hash
-    submission_event_hash: Hash
-
-
-class ReviewFinding(ArtifactModel):
-    id: Name
-    severity: Literal["blocker", "major", "minor", "info"]
-    path: Literal["main.py"]
-    start_line: int = Field(ge=1, le=262144)
-    end_line: int = Field(ge=1, le=262144)
-    description: Text
-    recommendation: Text
-
-    @model_validator(mode="after")
-    def ordered_lines(self):
-        if self.end_line < self.start_line:
-            raise ValueError("finding line range is reversed")
-        return self
-
-
-class ReviewFindingsBody(ArtifactModel):
-    schema_version: Literal["loom.review-findings/v1"]
-    subject: ReviewSubjectReference
-    summary: Text
-    verdict: Literal["findings", "no_findings"]
-    findings: list[ReviewFinding] = Field(max_length=32)
-
-    @model_validator(mode="after")
-    def consistent_findings(self):
-        if (bool(self.findings) != (self.verdict == "findings")
-                or len({item.id for item in self.findings}) != len(self.findings)):
-            raise ValueError("findings and verdict differ or IDs repeat")
-        return self
 
 
 class ReviewInputService:
@@ -165,7 +118,7 @@ class ReviewInputService:
                   "source_included": include_source, "untrusted_source": True,
                   "independently_verified": False, "counts_as_success": False,
                   "execution_authorized": False, "hidden_tests_included": False,
-                  "reviewer_generation_connected": False}
+                  "reviewer_generation_connected": True}
         if include_source:
             result["files"] = context["files"]
         return result
@@ -177,6 +130,25 @@ class ReviewInputService:
             db.execute("BEGIN")
             return self._preview_in(db, tenant, run_id, task_id, include_source)
 
+    def resolve_reference_in(self, db, tenant, reference):
+        try:
+            raw = reference.model_dump(mode="json") if isinstance(reference, ReviewSubjectReference) else reference
+            ref = ReviewSubjectReference.model_validate(raw).model_dump(mode="json")
+        except (ValidationError, TypeError, ValueError):
+            raise InvalidInput("invalid review subject reference") from None
+        current = self._preview_in(db, tenant, ref["run_id"], ref["task_id"], True)
+        if current["subject"] != ref:
+            raise Conflict("review subject reference is no longer current")
+        return current
+
+    @staticmethod
+    def check_body(body, current):
+        if body["subject"] != current["subject"]:
+            raise Conflict("review findings refer to a changed implementation or evidence")
+        line_count = len(current["files"]["main.py"].splitlines())
+        if any(f["end_line"] > line_count for f in body["findings"]):
+            raise InvalidInput("review finding line range exceeds the bound source")
+
     def validate_findings(self, tenant, run_id, task_id, body):
         try:
             if len(canonical(body).encode("utf-8")) > 32768:
@@ -187,11 +159,7 @@ class ReviewInputService:
         with self.store.connect() as db:
             db.execute("BEGIN")
             current = self._preview_in(db, tenant, run_id, task_id, True)
-            if checked["subject"] != current["subject"]:
-                raise Conflict("review findings refer to a changed implementation or evidence")
-            line_count = len(current["files"]["main.py"].splitlines())
-            if any(f["end_line"] > line_count for f in checked["findings"]):
-                raise InvalidInput("review finding line range exceeds the bound source")
+            self.check_body(checked, current)
             return {"schema_validated": True, "subject_bound": True,
                     "content_hash": digest(checked), "input_digest": current["input_digest"],
                     "body": checked, "persisted": False, "model_source_recorded": False,

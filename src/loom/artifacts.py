@@ -70,7 +70,7 @@ class ExecutionContextError(Conflict):
     """Expected auxiliary-input stop; never includes supplied data in errors."""
     code = "EXECUTION_CONTEXT_INVALID"
     REASONS = frozenset({"CONTEXT_REQUIRED_INPUT_MISSING", "CONTEXT_SNAPSHOT_CHANGED",
-                         "CONTEXT_BINDING_INVALID", "CONTEXT_TOO_LARGE", "CONTEXT_SUITE_INVALID"})
+                         "CONTEXT_BINDING_INVALID", "CONTEXT_TOO_LARGE", "CONTEXT_SUITE_INVALID", "CONTEXT_REVIEW_INVALID"})
 
     def __init__(self, reason):
         self.reason = reason if reason in self.REASONS else "CONTEXT_BINDING_INVALID"
@@ -230,7 +230,22 @@ class ArtifactService:
                             (tenant, run_id, row["source_task_id"], row["kind"])).fetchone()[0]
         if latest != row["revision"]:
             reasons.append("source_revision_superseded")
+        if row["kind"] == "review-findings":
+            try:
+                self._review_input_in(db, tenant, contract)
+            except (Conflict, InvalidInput, NotFound):
+                reasons.append("review_subject_changed")
         return reasons
+
+    def _review_input_in(self, db, tenant, spec):
+        from .review_inputs import ReviewInputService
+        if spec.get("review_subject") is None:
+            raise Conflict("review candidate requires an exact frozen subject")
+        return ReviewInputService(self.store).resolve_reference_in(db, tenant, spec["review_subject"])
+
+    def _check_review_body_in(self, db, tenant, spec, body):
+        from .review_inputs import ReviewInputService
+        ReviewInputService.check_body(body, self._review_input_in(db, tenant, spec))
 
     def _view(self, db, row, body, include_body=True):
         reasons = self._stale_reasons(db, row)
@@ -261,6 +276,10 @@ class ArtifactService:
             contract = self._contract(db, claim.tenant_id, claim.run_id, claim.task_id)
             if contract["role"] != ARTIFACT_ROLES[kind] or "artifacts.write" not in contract["tools"]:
                 raise Conflict("approved source role cannot produce this artifact type")
+            if kind == "review-findings":
+                if (contract.get("role_output") or {}).get("kind") != kind:
+                    raise Conflict("review candidate requires an explicit findings contract")
+                self._check_review_body_in(db, claim.tenant_id, contract, body)
             values = self._save_candidate_in(db, claim, key, kind, body, contract, actor=actor)
             return self._view(db, values, body)
 
@@ -330,41 +349,51 @@ class ArtifactService:
                     expected_revision=expected_revision, expected_content_hash=expected_content_hash)
 
         def apply(db):
-            if self.store._run(db, tenant, run_id)["status"] != "open":
-                raise Conflict("new artifact grants require an open run")
-            target = self._contract(db, tenant, run_id, target_task_id)
-            target_row = db.execute("SELECT status,epoch FROM tasks WHERE tenant=? AND run_id=? AND id=?",
-                                    (tenant, run_id, target_task_id)).fetchone()
-            if target_row is None or target_row["status"] in {"stale", "cancelled", "done", "indeterminate"}:
-                raise Conflict("target task is not eligible for auxiliary input")
-            if target_row["epoch"] != expected_target_epoch:
-                raise Conflict("target epoch changed since the input was reviewed")
-            row, body = self._candidate(db, tenant, run_id, artifact_id)
-            if self._stale_reasons(db, row):
-                raise Conflict("candidate artifact is stale")
-            selectors = target.get("input_artifacts") or []
-            if "artifacts.read" not in target["tools"] or not any(
-                    selector["source_node"] == row["source_node"] and selector["kind"] == row["kind"]
-                    and selector["schema_version"] == row["schema_version"] for selector in selectors):
-                raise Conflict("approved target does not permit this auxiliary input")
-            if (target["plan_digest"] != expected_plan_digest or row["plan_digest"] != expected_plan_digest
-                    or row["source_epoch"] != expected_source_epoch or row["revision"] != expected_revision
-                    or row["content_hash"] != expected_content_hash):
-                raise Conflict("approval does not match the reviewed candidate binding")
-            values = dict(tenant=tenant, run_id=run_id, id=str(uuid4()), target_task_id=target_task_id,
-                          target_epoch=target_row["epoch"],
-                          artifact_id=artifact_id, source_task_id=row["source_task_id"], source_node=row["source_node"],
-                          kind=row["kind"], source_epoch=row["source_epoch"], revision=row["revision"],
-                          content_hash=row["content_hash"], plan_digest=row["plan_digest"],
-                          source_event_hash=row["source_event_hash"], actor=actor)
-            event = self.store._event(db, tenant, run_id, "artifact.input_approved", self._grant_binding(values), actor, key)
-            values["approval_event_hash"] = event["hash"]
-            columns = list(values)
-            db.execute("INSERT INTO artifact_input_grants (" + ",".join(columns) + ") VALUES (" + ",".join("?" for _ in columns) + ")",
-                       tuple(values[column] for column in columns))
-            return {**self._grant_binding(values), "approval_event_hash": event["hash"], "execution_connected": False}
+            return self._approve_input_in(db, tenant=tenant, key=key, **args)
 
         return self.store._command(tenant, key, "artifact.approve_input", args, apply)
+
+    def _approve_input_in(self, db, *, tenant, key, run_id, target_task_id, artifact_id, actor,
+                          expected_plan_digest, expected_source_epoch, expected_target_epoch,
+                          expected_revision, expected_content_hash):
+        _subject(actor)
+        if self.store._run(db, tenant, run_id)["status"] != "open":
+            raise Conflict("new artifact grants require an open run")
+        target = self._contract(db, tenant, run_id, target_task_id)
+        target_row = db.execute("SELECT status,epoch FROM tasks WHERE tenant=? AND run_id=? AND id=?",
+                                (tenant, run_id, target_task_id)).fetchone()
+        if target_row is None or target_row["status"] in {"stale", "cancelled", "done", "indeterminate"}:
+            raise Conflict("target task is not eligible for auxiliary input")
+        if target_row["epoch"] != expected_target_epoch:
+            raise Conflict("target epoch changed since the input was reviewed")
+        row, body = self._candidate(db, tenant, run_id, artifact_id)
+        if self._stale_reasons(db, row):
+            raise Conflict("candidate artifact is stale")
+        if row["kind"] == "review-findings":
+            if target["role"] != "fixer" or body["verdict"] != "findings":
+                raise Conflict("only explicit findings can be approved for a fixer")
+            self._check_review_body_in(db, tenant, target, body)
+        selectors = target.get("input_artifacts") or []
+        if "artifacts.read" not in target["tools"] or not any(
+                selector["source_node"] == row["source_node"] and selector["kind"] == row["kind"]
+                and selector["schema_version"] == row["schema_version"] for selector in selectors):
+            raise Conflict("approved target does not permit this auxiliary input")
+        if (target["plan_digest"] != expected_plan_digest or row["plan_digest"] != expected_plan_digest
+                or row["source_epoch"] != expected_source_epoch or row["revision"] != expected_revision
+                or row["content_hash"] != expected_content_hash):
+            raise Conflict("approval does not match the reviewed candidate binding")
+        values = dict(tenant=tenant, run_id=run_id, id=str(uuid4()), target_task_id=target_task_id,
+                      target_epoch=target_row["epoch"],
+                      artifact_id=artifact_id, source_task_id=row["source_task_id"], source_node=row["source_node"],
+                      kind=row["kind"], source_epoch=row["source_epoch"], revision=row["revision"],
+                      content_hash=row["content_hash"], plan_digest=row["plan_digest"],
+                      source_event_hash=row["source_event_hash"], actor=actor)
+        event = self.store._event(db, tenant, run_id, "artifact.input_approved", self._grant_binding(values), actor, key)
+        values["approval_event_hash"] = event["hash"]
+        columns = list(values)
+        db.execute("INSERT INTO artifact_input_grants (" + ",".join(columns) + ") VALUES (" + ",".join("?" for _ in columns) + ")",
+                   tuple(values[column] for column in columns))
+        return {**self._grant_binding(values), "approval_event_hash": event["hash"], "execution_connected": False}
 
     def preview_context(self, tenant, run_id, target_task_id):
         """Read only. Never copies arbitrary task outputs or resolves references."""
@@ -427,13 +456,23 @@ class ArtifactService:
                     raise ExecutionContextError("CONTEXT_SUITE_INVALID") from None
                 raise
             context["development_suite"] = target["development_suite"]
+        if target.get("review_subject") is not None:
+            try:
+                context["review_input"] = self._review_input_in(db, tenant, target)
+                for item in items:
+                    if item["kind"] == "review-findings":
+                        self._check_review_body_in(db, tenant, target, item["body"])
+            except (Conflict, InvalidInput, NotFound):
+                if execution:
+                    raise ExecutionContextError("CONTEXT_REVIEW_INVALID") from None
+                raise
         return self._bounded_context(context, execution=execution)
 
     def _capture_execution_context_in(self, db, claim):
         self.store._assert_claim(db, claim)
         try:
             target = self._contract(db, claim.tenant_id, claim.run_id, claim.task_id)
-            if not target.get("input_artifacts") and not target.get("development_suite"):
+            if not target.get("input_artifacts") and not target.get("development_suite") and not target.get("review_subject"):
                 return None
             if "artifacts.read" not in target["tools"]:
                 raise ExecutionContextError("CONTEXT_BINDING_INVALID")
@@ -496,14 +535,17 @@ class ArtifactService:
                 raise ExecutionContextError("CONTEXT_SNAPSHOT_CHANGED")
             bound_request = {**request, "context_digest": current["context_digest"]}
             suite_fields = {}
+            if current.get("review_input") is not None:
+                suite_fields["review_subject"] = current["review_input"]["subject"]
+                suite_fields["review_input_digest"] = current["review_input"]["input_digest"]
             if current.get("development_suite") is not None:
                 suite_hash = digest(current["development_suite"])
                 if ("development_suite_ref_digest" in request
                         and request["development_suite_ref_digest"] != suite_hash):
                     raise ExecutionContextError("CONTEXT_SUITE_INVALID")
                 bound_request["development_suite_ref_digest"] = suite_hash
-                suite_fields = {"development_suite": current["development_suite"],
-                                "development_suite_ref_digest": suite_hash}
+                suite_fields.update(development_suite=current["development_suite"],
+                                    development_suite_ref_digest=suite_hash)
             grant = self.store._reserve_and_begin_effect(db, claim, reservation_id,
                 max_cost=max_cost, max_tokens=max_tokens, operation_id=operation_id, request=bound_request)
             if grant["dispatch"]:
@@ -567,7 +609,7 @@ class ArtifactService:
             # _command's cached legacy receipt must not be a validation bypass.
             with self.store.transaction() as db:
                 target = self._contract(db, claim.tenant_id, claim.run_id, claim.task_id)
-                if target.get("input_artifacts") or target.get("development_suite"):
+                if target.get("input_artifacts") or target.get("development_suite") or target.get("review_subject"):
                     raise ExecutionContextError("CONTEXT_SNAPSHOT_CHANGED")
             return self.store.submit_output(claim, key, output)
         snapshot, snapshot_digest = self._snapshot_receipt_binding(snapshot)
@@ -606,7 +648,7 @@ class ArtifactService:
     def _role_evidence_in(self, db, tenant, run_id, task_id, epoch, spec, call_id, reservation_id, request):
         """Reconstruct model origin from the known ledger, never caller body."""
         output = spec.get("role_output")
-        if (output is None or spec["role"] not in {"analyst", "architect", "tester"}
+        if (output is None or spec["role"] not in {"analyst", "architect", "tester", "reviewer"}
                 or ARTIFACT_ROLES.get(output["kind"]) != spec["role"]
                 or "artifacts.write" not in spec["tools"] or spec["scope"] != "local-workspace"
                 or epoch > spec["limits"]["max_attempts"]):
@@ -648,6 +690,8 @@ class ArtifactService:
         if model.finish_reason != "stop":
             raise RoleOutputError()
         body = decode_role_output(output["kind"], model.content)
+        if output["kind"] == "review-findings" and body["subject"] != spec.get("review_subject"):
+            raise RoleOutputError()
         provenance = {"schema_version": "loom.model-provenance/v1", "call_id": call_id,
             "reservation_id": reservation_id, "task_id": task_id, "epoch": epoch,
             "plan_digest": spec["plan_digest"], "role": spec["role"], "role_output": output,
@@ -694,6 +738,11 @@ class ArtifactService:
             body, provenance = self._role_evidence_in(db, claim.tenant_id, claim.run_id,
                 claim.task_id, claim.epoch, contract, call_id, reservation_id, bound_request)
             kind = contract["role_output"]["kind"]
+            if kind == "review-findings":
+                try:
+                    self._check_review_body_in(db, claim.tenant_id, contract, body)
+                except InvalidInput:
+                    raise RoleOutputError() from None
             row = self._save_candidate_in(db, claim, key, kind, body, contract,
                                           actor="local-executor", provenance=provenance)
             output = {"kind": "role-artifact", "artifact_id": row["id"], "artifact_kind": kind,

@@ -371,8 +371,8 @@
         || typeof source.route !== "string" || !/^[a-z][a-z0-9_-]{0,47}$/.test(source.route)
         || typeof source.artifact_id !== "string" || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(source.artifact_id)
         || !integer(source.source_epoch) || source.source_epoch < 1) return false;
-    if (!["requirements", "design", "public-checks"].includes(source.kind)) return false;
-    const expected = {requirements: ["analyst", "loom.requirements/v1"], design: ["architect", "loom.design/v1"], "public-checks": ["tester", "loom.public-checks/v1"]}[source.kind];
+    if (!["requirements", "design", "public-checks", "review-findings"].includes(source.kind)) return false;
+    const expected = {requirements: ["analyst", "loom.requirements/v1"], design: ["architect", "loom.design/v1"], "public-checks": ["tester", "loom.public-checks/v1"], "review-findings": ["reviewer", "loom.review-findings/v1"]}[source.kind];
     if (!expected || source.role !== expected[0] || source.schema_version !== expected[1]) return false;
     if (source.kind === "public-checks" && source.public_checks_executed !== false) return false;
     if (["call_id", "artifact_content_hash", "plan_digest", "source_event_hash"].some((key) => typeof source[key] !== "string" || !hashPattern.test(source[key]))) return false;
@@ -449,6 +449,7 @@
         || !(task.input_artifacts || []).some((selector) => selector.source_node === item.source_node
           && selector.kind === item.kind && selector.schema_version === item.schema_version)) return null;
     try { exactBodyText(item.body); } catch { return null; }
+    if (item.kind === "review-findings" && item.body?.verdict !== "findings") return null;
     return {artifact_id: item.artifact_id, expected_plan_digest: item.plan_digest, expected_source_epoch: item.source_epoch,
       expected_target_epoch: task.epoch, expected_revision: item.revision, expected_content_hash: item.content_hash};
   }
@@ -463,7 +464,9 @@
     $("auxiliary-form").hidden = !has("control") || !state.principal?.roles?.includes("operator");
     $("auxiliary-reviewed").disabled = !allowed;
     $("auxiliary-approve").disabled = !allowed || !$("auxiliary-reviewed").checked;
-    $("auxiliary-help").textContent = allowed ? "本次批准不会验证候选、恢复任务或修改依赖。服务端将再次核对绑定版本。"
+    $("auxiliary-help").textContent = state.artifactDetail?.kind === "review-findings" && state.artifactDetail.body?.verdict === "no_findings"
+      ? "本次审查未发现问题，无需批准修复；候选仍未独立验证，不能据此完成任务。"
+      : allowed ? "本次批准不会验证候选、恢复任务或修改依赖。服务端将再次核对绑定版本。"
       : "选择已读取的当前候选与允许该类型的目标，核对版本后方可批准。失效、读取中或状态变化时须重新读取。";
   }
 

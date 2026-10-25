@@ -1,10 +1,10 @@
 # 结构化候选、辅助输入批准与预览
 
-本模块提供需求、设计和公开开发检查的候选注册、历史查询、operator 批准及只读预览。普通 Worker 提交的来源为 `authenticated-worker-submission`；0.8 新增受限 analyst / architect 网关生成，0.9 合同扩展到 tester，来源为 `model-gateway-response`，由本机可信执行器核对响应与已结 usage 后保存。两类候选均保持 `producer_verified=false`、`counts_as_success=false`。结构校验、来源记录和辅助读取批准都不证明内容正确。
+本模块提供需求、设计、公开开发检查和代码审查意见的候选注册、历史查询、operator 批准及只读预览。普通 Worker 提交的来源为 `authenticated-worker-submission`；0.8 新增受限 analyst / architect 网关生成，0.9 合同扩展到 tester，来源为 `model-gateway-response`，由本机可信执行器核对响应与已结 usage 后保存。两类候选均保持 `producer_verified=false`、`counts_as_success=false`。结构校验、来源记录和辅助读取批准都不证明内容正确。
 
 0.6 交付候选注册、明确批准与只读预览；0.7 增加获准 Python 执行器的辅助上下文消费；0.8 将同一精确输入绑定用于只读分析/设计生成。`GET context-preview` 本身仍返回 `execution_connected=false`，不调用模型、网络或工具，不取得 claim、不预留预算；该字段描述预览接口，不代表执行器没有消费能力。原 `depends` 硬依赖保持有效，上游只有 `submitted` 时仍不能放行下游；批准候选不会将任务改为 `done`，也不改变 Gate-V。
 
-## 三类候选
+## 四类候选
 
 候选 body 必须符合对应版本的严格 schema，拒绝未知字段、隐式类型转换、非有限数字、重复条目名称及过深/过大的结构。来源任务的冻结角色必须匹配，并具备 `artifacts.write`。
 
@@ -13,6 +13,9 @@
 | `requirements` | `loom.requirements/v1` | `analyst` |
 | `design` | `loom.design/v1` | `architect` |
 | `public-checks` | `loom.public-checks/v1` | `tester` |
+| `review-findings` | `loom.review-findings/v1` | `reviewer` |
+
+0.17新增审查意见：必须显式冻结review_subject；默认只读校验与模型生成/保存分开。操作员只能将明确findings批准给绑定同一原实现的fixer，no_findings不能触发修复。[执行协议](reviewer-execution.md)
 
 需求示例：
 

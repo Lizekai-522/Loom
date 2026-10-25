@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-from .artifact_schemas import ARTIFACT_ROLES, ArtifactInput, DevelopmentSuiteReference, RoleOutput
+from .artifact_schemas import ARTIFACT_ROLES, ArtifactInput, DevelopmentSuiteReference, RoleOutput, ReviewSubjectReference
 from .policy import GateRules, TaskContract, gate_p
 from .store import BudgetExceeded, Conflict, InvalidInput, NotFound, Store, canonical, digest
 
@@ -97,6 +97,7 @@ class TaskNode(StrictModel):
                                                       exclude_if=lambda value: value is None)
     role_output: RoleOutput | None = Field(default=None, exclude_if=lambda value: value is None)
     development_suite: DevelopmentSuiteReference | None = Field(default=None, exclude_if=lambda value: value is None)
+    review_subject: ReviewSubjectReference | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @field_validator("title", "instruction")
     @classmethod
@@ -127,6 +128,20 @@ class TaskNode(StrictModel):
                     or self.repair.development_digest != self.development_suite.development_digest
                     or self.evaluation_digest == self.development_suite.development_digest):
                 raise ValueError("reviewed development suite requires distinct frozen acceptance and matching Rebind policy")
+        if self.role_output is not None and self.role_output.kind == "review-findings" and self.review_subject is None:
+            raise ValueError("review findings require an exact implementation reference")
+        if self.review_subject is not None:
+            if self.role == "reviewer":
+                if self.role_output is None or self.role_output.kind != "review-findings":
+                    raise ValueError("reviewer reference requires explicit findings output")
+            elif self.role == "fixer":
+                if (self.evaluation_digest != self.review_subject.evaluation_digest
+                        or self.repair is not None or self.development_suite is not None
+                        or self.limits.max_attempts != 1
+                        or not any(i.kind == "review-findings" and i.required for i in self.input_artifacts or [])):
+                    raise ValueError("review fixer requires one explicitly approved attempt and the original acceptance digest")
+            else:
+                raise ValueError("implementation review references are restricted to reviewer and fixer")
         return self
 
 
@@ -145,6 +160,10 @@ class WorkflowDefinition(StrictModel):
         if len(nodes) != len(self.nodes):
             raise ValueError("duplicate task node ID")
         for node in self.nodes:
+            if node.review_subject is not None:
+                role = next(role for role in self.roles if role.id == node.role)
+                if "artifacts.read" not in role.tools:
+                    raise ValueError("review subject requires artifact read capability")
             if node.development_suite is not None:
                 role = next(role for role in self.roles if role.id == node.role)
                 if not {"artifacts.read", "workspace.write", "tests.run"} <= set(role.tools):
@@ -161,6 +180,9 @@ class WorkflowDefinition(StrictModel):
                 source = nodes.get(item.source_node)
                 if source is None or source.id == node.id or source.role != ARTIFACT_ROLES[item.kind]:
                     raise ValueError("artifact input source does not match its registered type")
+                if item.kind == "review-findings" and (node.role != "fixer" or node.review_subject is None
+                        or source.review_subject != node.review_subject):
+                    raise ValueError("review input must bind the same implementation as its fixer")
         remaining = {node.id: set(node.depends) for node in self.nodes}
         if any(not dependencies <= nodes.keys() for dependencies in remaining.values()):
             raise ValueError("dependencies must refer to nodes in this workflow")
@@ -222,8 +244,7 @@ class WorkflowService:
             return DevelopmentSuiteService(self.store)
         return None
 
-    @staticmethod
-    def _validate_suites_in(db, suites, tenant, run_id, definition, *, actor=None, approval=False):
+    def _validate_suites_in(self, db, suites, tenant, run_id, definition, *, actor=None, approval=False):
         nodes = [node for node in definition.nodes if node.development_suite is not None]
         if nodes and approval:
             from .artifacts import _subject
@@ -232,6 +253,17 @@ class WorkflowService:
             raise Conflict("suite references changed before plan approval")
         for node in nodes:
             suites.resolve_reference_in(db, tenant, run_id, node.development_suite)
+        reviews = [node for node in definition.nodes if node.review_subject is not None]
+        if reviews:
+            from .review_inputs import ReviewInputService
+            from .artifacts import _subject
+            if approval:
+                _subject(actor)
+            for node in reviews:
+                if node.review_subject.run_id == run_id:
+                    raise Conflict("review subjects must refer to an existing separate implementation run")
+                ReviewInputService(self.store).resolve_reference_in(
+                    db, tenant, node.review_subject)
 
     @staticmethod
     def _goal(db, tenant, run_id):

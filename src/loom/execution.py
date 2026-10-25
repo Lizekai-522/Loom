@@ -88,9 +88,13 @@ class LocalTaskRunner:
     def _auxiliary_inputs(snapshot):
         # Local identity, provenance and grant references remain in the bound
         # snapshot. A provider only needs the explicitly approved typed data.
-        return {"items": [{"kind": item["kind"], "schema_version": item["schema_version"],
+        result = {"items": [{"kind": item["kind"], "schema_version": item["schema_version"],
                            "body": item["body"]} for item in snapshot["items"]],
                 "untrusted_data": True, "producer_verified": False}
+        if snapshot.get("review_input") is not None:
+            result["review_input"] = {key: snapshot["review_input"][key] for key in
+                ("schema_version", "subject", "execution_summary", "files", "input_digest", "untrusted_source")}
+        return result
 
     @staticmethod
     def _context_fields(snapshot):
@@ -347,6 +351,16 @@ class LocalTaskRunner:
                  "usage": asdict(model.usage), "usage_cost_upper_microusd": charged_upper,
                  "tariff_revision": TARIFF_REVISION, "billed_currency_verified": False,
                  **self._context_fields(snapshot)}, "local-executor")
+            if spec.get("review_subject") is not None and not evaluated.passed:
+                # A reviewed fixer has exactly one approved attempt. Keep its
+                # failed host report and stop in this same authority commit;
+                # the generic legacy rejection path would requeue the task.
+                self.store._event(db, claim.tenant_id, claim.run_id, "execution.acceptance_failed",
+                    {"task_id": claim.task_id, "epoch": claim.epoch, "content_hash": digest(output),
+                     "evaluation_digest": evaluation_digest, "acceptance_report": evaluated.to_dict()}, "local-executor")
+                return {**self._block_in(db, claim, "ACCEPTANCE_TESTS_FAILED"),
+                        "hard_criteria_passed": False, "usage": asdict(model.usage),
+                        "usage_cost_upper_microusd": charged_upper}
         submitted = self._submit_output(claim, f"python-submit:{claim.task_id}:{claim.epoch}", output, snapshot)
         if not evaluated.passed:
             rejected = self.store.complete(claim, f"python-reject:{claim.task_id}:{claim.epoch}", output,

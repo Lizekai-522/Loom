@@ -37,14 +37,30 @@ class ApprovedExecutionService:
         task_id=run_id+':'+node_id
         run=self.store._run(db,tenant,run_id)
         spec=self.artifacts._contract(db,tenant,run_id,task_id)
-        tests,evaluation_digest=freeze_tests(tests)
+        reviewer=spec['role']=='reviewer' and tests is None
+        if reviewer:
+            tests,evaluation_digest=(),None
+        else:
+            tests,evaluation_digest=freeze_tests(tests)
         if spec['plan_digest']!=plan_digest or spec['evaluation_digest']!=evaluation_digest:
             raise Conflict('approved plan or frozen host tests differ')
-        if (run['status']!='open' or spec['role'] not in {'developer','fixer'}
-                or not spec.get('development_suite') or not spec.get('repair') or spec.get('input_artifacts')
-                or not {'workspace.write','tests.run','artifacts.read'}<=set(spec['tools'])):
-            raise Conflict('only open reviewed-suite execution tasks without auxiliary selectors are supported')
-        self.suites.resolve_reference_in(db,tenant,run_id,spec['development_suite'])
+        review_fixer=spec['role']=='fixer' and spec.get('review_subject') is not None
+        if run['status']!='open':raise Conflict('execution requires an open run')
+        if reviewer:
+            if (not spec.get('review_subject') or (spec.get('role_output') or {}).get('kind')!='review-findings'
+                    or spec.get('input_artifacts') or not {'artifacts.read','artifacts.write'}<=set(spec['tools'])):
+                raise Conflict('reviewer requires an explicit subject and findings contract')
+        elif review_fixer:
+            selectors=spec.get('input_artifacts') or []
+            if (len(selectors)!=1 or selectors[0]['kind']!='review-findings' or not selectors[0]['required']
+                    or not {'workspace.write','tests.run','artifacts.read'}<=set(spec['tools'])):
+                raise Conflict('review fixer requires one explicitly approved findings input')
+        else:
+            if (spec['role'] not in {'developer','fixer'} or not spec.get('development_suite')
+                    or not spec.get('repair') or spec.get('input_artifacts')
+                    or not {'workspace.write','tests.run','artifacts.read'}<=set(spec['tools'])):
+                raise Conflict('only open reviewed-suite execution tasks without auxiliary selectors are supported')
+            self.suites.resolve_reference_in(db,tenant,run_id,spec['development_suite'])
         task=db.execute('SELECT * FROM tasks WHERE tenant=? AND run_id=? AND id=?',(tenant,run_id,task_id)).fetchone()
         if task['status']!='pending' or task['epoch']!=0:
             raise Conflict('task already started; no automatic repeat or recovery')
@@ -59,6 +75,13 @@ class ApprovedExecutionService:
         approvals=[json.loads(row[0]) for row in approval if json.loads(row[0])['type']=='workflow.plan_approved']
         if not approvals or not approvals[-1]['actor'].startswith('subject:'):
             raise Conflict('named operator plan approval required')
+        review_fields={}
+        if spec.get('review_subject') is not None:
+            context=self.artifacts._preview_context_in(db,tenant,run_id,task_id)
+            if not context['ready']:raise Conflict('review findings require explicit operator input approval')
+            review_fields=dict(review_subject=spec['review_subject'],input_context_digest=context['context_digest'],
+                input_grants=[{key:item[key] for key in ('artifact_id','grant_id','source_epoch','revision','content_hash','approval_event_hash')}
+                              for item in context['items']])
         cost=cost_upper_microusd(FLASH_CONTEXT_LIMIT,max_output_tokens)
         tokens=FLASH_CONTEXT_LIMIT+max_output_tokens
         limits=spec['limits']
@@ -68,13 +91,13 @@ class ApprovedExecutionService:
             raise Conflict('approved task or run budget cannot cover initial reservation')
         report=dict(schema_version='loom.approved-execution-preview/v1',mode='existing-plan-preview',
             tenant_id=tenant,run_id=run_id,node_id=node_id,task_id=task_id,plan_digest=plan_digest,
-            evaluation_digest=evaluation_digest,host_case_count=len(tests),development_suite=spec['development_suite'],
+            evaluation_digest=evaluation_digest,host_case_count=len(tests),development_suite=spec.get('development_suite'),
             model_alias=spec['model_alias'],
             task_limits=limits,max_output_tokens=max_output_tokens,initial_cost_reservation_upper=cost,
             initial_token_reservation=tokens,run_cost_available=run['cost_limit']-run['spent']-run['reserved'],
             run_tokens_available=run['token_limit']-run['tokens_spent']-run['tokens_reserved'],
             creates_new_goal=False,network_requests=0,requires_explicit_execute=True,
-            full_workflow_completed=False,counts_as_success=False)
+            full_workflow_completed=False,counts_as_success=False,**review_fields)
         return spec,{**report,'preview_digest':digest(report)}
 
     def preview(self,tenant,run_id,node_id,plan_digest,tests,*,max_output_tokens=768):
@@ -102,6 +125,11 @@ class ApprovedExecutionService:
             db.execute("UPDATE tasks SET status='running',worker=?,epoch=1,lease_until=? WHERE tenant=? AND id=?",(worker.subject_id,until,tenant,task_id))
             self.store._event(db,tenant,run_id,'task.claimed',dict(task_id=task_id,worker=worker.subject_id,
                 epoch=1,lease_until=until,channel=task['channel'],priority=task['priority']),'system')
+            for item in current.get('input_grants',[]):
+                self.artifacts._approve_input_in(db,tenant=tenant,run_id=run_id,target_task_id=task_id,
+                    artifact_id=item['artifact_id'],key='execution-input:'+task_id+':1',actor='subject:'+operator.subject_id,
+                    expected_plan_digest=plan_digest,expected_source_epoch=item['source_epoch'],expected_target_epoch=1,
+                    expected_revision=item['revision'],expected_content_hash=item['content_hash'])
             self.store._event(db,tenant,run_id,'execution.existing_plan_admitted',dict(task_id=task_id,
                 plan_digest=plan_digest,evaluation_digest=current['evaluation_digest'],preview_digest=preview_digest,
                 operator=operator.subject_id,worker=worker.subject_id),'subject:'+operator.subject_id)

@@ -3,7 +3,7 @@
   "info": {
     "title": "Loom local kernel",
     "description": "Local S1 development API. No real model or external write execution.",
-    "version": "0.16.0"
+    "version": "0.17.0"
   },
   "paths": {
     "/v1/me": {
@@ -1686,7 +1686,8 @@
             "enum": [
               "requirements",
               "design",
-              "public-checks"
+              "public-checks",
+              "review-findings"
             ],
             "title": "Kind"
           },
@@ -2309,7 +2310,8 @@
             "enum": [
               "requirements",
               "design",
-              "public-checks"
+              "public-checks",
+              "review-findings"
             ],
             "title": "Kind"
           },
@@ -2585,6 +2587,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/DevelopmentSuiteReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "review_subject": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewSubjectReference"
               },
               {
                 "type": "null"

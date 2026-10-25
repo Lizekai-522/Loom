@@ -1,11 +1,11 @@
 {
-  "version": "0.16.0",
-  "stage": "review-input-alpha",
-  "date": "2026-10-25",
-  "generated_at": "2026-10-25T21:09:24.808382+08:00",
-  "release_status": "bounded_review_input_milestone_passed",
+  "version": "0.17.0",
+  "stage": "reviewer-fixer-handoff-alpha",
+  "date": "2026-10-26",
+  "generated_at": "2026-10-26T01:44:10.585668+08:00",
+  "release_status": "bounded_reviewer_fixer_handoff_milestone_passed",
   "production_ready": false,
-  "source_file_count_excluding_manifest": 215,
+  "source_file_count_excluding_manifest": 220,
   "files": [
     {
       "path": ".gitignore",
@@ -19,8 +19,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 18414,
-      "sha256": "b93f97b332d0ae0a1d2f5a84354b99a8eb9f072b7b494db802a61e2fb5569c64"
+      "bytes": 18087,
+      "sha256": "3325a09208795bc491d9b062af80f0bd716b72e195c13349493cb210f2ca8d61"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -84,18 +84,18 @@
     },
     {
       "path": "docs/api/openapi.json",
-      "bytes": 70738,
-      "sha256": "40dbec0f7dfdd181dc796650eca7ee4b38bec8a55d6252f1a536077020fe9de7"
+      "bytes": 71062,
+      "sha256": "b1c22e65f5ad917e7e2149f053a2ad5aac42287fc05ec5415c20ca7332f50e1c"
     },
     {
       "path": "docs/approved-execution.md",
-      "bytes": 2714,
-      "sha256": "ed5ae9de67cc795ad59efe0effdf956d59928bcab70f4e2ae71b8c4bca9bd84e"
+      "bytes": 2831,
+      "sha256": "6dc63bb90a4bde8219b70e104758f98bcb8dca62b00c733a8fcb12891b1928ed"
     },
     {
       "path": "docs/artifacts.md",
-      "bytes": 24517,
-      "sha256": "63948591e13f189a7ca5a6e150491d5f70e110d67fada23037bc8057f24645ab"
+      "bytes": 24854,
+      "sha256": "9dd07a343409886abacf0ce41be505bbd445211324c4291f54bffb68a420651f"
     },
     {
       "path": "docs/bounded-repair.md",
@@ -129,8 +129,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 38854,
-      "sha256": "194e029aaff44648aa3c46be22ace400a18af945b6e670b0094a7fc49415f421"
+      "bytes": 40596,
+      "sha256": "d61aa7a41db966ece56007a02836d5378e5372fe988f181ffac595b736e77c77"
     },
     {
       "path": "docs/local-auth.md",
@@ -169,8 +169,8 @@
     },
     {
       "path": "docs/progress-cycle.md",
-      "bytes": 16461,
-      "sha256": "c3b7d0d421bdd6b869601d22e3326c7a80575e86e3977c767f98154ae4ebf786"
+      "bytes": 17752,
+      "sha256": "130ff982ca594b7b81351b9115815bb30e7254efd7cee93e7a1e861977402284"
     },
     {
       "path": "docs/public-checks.md",
@@ -179,8 +179,8 @@
     },
     {
       "path": "docs/release-roadmap.md",
-      "bytes": 3760,
-      "sha256": "6b00802ae8e0c8f0f40f1c2557ac2e9c07e03d870c412b243f83f8fd338f91bb"
+      "bytes": 3978,
+      "sha256": "2e039b08e099f2f8af328d7efc1ffde6b71b4560fffa4fc540f9d3c87466e8e0"
     },
     {
       "path": "docs/review-resolution.md",
@@ -193,9 +193,14 @@
       "sha256": "1a7df1527a427c117696ea1501abd56c0bb1363d0569f2fba9cf71ca55efc193"
     },
     {
+      "path": "docs/reviewer-execution.md",
+      "bytes": 4538,
+      "sha256": "274119720ecd19d9103833e3e4fcef702b776a956fc49e390ffb46ae5727aacf"
+    },
+    {
       "path": "docs/reviewer-input.md",
-      "bytes": 3559,
-      "sha256": "723976cb25404afda87265417e429806b7af7dfde57264584b53d890f9715e7f"
+      "bytes": 3609,
+      "sha256": "08ce69b549d7436b394474e2ee61b5d28e5cea3e444b3dc3f28354df9eecdece"
     },
     {
       "path": "docs/third-party-notices.md",
@@ -231,6 +236,11 @@
       "path": "docs/validation-0.15.md",
       "bytes": 3819,
       "sha256": "d496316a53f70f1b2141a93f224b624c70cb60e6c7b67137a5e2ad7527513fa3"
+    },
+    {
+      "path": "docs/validation-0.16.md",
+      "bytes": 2893,
+      "sha256": "aed10c4ae6ba79442ca7a0ae8b1ae6d714edd07f5226c11574b6e0a7351741bf"
     },
     {
       "path": "docs/validation-0.3.md",
@@ -269,8 +279,8 @@
     },
     {
       "path": "docs/validation.md",
-      "bytes": 2893,
-      "sha256": "aed10c4ae6ba79442ca7a0ae8b1ae6d714edd07f5226c11574b6e0a7351741bf"
+      "bytes": 3576,
+      "sha256": "23184628ad5779fce0f68305a43f0e4019e413149b81e20cf2bf784690ed3b70"
     },
     {
       "path": "docs/workflow.md",
@@ -295,7 +305,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 771,
-      "sha256": "cc35d8775e64c3f88534fd5fb2a4c453dbdaad4b1477f31ad16865600f4b5be1"
+      "sha256": "e9e86fbde42a15c3e6992e48655becc0c3493983b4c621b8439606f72d1cb67e"
     },
     {
       "path": "requirements.lock",
@@ -359,8 +369,8 @@
     },
     {
       "path": "scripts/check_s2.py",
-      "bytes": 5659,
-      "sha256": "ad809448e67d671f4603ec384bfdb2154a0b9605750bcdbfd1988a5e140bf2a2"
+      "bytes": 5669,
+      "sha256": "9196131d9c72bb6d51c83d521473448a162a0dd8c11a720cec4ddbeabe0f5c83"
     },
     {
       "path": "scripts/check_sandbox.py",
@@ -394,8 +404,8 @@
     },
     {
       "path": "scripts/run_approved_task.py",
-      "bytes": 6096,
-      "sha256": "f698c09cfe4129e06a2dd54a376982e2565ba993b3ed63d7ee5fb97ff2ddacf0"
+      "bytes": 6324,
+      "sha256": "1f86664683d3bae87fc3ca34308de37376316bdfe774053b8d4491f9a56fceda"
     },
     {
       "path": "scripts/run_context_task.py",
@@ -406,6 +416,11 @@
       "path": "scripts/run_local_task.py",
       "bytes": 12466,
       "sha256": "938d1920ac83621905d26b74b87fafd9aaf049ebba28ccc3728f399475be9abc"
+    },
+    {
+      "path": "scripts/run_reviewer_task.py",
+      "bytes": 4459,
+      "sha256": "98126971799a85e9dde7dd9e9ca6bcbdded5face26a6f372738e138156f6edf5"
     },
     {
       "path": "scripts/run_role_tasks.py",
@@ -430,7 +445,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "1717f20c122955de24f66bf8a96e20c1bc6247fc8d15039afebc46422f32f37c"
+      "sha256": "1fdd4df8b591c2217483ff1c35f46b436c4d427601f8d4cd605042a59b3274e9"
     },
     {
       "path": "src/loom/__main__.py",
@@ -439,23 +454,23 @@
     },
     {
       "path": "src/loom/api.py",
-      "bytes": 22064,
-      "sha256": "9b8a0fa796a3d72d0e6fde12fc8bc681aea859abd8bcd4043badfc6524c691c9"
+      "bytes": 22122,
+      "sha256": "360672e50e267026c3cfe37f99fe3a5897ec82023697102242df6c379796ec0a"
     },
     {
       "path": "src/loom/approved_execution.py",
-      "bytes": 7339,
-      "sha256": "8ffdd278c2ca46f8c446a75f0f8be5b7b10cb966707f00276ed3d847f8869cfa"
+      "bytes": 9508,
+      "sha256": "96fb05aa5f98b3fb9bd5fae1a80dd8f7570b8ae958383a616482347b06f3d1b7"
     },
     {
       "path": "src/loom/artifact_schemas.py",
-      "bytes": 9878,
-      "sha256": "1c88bfcaf963fce049f13c3733daa97071812f4663b17f10d311c0ff9587138b"
+      "bytes": 11559,
+      "sha256": "c914a1cf103e69be86a0522a9b64a17c7de887bec964aa907cc6ccc62274fc32"
     },
     {
       "path": "src/loom/artifacts.py",
-      "bytes": 45319,
-      "sha256": "681c858ede560fcce942e24004c06ab6a67d28423692a21846ca6e8713740e56"
+      "bytes": 48119,
+      "sha256": "c91e8b58432ac1854562a77ddcc4751b56b267acf1000f3bbc0432a9c133cd22"
     },
     {
       "path": "src/loom/attempts.py",
@@ -489,8 +504,8 @@
     },
     {
       "path": "src/loom/execution.py",
-      "bytes": 37795,
-      "sha256": "6b8ad8956d8ea30df28d59c9fdf8608983881d452cf801ee175b09404543460d"
+      "bytes": 38936,
+      "sha256": "9409f1f2b7421b9032760f61dd5a67183d88ec7df3ad55b88b5d980fc031b01a"
     },
     {
       "path": "src/loom/failures.py",
@@ -539,18 +554,18 @@
     },
     {
       "path": "src/loom/review_inputs.py",
-      "bytes": 11030,
-      "sha256": "546e05ac844bce8cd6737277ab309b96b181d0c38f758101937cb3d3566f1c8a"
+      "bytes": 10235,
+      "sha256": "7ecda8c56ffedcae8341138c07bcae8ca548dc6aa282e216cb8ce11b206512c3"
     },
     {
       "path": "src/loom/role_execution.py",
-      "bytes": 7450,
-      "sha256": "024cf766e0d2f2569d4f5bfbbf826404e2d08740a070ace1ca7c64ca5cc6b622"
+      "bytes": 7784,
+      "sha256": "3be65350b31bbe09c13921d6540929346bbd97ed54879902f30b44e44cc961d5"
     },
     {
       "path": "src/loom/role_summary.py",
-      "bytes": 4525,
-      "sha256": "1c11867cc90f0fd949479ce59d9d3d18294d5178aa3c215140002b101fb533ee"
+      "bytes": 4498,
+      "sha256": "aa9e5f03c5d7ec4ccb454d6cbd584e9e040f58014d16ea7055104754121e0255"
     },
     {
       "path": "src/loom/sandbox.py",
@@ -569,8 +584,8 @@
     },
     {
       "path": "src/loom/web/console-zh.js",
-      "bytes": 3073,
-      "sha256": "3d67fa7bd8e1e68ae2526b0ba802c60588d7778e4f6eac8cf7d042804a19266d"
+      "bytes": 3229,
+      "sha256": "41a569a3cfad8bc64e211227b5b77c390b7936cf08722a2be9cd33341e5ab57c"
     },
     {
       "path": "src/loom/web/console.css",
@@ -579,8 +594,8 @@
     },
     {
       "path": "src/loom/web/console.js",
-      "bytes": 60068,
-      "sha256": "cb1a52aad8c2b6b35f83bd1afba0303dbd36cc5669372012f64d697336d88629"
+      "bytes": 60467,
+      "sha256": "6cc0d2a7063d12cb5353977d01ab3318b777e26c72c985442175d1c6beaddb56"
     },
     {
       "path": "src/loom/web/index.html",
@@ -589,8 +604,8 @@
     },
     {
       "path": "src/loom/workflow.py",
-      "bytes": 26239,
-      "sha256": "7d2d2c92630c50d6c72be8bec4af9b6e591893a914e37432b1b7ea37a6270a71"
+      "bytes": 28622,
+      "sha256": "6338fb375bf04e7c1908492abbbb4fd2689c1973c6dd417aaba7a74e1c8aab70"
     },
     {
       "path": "tests/__init__.py",
@@ -646,6 +661,11 @@
       "path": "tests/integration/test_reviewed_suite_live.py",
       "bytes": 4649,
       "sha256": "a9c3b9795244e7833d29f164bde34ed93ed8deb7745a9649aff4d6cfa3de55bd"
+    },
+    {
+      "path": "tests/integration/test_reviewer_handoff_live.py",
+      "bytes": 4373,
+      "sha256": "cb5fbb33a1eb053e0464e93618fd3a65e61a408518bc318eee11b9add62fbfb0"
     },
     {
       "path": "tests/integration/test_role_handoff_docker_live.py",
@@ -804,8 +824,8 @@
     },
     {
       "path": "tests/test_review_inputs.py",
-      "bytes": 13778,
-      "sha256": "2fb3eb1e11670a91e8b1bb9266089fe554d2ca476ba12ccf35c56fdcd068fa65"
+      "bytes": 13791,
+      "sha256": "c97cbe3a0e015e3105ba6b81f73661e4464c43556f7c4343bdb88b98f5e7c782"
     },
     {
       "path": "tests/test_reviewed_execution.py",
@@ -816,6 +836,11 @@
       "path": "tests/test_reviewed_task_script.py",
       "bytes": 6729,
       "sha256": "2c8fb6df8519de631eb60cd0980eca89bed2a9bc345d945c09ce369a9c699466"
+    },
+    {
+      "path": "tests/test_reviewer_handoff.py",
+      "bytes": 18447,
+      "sha256": "d05afce111bf9058b0436ca90a4b01e88b594ad38696301ec035219475d7f363"
     },
     {
       "path": "tests/test_role_execution.py",
@@ -1094,25 +1119,30 @@
   ],
   "validation": {
     "full_gate_passed": true,
-    "main_tests_passed": 866,
+    "main_tests_passed": 898,
     "subtests_passed": 396,
     "failures": 0,
     "skipped": 0,
-    "real_infrastructure_main_tests_included": 51,
-    "new_unit_main_tests": 45,
-    "new_real_docker_tests": 1,
-    "fresh_main_browser_assertions": 9,
-    "unchanged_ui_prior_browser_assertions_reused": 84,
-    "fresh_review_input_http_checks": 23,
-    "fresh_existing_execution_http_checks": 60,
-    "new_paid_model_requests": 0,
+    "real_infrastructure_main_tests_included": 53,
+    "new_unit_main_tests": 30,
+    "new_real_docker_tests": 2,
+    "fresh_browser_assertions": 26,
+    "new_review_http_checks": 23,
+    "old_actual_execution_http_checks": 60,
+    "paid_review_dispatches": 1,
+    "paid_review_responses": 1,
+    "paid_review_tokens": 2141,
+    "paid_review_cost_upper_microusd": 979,
+    "paid_review_reservation_remaining": 0,
+    "fixer_provider_in_docker_tests": "HTTP mocks",
+    "actual_model_fixer_dispatched": false,
     "main_database_counts": {
-      "runs": 37,
-      "events": 554,
+      "runs": 38,
+      "events": 572,
       "development_suites": 1
     },
-    "first_failed_full_gate_preserved": true,
-    "old_lease_timing_test_corrected": true
+    "new_main_runs": 1,
+    "new_main_events": 18
   },
   "runtime": {
     "python": "3.13.12",
@@ -1123,19 +1153,19 @@
     "project_cache_workaround_reused": true,
     "normal_default_shortcut_startup_verified": false
   },
-  "real_models_used_this_milestone": false,
+  "real_models_used_this_milestone": true,
   "full_workflow_completed": false,
   "independent_second_model": "pending_configuration",
   "planned_release_candidate": "0.20",
   "planned_first_production_release": "1.0",
   "release_gates_passed": false,
   "notes": [
-    "Read-only review inputs reconstruct the frozen approved executable contract and bind the current implementation, epoch, source/test digests, claim identity, exact executor/submission events and locally consistent event chain in one SQLite read snapshot.",
-    "The default preview contains metadata only. Explicit source inclusion has the same full input digest. Hidden case names, input/expected/stdout/stderr/diagnostics never enter the reviewer context; oversized static contexts stop.",
-    "Strict findings bind every subject pin, unique IDs, allowed severities, main.py and valid source line ranges. API/CLI validate only; no model generation, persistence, approval, execution or fake independent success is provided.",
-    "Forty-five new local and one real Docker case are included in866/396. Model HTTP uses mocks; historical actual Flash outputs are reconciled read-only with no repeated paid probes.",
-    "The first full gate failed in an existing test using a50ms wall-clock lease. The failure is preserved; explicit fixture expiry removes timing dependence while preserving unknown-effect and stale-claim assertions. Production lease code is unchanged.",
-    "The Chinese automatic local console is unchanged. Fresh9 Chromium checks and exact asset hashes support reuse of0.15 UI evidence; prior84 assertions are not claimed as newly run.",
-    "The0.20 release-candidate and1.0 production numbers are a conditional roadmap. All first-release P0, real independent models, deployment identities, recovery, isolation and evaluation gates must actually pass. The original62 FR remain tracked; no production or full-requirements completion is claimed."
+    "Review-findings and an exact review_subject are frozen in new contracts; omitted optional fields preserve old plan hashes. Approval and every model admission/return/submission recheck the source implementation and host evidence.",
+    "Reviewer CLI uses an existing approved task, no code tools, strict JSON and gateway-bound provenance. Hidden host inputs, expected values, case names and stdout are excluded from reviewer/fixer prompts. Candidates are not independent verification.",
+    "Only a named operator can approve exact findings for the same-subject fixer. Explicit execution reapproves that exact input for epoch1 atomically with claiming. Original acceptance and one attempt are mandatory; drift, concurrency and audit failures stop or roll back.",
+    "Actual Docker with HTTP mock responses covers fixer success and failure. Success remains submitted. Failure report and human stop commit together rather than requeueing; original failed XML and fixture assertion corrections are preserved.",
+    "One new actual Flash review returned no_findings,2141tokens and979microusd upper accounting, no reserved balance. No actual fixer was dispatched; model review and automatic local operator do not constitute independent people, signatures or Goal success.",
+    "Fresh Chromium26 covers fixture review/approval11, existing main sources9 and actual no-findings denial6. Actual HTTP83 checks pass. Only the new review run and18events were added; original source events are unchanged.",
+    "Complete human adjudication, unified seven-role operation, actual model fixer effectiveness, independent second model, tools/quotas/context and production identity/recovery remain pending. All62original FR and the11/15deployment/11/20submission targets remain tracked."
   ]
 }

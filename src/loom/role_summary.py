@@ -15,7 +15,7 @@ def model_source_summary(candidate):
         return None
     provenance = candidate.get("model_provenance")
     kind, schema = candidate.get("kind"), candidate.get("schema_version")
-    if (type(provenance) is not dict or type(kind) is not str or kind not in {"requirements", "design", "public-checks"}
+    if (type(provenance) is not dict or type(kind) is not str or kind not in ARTIFACT_SCHEMAS
             or schema != ARTIFACT_SCHEMAS[kind] or provenance.get("role") != ARTIFACT_ROLES[kind]
             or provenance.get("provider") != "deepseek" or provenance.get("model") != "deepseek-flash"):
         return None

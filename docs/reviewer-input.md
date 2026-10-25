@@ -1,6 +1,6 @@
 # 审查输入与候选校验
 
-0.16 是 reviewer 接入的第一步：只读核对已提交代码与宿主证据、校验结构化意见。尚未连接 reviewer 模型生成、保存意见或批准 fixer；不改变任务依赖、状态、预算和独立验收。
+0.16先交付只读输入与意见校验；0.17已接通受限reviewer生成、候选保存、操作员精确批准及单次fixer执行。[执行与批准步骤](reviewer-execution.md)。本页两个预览/校验接口仍然只读，不批准执行、不改变依赖或独立验收。
 
 ## 只读获取
 
@@ -40,4 +40,4 @@ verdict 仅 `findings` / `no_findings`，后者要求空 findings；最多32项�
 
 返回 `persisted=false`、`model_source_recorded=false`、`counts_as_success=false`、`execution_authorized=false`。意见即使为 no_findings 也不完成任务或Goal。本机事件自洽和宿主有限测试不代表生产独立信任根；第二模型与受信签名仍待配置。
 
-下一步将该引用冻结到 reviewer 执行合同，预算/intent/输入同事务准入，模型返回与提交前复核，再提供具名操作员批准至 fixer 的有界交接。不能直接将这个只读校验响应当执行许可。
+0.17通过新合同的review_subject冻结该引用，预算/intent/输入同事务准入并在返回/提交前复核；fixer还须独立批准精确意见且保留原宿主判据。不能直接将这个只读校验响应当执行许可。

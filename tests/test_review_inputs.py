@@ -52,7 +52,7 @@ def review_case(tmp_path):
             environ={"DEEPSEEK_API_KEY": "review-public-test-only"}) as gateway:
             return await LocalTaskRunner(store, gateway, sandbox or FakeSandbox()).run_python(claim, suite, max_output_tokens=128)
 
-    return dict(store=store, workflow=workflow, run=run, claim=claim, execute=execute,
+    return dict(store=store, workflow=workflow, run=run, claim=claim, execute=execute, suite=suite,
                 service=ReviewInputService(ReadOnlyStore(store.path)))
 
 

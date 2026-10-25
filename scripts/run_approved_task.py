@@ -51,7 +51,10 @@ async def run(args):
         admission=ApprovedExecutionService(store)
         claim=admission.claim(args.tenant,args.run_id,args.node_id,args.expected_plan_digest,tests,
             args.preview_digest,operator=operators[0],worker=workers[0],max_output_tokens=args.max_output_tokens)
-        result=await LocalTaskRunner(store,gateway,sandbox).run_python_cycle(claim,tests,max_output_tokens=args.max_output_tokens)
+        runner=LocalTaskRunner(store,gateway,sandbox)
+        spec=runner.workflows.get_task_spec(args.tenant,args.run_id,claim.task_id)
+        result=await (runner.run_python_cycle(claim,tests,max_output_tokens=args.max_output_tokens)
+                      if spec.get('repair') else runner.run_python(claim,tests,max_output_tokens=args.max_output_tokens))
         events=store.events(args.tenant,args.run_id)
         with store.connect() as db:
             task_calls={row[0] for row in db.execute('SELECT id FROM effects WHERE tenant=? AND run_id=? AND task_id=?',(args.tenant,args.run_id,claim.task_id))}

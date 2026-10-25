@@ -2,7 +2,7 @@
 window.LoomZH = (() => {
   const words = {
     analyst: "需求分析", architect: "架构设计", tester: "测试设计", developer: "开发实现", reviewer: "代码审查", fixer: "问题修复", validator: "独立验证",
-    business: "业务任务", verification: "独立验证", requirements: "需求说明", design: "设计方案", "public-checks": "公开开发检查",
+    business: "业务任务", verification: "独立验证", requirements: "需求说明", design: "设计方案", "public-checks": "公开开发检查", "review-findings": "代码审查意见",
     "role-artifact": "角色候选产物", "python-sandbox": "Python 隔离执行报告", awaiting_independent_models: "等待独立模型复核",
     "python-json-program": "Python 程序隔离测试报告",
     "authenticated-worker-submission": "已认证执行器提交", "model-gateway-response": "模型网关响应",
@@ -16,6 +16,7 @@ window.LoomZH = (() => {
     "task.created": "任务已创建", "task.claimed": "任务已领取", "task.submitted": "候选已提交", "task.done": "任务已验证",
     "task.lease_expired": "任务租约已过期", "task.invalidated": "任务已失效", "tool.intent": "模型调用已登记", "tool.done": "模型响应已记录",
     "execution.context_bound": "执行上下文已绑定", "execution.evaluated": "宿主终验已记录", "execution.stopped": "执行已停止",
+    "execution.acceptance_failed": "宿主终验失败已保留", "execution.blocked": "执行已转人工处理",
     "development.evaluated": "公开开发检查已记录", "development.suite_frozen": "开发套件已审阅冻结",
     "role.candidate_generated": "角色候选已生成", "repair.applied": "有界修复已批准", "repair.stopped": "修复已停止",
     "budget.reserved": "预算已预留", "budget.settled": "已知用量已结算", "run.paused": "运行已暂停", "run.resumed": "运行已恢复", "run.cancelled": "运行已终止",

@@ -8,10 +8,10 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, m
 from .store import InvalidInput, canonical
 
 
-ArtifactKind = Literal["requirements", "design", "public-checks"]
+ArtifactKind = Literal["requirements", "design", "public-checks", "review-findings"]
 ARTIFACT_SCHEMAS = {"requirements": "loom.requirements/v1", "design": "loom.design/v1",
-                    "public-checks": "loom.public-checks/v1"}
-ARTIFACT_ROLES = {"requirements": "analyst", "design": "architect", "public-checks": "tester"}
+                    "public-checks": "loom.public-checks/v1", "review-findings": "loom.review-findings/v1"}
+ARTIFACT_ROLES = {"requirements": "analyst", "design": "architect", "public-checks": "tester", "review-findings": "reviewer"}
 MAX_BODY_BYTES = 32768
 MAX_CONTEXT_BYTES = 65536
 Name = Annotated[str, Field(min_length=1, max_length=48, pattern=r"^[a-z][a-z0-9_-]*$")]
@@ -21,6 +21,54 @@ Text = Annotated[str, Field(min_length=1, max_length=4000)]
 class ArtifactModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False,
                               frozen=True, revalidate_instances="always")
+
+
+Hash = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+ReviewIdentifier = Annotated[str, Field(min_length=1, max_length=200)]
+
+
+class ReviewSubjectReference(ArtifactModel):
+    schema_version: Literal["loom.review-subject-ref/v1"]
+    run_id: ReviewIdentifier
+    task_id: ReviewIdentifier
+    epoch: int = Field(ge=1)
+    plan_digest: Hash
+    content_hash: Hash
+    source_sha256: Hash
+    evaluation_digest: Hash
+    evaluation_event_hash: Hash
+    submission_event_hash: Hash
+
+
+class ReviewFinding(ArtifactModel):
+    id: Name
+    severity: Literal["blocker", "major", "minor", "info"]
+    path: Literal["main.py"]
+    start_line: int = Field(ge=1, le=262144)
+    end_line: int = Field(ge=1, le=262144)
+    description: Text
+    recommendation: Text
+
+    @model_validator(mode="after")
+    def ordered_lines(self):
+        if self.end_line < self.start_line:
+            raise ValueError("finding line range is reversed")
+        return self
+
+
+class ReviewFindingsBody(ArtifactModel):
+    schema_version: Literal["loom.review-findings/v1"]
+    subject: ReviewSubjectReference
+    summary: Text
+    verdict: Literal["findings", "no_findings"]
+    findings: list[ReviewFinding] = Field(max_length=32)
+
+    @model_validator(mode="after")
+    def consistent_findings(self):
+        if (bool(self.findings) != (self.verdict == "findings")
+                or len({item.id for item in self.findings}) != len(self.findings)):
+            raise ValueError("findings and verdict differ or IDs repeat")
+        return self
 
 
 class ArtifactInput(ArtifactModel):
@@ -111,7 +159,7 @@ class ModelProvenance(ArtifactModel):
     task_id: str = Field(min_length=1, max_length=200)
     epoch: int = Field(ge=1)
     plan_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
-    role: Literal["analyst", "architect", "tester"]
+    role: Literal["analyst", "architect", "tester", "reviewer"]
     role_output: RoleOutput
     content_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     route: Name
@@ -218,7 +266,8 @@ class PublicChecksBody(ArtifactModel):
         return self
 
 
-BODY_MODELS = {"requirements": RequirementsBody, "design": DesignBody, "public-checks": PublicChecksBody}
+BODY_MODELS = {"requirements": RequirementsBody, "design": DesignBody, "public-checks": PublicChecksBody,
+               "review-findings": ReviewFindingsBody}
 
 
 def validate_body(kind, body):
