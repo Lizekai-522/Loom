@@ -70,7 +70,7 @@ class ExecutionContextError(Conflict):
     """Expected auxiliary-input stop; never includes supplied data in errors."""
     code = "EXECUTION_CONTEXT_INVALID"
     REASONS = frozenset({"CONTEXT_REQUIRED_INPUT_MISSING", "CONTEXT_SNAPSHOT_CHANGED",
-                         "CONTEXT_BINDING_INVALID", "CONTEXT_TOO_LARGE"})
+                         "CONTEXT_BINDING_INVALID", "CONTEXT_TOO_LARGE", "CONTEXT_SUITE_INVALID"})
 
     def __init__(self, reason):
         self.reason = reason if reason in self.REASONS else "CONTEXT_BINDING_INVALID"
@@ -415,13 +415,23 @@ class ArtifactService:
                    "missing_inputs": missing, "ready": not any(item["required"] for item in missing),
                    "untrusted_data": True, "producer_verified": False, "counts_as_success": False,
                    "execution_connected": False, "max_bytes": MAX_CONTEXT_BYTES}
+        if target.get("development_suite") is not None:
+            from .development_suites import DevelopmentSuiteService
+            try:
+                DevelopmentSuiteService(self.store, artifacts=self, initialize=False).resolve_reference_in(
+                    db, tenant, run_id, target["development_suite"])
+            except (Conflict, InvalidInput, NotFound):
+                if execution:
+                    raise ExecutionContextError("CONTEXT_SUITE_INVALID") from None
+                raise
+            context["development_suite"] = target["development_suite"]
         return self._bounded_context(context, execution=execution)
 
     def _capture_execution_context_in(self, db, claim):
         self.store._assert_claim(db, claim)
         try:
             target = self._contract(db, claim.tenant_id, claim.run_id, claim.task_id)
-            if not target.get("input_artifacts"):
+            if not target.get("input_artifacts") and not target.get("development_suite"):
                 return None
             if "artifacts.read" not in target["tools"]:
                 raise ExecutionContextError("CONTEXT_BINDING_INVALID")
@@ -483,6 +493,15 @@ class ArtifactService:
             if "context_digest" in request and request["context_digest"] != current["context_digest"]:
                 raise ExecutionContextError("CONTEXT_SNAPSHOT_CHANGED")
             bound_request = {**request, "context_digest": current["context_digest"]}
+            suite_fields = {}
+            if current.get("development_suite") is not None:
+                suite_hash = digest(current["development_suite"])
+                if ("development_suite_ref_digest" in request
+                        and request["development_suite_ref_digest"] != suite_hash):
+                    raise ExecutionContextError("CONTEXT_SUITE_INVALID")
+                bound_request["development_suite_ref_digest"] = suite_hash
+                suite_fields = {"development_suite": current["development_suite"],
+                                "development_suite_ref_digest": suite_hash}
             grant = self.store._reserve_and_begin_effect(db, claim, reservation_id,
                 max_cost=max_cost, max_tokens=max_tokens, operation_id=operation_id, request=bound_request)
             if grant["dispatch"]:
@@ -496,7 +515,7 @@ class ArtifactService:
                      "context_digest": current["context_digest"], "context_bytes": current["bytes"], "context_item_count": len(refs),
                      "refs": refs, "call_id": grant["call_id"], "reservation_id": reservation_id,
                      "prompt_digest": request["prompt_digest"], "untrusted_data": True,
-                     "producer_verified": False, "counts_as_success": False}, "local-executor")
+                     "producer_verified": False, "counts_as_success": False, **suite_fields}, "local-executor")
             return {**grant, "context_digest": current["context_digest"], "context_bytes": current["bytes"],
                     "context_item_count": len(current["items"])}
 
@@ -546,7 +565,7 @@ class ArtifactService:
             # _command's cached legacy receipt must not be a validation bypass.
             with self.store.transaction() as db:
                 target = self._contract(db, claim.tenant_id, claim.run_id, claim.task_id)
-                if target.get("input_artifacts"):
+                if target.get("input_artifacts") or target.get("development_suite"):
                     raise ExecutionContextError("CONTEXT_SNAPSHOT_CHANGED")
             return self.store.submit_output(claim, key, output)
         snapshot, snapshot_digest = self._snapshot_receipt_binding(snapshot)

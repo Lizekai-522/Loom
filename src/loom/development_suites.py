@@ -7,8 +7,12 @@ its producer nor modifies an approved workflow or confers execution authority.
 from __future__ import annotations
 
 import json
+import sqlite3
 from uuid import uuid4
 
+from pydantic import ValidationError
+
+from .artifact_schemas import DevelopmentSuiteReference
 from .artifacts import ArtifactService, _hash, _subject, _text
 from .public_checks import compile_public_checks
 from .store import Conflict, InvalidInput, NotFound, Store, canonical, digest
@@ -29,11 +33,12 @@ CREATE TRIGGER IF NOT EXISTS development_suites_no_delete BEFORE DELETE ON devel
 
 
 class DevelopmentSuiteService:
-    def __init__(self, store: Store):
+    def __init__(self, store: Store, *, artifacts=None, initialize=True):
         self.store = store
-        self.artifacts = ArtifactService(store)
-        with store.connect() as db:
-            db.executescript(SCHEMA)
+        self.artifacts = ArtifactService(store) if artifacts is None else artifacts
+        if initialize:
+            with store.connect() as db:
+                db.executescript(SCHEMA)
 
     @staticmethod
     def _selection(names):
@@ -132,29 +137,63 @@ class DevelopmentSuiteService:
             _text(value, label)
         with self.store.connect() as db:
             db.execute("BEGIN")
-            row = db.execute("SELECT * FROM development_suites WHERE tenant=? AND run_id=? AND id=?",
-                             (tenant, run_id, suite_id)).fetchone()
-            if row is None:
-                raise NotFound("development suite not found in tenant/run")
-            try:
-                record = json.loads(row["record"])
-                actor = record["actor"]
-                _subject(actor)
-                selection = self._selection(record["selected_case_names"])
-                reviewed, body, reasons = self._preview_in(
-                    db, tenant, run_id, row["artifact_id"], selection, allow_stale=True)
-                expected = {**reviewed, "suite_id": suite_id, "actor": actor, "body": body}
-                if canonical(record) != canonical(expected):
-                    raise ValueError
-                payload = {**reviewed, "suite_id": suite_id, "actor": actor,
-                           "suite_digest": digest(record), **self._flags(), "frozen": True}
-                self.artifacts._event_matches(db, tenant, run_id, row["event_hash"],
-                                               "development.suite_frozen", actor, payload)
-            except (KeyError, TypeError, ValueError, InvalidInput, RecursionError, UnicodeError, OverflowError):
-                raise Conflict("development suite record binding is inconsistent") from None
-            result = {**payload, "freeze_event_hash": row["event_hash"],
-                      "stale": bool(reasons), "stale_reasons": reasons}
-            if include_body:
-                # Never return a view into internal mutable state.
-                result["body"] = json.loads(canonical(body))
+            result = self._suite_in(db, tenant, run_id, suite_id, include_body=include_body)
+            if not result["stale"]:
+                result["execution_reference"] = self.reference(result)
             return result
+
+    def _suite_in(self, db, tenant, run_id, suite_id, *, include_body=False):
+        row = db.execute("SELECT * FROM development_suites WHERE tenant=? AND run_id=? AND id=?",
+                             (tenant, run_id, suite_id)).fetchone()
+        if row is None:
+            raise NotFound("development suite not found in tenant/run")
+        try:
+            record = json.loads(row["record"])
+            actor = record["actor"]
+            _subject(actor)
+            selection = self._selection(record["selected_case_names"])
+            reviewed, body, reasons = self._preview_in(
+                db, tenant, run_id, row["artifact_id"], selection, allow_stale=True)
+            expected = {**reviewed, "suite_id": suite_id, "actor": actor, "body": body}
+            if canonical(record) != canonical(expected):
+                raise ValueError
+            payload = {**reviewed, "suite_id": suite_id, "actor": actor,
+                       "suite_digest": digest(record), **self._flags(), "frozen": True}
+            self.artifacts._event_matches(db, tenant, run_id, row["event_hash"],
+                                         "development.suite_frozen", actor, payload)
+        except (KeyError, TypeError, ValueError, InvalidInput, RecursionError, UnicodeError, OverflowError):
+            raise Conflict("development suite record binding is inconsistent") from None
+        result = {**payload, "freeze_event_hash": row["event_hash"],
+                  "stale": bool(reasons), "stale_reasons": reasons}
+        if include_body:
+            result["body"] = json.loads(canonical(body))
+        return result
+
+    @staticmethod
+    def reference(suite):
+        """Build a typed pointer from a suite view, not a copied artifact."""
+        try:
+            raw = {"schema_version": "loom.development-suite-ref/v1",
+                   "source_run_id": suite["source"]["run_id"],
+                   **{key: suite[key] for key in ("suite_id", "suite_digest", "freeze_event_hash",
+                       "review_digest", "compiler_version", "development_digest", "selected_body_hash")}}
+            return DevelopmentSuiteReference.model_validate(raw).model_dump(mode="json")
+        except (KeyError, TypeError, ValueError, ValidationError):
+            raise InvalidInput("invalid development suite reference") from None
+
+    def resolve_reference_in(self, db, tenant, target_run_id, reference):
+        """Validate full origin and freeze event in the caller's snapshot."""
+        try:
+            raw = reference.model_dump(mode="json") if isinstance(reference, DevelopmentSuiteReference) else reference
+            checked = DevelopmentSuiteReference.model_validate(raw).model_dump(mode="json")
+        except (ValidationError, TypeError, ValueError):
+            raise InvalidInput("invalid development suite reference") from None
+        if checked["source_run_id"] == target_run_id:
+            raise Conflict("reviewed suites require a separately approved execution run")
+        try:
+            suite = self._suite_in(db, tenant, checked["source_run_id"], checked["suite_id"], include_body=True)
+        except sqlite3.OperationalError:
+            raise Conflict("development suite registry is unavailable") from None
+        if suite["stale"] or self.reference(suite) != checked:
+            raise Conflict("development suite reference is stale or differs from the frozen review")
+        return suite

@@ -3,7 +3,7 @@
   "info": {
     "title": "Loom local kernel",
     "description": "Local S1 development API. No real model or external write execution.",
-    "version": "0.12.0"
+    "version": "0.13.0"
   },
   "paths": {
     "/v1/me": {
@@ -1745,6 +1745,74 @@
         ],
         "title": "ControlInput"
       },
+      "DevelopmentSuiteReference": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "loom.development-suite-ref/v1",
+            "title": "Schema Version"
+          },
+          "source_run_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Source Run Id"
+          },
+          "suite_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Suite Id"
+          },
+          "suite_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Suite Digest"
+          },
+          "freeze_event_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Freeze Event Hash"
+          },
+          "review_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Review Digest"
+          },
+          "compiler_version": {
+            "type": "string",
+            "const": "loom.public-checks-compiler/v1",
+            "title": "Compiler Version"
+          },
+          "development_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Development Digest"
+          },
+          "selected_body_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Selected Body Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "source_run_id",
+          "suite_id",
+          "suite_digest",
+          "freeze_event_hash",
+          "review_digest",
+          "compiler_version",
+          "development_digest",
+          "selected_body_hash"
+        ],
+        "title": "DevelopmentSuiteReference",
+        "description": "Exact existing review reference; no copied model origin or case body."
+      },
       "GoalInput": {
         "properties": {
           "title": {
@@ -2208,6 +2276,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/RoleOutput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "development_suite": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DevelopmentSuiteReference"
               },
               {
                 "type": "null"

@@ -1,21 +1,29 @@
-# Loom 0.12 验证记录
+# Loom 0.13 验证记录
 
-2026-10-25，0.12.0，development-suite-api-alpha。已开放开发套件精确预览、具名operator冻结和套件读取API；未绑定新执行合同，生成用例仍未执行。[注册表历史](validation-0.11.md)
+2026-10-25，0.13.0，reviewed-suite-execution-alpha。完成冻结生成用例→新执行计划→执行前核对→development/有界repair→不同宿主验收的本机链路。[0.12历史](validation-0.12.md)
 
 | 完整阶段 | 主测试 | 子测试 | 失败 | 跳过 |
 |---|---:|---:|---:|---:|
-| unit-and-local | 702 | 382 | 0 | 0 |
-| real-infrastructure | 44 | 14 | 0 | 0 |
-| 合计 | 746 | 396 | 0 | 0 |
+| unit-and-local | 734 | 382 | 0 | 0 |
+| real-infrastructure | 48 | 14 | 0 | 0 |
+| 合计 | 782 | 396 | 0 | 0 |
 
-新增20项审批API测试包含在完整集合中。118项API/身份/注册表兼容专项和100项权限专项范围重叠，不相加；模型为替身，未新增付费。真实基础设施继续验证Docker、repair、NATS/重投、PG等。
+本轮新增32项本地与4项真实Docker主测试，已含在上述总数。相关专项与完整范围重叠，不叠加。完整套件模型HTTP均为替身。旧基线源码/包/HEAD逐文件一致，开发前另做118专项、33实际只读HTTP和固定runner预检，无重复旧付费。
 
-独立数据库副本中完成39项实际HTTP检查：真实旧候选来源、精确摘要/选择、operator专权、Worker/viewer/legacy/未认证/跨租户拒绝、服务端actor、幂等、只追加事件、计划/任务/费用不变、暂停后拒绝新冻结及历史stale。原主库事件链不变，不是主库人工审批，也不证明独立人员。
+## 实际模型与容器
 
-17项实际Chromium检查通过，覆盖现有工作台角色、候选来源/未执行标签、viewer强制提交无写入、移动布局和凭据不持久化；模型和沙箱为公开fixture替身。控制台资产字节未变，原16项数字精度检查按相同JS复用，未计为本轮新断言。当前没有suite冻结UI。
+run 7bf5b872-fae6-4c4d-a154-f2de9470846b：1次真实Flash响应，审阅冻结的3个旧tester生成用例、4个不同输入的host验收全部通过，7个实际Docker用例，无repair/retry。552tokens、342µUSD上界记账、预留0，未核对供应商账单。
 
-初次专项和完整回归的失败来自两处旧测试精确权限快照尚未包括新增suite.approve；更新operator白名单断言并验证Worker/viewer/legacy继续无此权限。原完整失败JSON/JUnit保留，基础设施当时未执行而非skip。实际HTTP脚本还误用/pause，已改现存/control/pause，重建副本后39项通过；旧副本保留。
+原0.9来源run58614923-b31f-43a7-90ea-897703443390及正文不改；先按明确小领域规格核对3个case，再由本机具名operator经API冻结，GET返回execution_reference，产品CLI建立新Goal/计划并以具名operator批准，worker领取后自动从注册表载入精确用例。source model origin只留在原候选，不在新run伪造model-gateway候选。
 
-本机服务更新后另做33项旧真实四角色只读对账。原任务submitted、review pending、Goal未成功，第二模型待配置。新注册表在主库仅初始化空表，不自动批准套件或生成执行任务。
+新的27项实际HTTP核对原来源、suite/合同/context/effect摘要、3个development与4个host报告、1次已知响应、账本和legacy审批拒绝；另33项原四角色只读回归通过。新任务只submitted，review pending，Goal open，第二模型待配置。3个case“已执行”只属于新目标执行，原tester生成任务的历史输出仍表示当时未执行。
 
-下一步新草案明确引用suite/独立host acceptance，在批准计划及首个开发模型发起前重验来源、compiler、目标与预算，再接真实development/repair和工作台。旧批准计划不改，input grant和suite.freeze不授予执行权。
+## 边界与反例
+
+源epoch/revision/事件/内容、compiler和suite pins不符，存草案/批准/执行必须停止。计划批准要求具名operator；不能在旧批准计划上补字段。suite-only的零辅助item上下文也参与预算/intent/审计同事务；漏传或替换snapshot拒绝，审计失败全部回滚。Rebind前再核对，源换代不能取得新epoch；已知费用保留，已发intent的未知状态保留预留并标usage_complete=false。
+
+真实Docker专项包含3case/host执行、有界repair、隐藏失败不反馈/不追加模型和源变更后不启容器。宿主用例只与开发套件输入不同，来自人工操作器固定样例，不构成统计有效的held-out评测或独立模型证明。
+
+CLI还修复静态发现的real_model_used固定true：现在从实际intent/done事件区分未发起、已返回和未知，并用发起前停止反例验证。异步测试初次误用未安装插件，改标准库asyncio运行，未增加依赖；原7个脚手架失败XML保留，没有转skip。
+
+现有控制台17项Chromium检查通过，模型/沙箱为公开fixture替身；相同JS的16项数值精度证据复用、不算本轮新断言。API27路径；suite专用图形审阅/执行草案表单尚待接入。SQLite单实例、生产身份/恢复、完整PG Store、完整七角色与独立双签仍未完成。

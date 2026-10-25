@@ -87,3 +87,12 @@ CLI 通过 `loom serve --identities-file <源码和公开outputs之外的私有J
 公开检查套件新增精确预览GET、具名operator冻结POST和suite读取GET，OpenAPI27路径。suite.approve仅operator，不能由Worker/viewer/legacy或正文actor获取；冻结绑定精确review digest/选择及幂等头，计划/任务/费用不变。新增20项API测试，完整746主/396子零失败/跳过；独立副本39项实际HTTP和现有UI17项Chromium通过，无新付费。旧权限快照/HTTP路径夹具失败保留并已复测。
 
 下一步新草案suite来源引用与执行前核对，再真实development/repair和工作台；当前冻结不授执行权，生成case未执行、第二模型待配置、Goal未成功。原62项及部署日期继续追踪。
+
+
+## 0.13审阅套件执行补记（2026-10-25）
+
+新增可省略的development_suite精确引用，旧计划/合同hash保持。存草案、具名operator批准、执行准入/返回/沙箱/提交与Rebind前验证同tenant来源、epoch/revision、suite事件/编译与摘要。零辅助items也绑定suite上下文；引用不复制模型来源、不改旧计划，未知intent预留保留。
+
+产品CLI支持新引用任务，默认离线preview，显式approve须现有DB及私有operator/worker配置。自动载入注册表用例，拒绝混用raw development_tests；host验收单独冻结且失败不回流修复。GET suite给出当前execution_reference；API路线仍27条。
+
+完整782主/396子，0失败/跳过，含48真实基础设施。真实run7bf5b872-fae6-4c4d-a154-f2de9470846b，1Flash、3生成+4host用例通过，552tokens/342µUSD上界、预留0、未核对账单，目标submitted/独立review pending。27新+33旧HTTP和17Chromium通过；源码/包/凭据另核。suite图形表单和完整七角色/生产/双签仍未完成。

@@ -230,6 +230,10 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
 
     @app.post("/v1/goals/{run_id}/plan/approve")
     def approve_plan(run_id: str, body: PlanApprovalInput, identity: Approver, idempotency_key: Key):
+        definition = workflows.get_plan(identity.tenant_id, run_id)["definition"] or {}
+        if (any(node.get("development_suite") is not None for node in definition.get("nodes", []))
+                and not registry.authorize(identity, "suite.approve")):
+            raise HTTPException(403, "reviewed-suite execution plans require a named operator")
         return workflows.approve_plan(identity.tenant_id, run_id, idempotency_key, body.expected_revision, body.expected_digest, **audit(identity))
 
     @app.get("/v1/interventions")

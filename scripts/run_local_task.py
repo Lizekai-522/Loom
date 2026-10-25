@@ -10,6 +10,9 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
+from loom.artifact_schemas import DevelopmentSuiteReference
+from loom.auth import load_identities
+from loom.development_suites import DevelopmentSuiteService
 from loom.execution import LocalTaskRunner, freeze_tests
 from loom.local_config import PrivateConfigError, load_project_secrets
 from loom.model_gateway import GatewayError, ModelGateway, load_model_config
@@ -30,7 +33,7 @@ def load_job(path):
             result[key] = value
         return result
     data = json.loads(raw, object_pairs_hook=pairs)
-    if (not isinstance(data, dict) or not {"title", "description", "tests"} <= set(data) <= {"title", "description", "tests", "development_tests"}
+    if (not isinstance(data, dict) or not {"title", "description", "tests"} <= set(data) <= {"title", "description", "tests", "development_tests", "development_suite"}
             or not isinstance(data["title"], str) or not data["title"].strip()
             or len(data["title"]) > 500 or not isinstance(data["description"], str)
             or not data["description"].strip() or len(data["description"]) > 16000
@@ -44,12 +47,22 @@ def load_job(path):
         development, development_digest = freeze_tests([FrozenTest(**case) for case in data["development_tests"]])
         if development_digest == evaluation_digest:
             raise ValueError("DEVELOPMENT_AND_ACCEPTANCE_MUST_DIFFER")
+    if "development_suite" in data:
+        if "development_tests" in data:
+            raise ValueError("REVIEWED_SUITE_AND_RAW_CASES_CANNOT_MIX")
+        data["development_suite"] = DevelopmentSuiteReference.model_validate(data["development_suite"]).model_dump(mode="json")
+        development_digest = data["development_suite"]["development_digest"]
+        if development_digest == evaluation_digest:
+            raise ValueError("DEVELOPMENT_AND_ACCEPTANCE_MUST_DIFFER")
     return data, tests, evaluation_digest, development, development_digest
 
 
 async def run(args):
     job, tests, evaluation_digest, development, development_digest = load_job(args.task_file)
-    if args.max_repairs and not development:
+    reference = job.get("development_suite")
+    if reference is not None and not args.max_repairs:
+        raise ValueError("REVIEWED_SUITE_REQUIRES_REPAIR_POLICY")
+    if args.max_repairs and not development and reference is None:
         raise ValueError("PUBLIC_DEVELOPMENT_TESTS_REQUIRED")
     root = Path(__file__).resolve().parents[1]
     definition = json.loads((root / "packs/software-dev/workflow-v1.json").read_text(encoding="utf-8"))
@@ -65,10 +78,28 @@ async def run(args):
         definition["nodes"][0]["repair"] = {
             "schema_version": "loom.rebind/v1", "development_digest": development_digest,
             "max_repairs": args.max_repairs, "stop_on_duplicate_source": True}
+    if reference is not None:
+        definition["nodes"][0]["development_suite"] = reference
     definition = WorkflowDefinition.model_validate(definition)
     if not args.approve:
         return {"mode": "plan-preview", "network_requests": 0, "evaluation_digest": evaluation_digest,
                 "definition": definition.model_dump(mode="json"), "requires_explicit_approve": True}
+    operator = worker = None
+    reviewed_store = None
+    if reference is not None:
+        identities_file = getattr(args, "identities_file", None)
+        if identities_file is None or not Path(args.db).is_file():
+            raise ValueError("REVIEWED_SUITE_IDENTITIES_AND_EXISTING_DATABASE_REQUIRED")
+        identities = load_identities(identities_file)
+        operator = next((i for i in identities if i.tenant_id == args.tenant and "operator" in i.roles), None)
+        worker = next((i for i in identities if i.tenant_id == args.tenant and "worker" in i.roles), None)
+        if operator is None or worker is None:
+            raise ValueError("REVIEWED_SUITE_NAMED_OPERATOR_AND_WORKER_REQUIRED")
+        reviewed_store = Store(args.db)
+        suites = DevelopmentSuiteService(reviewed_store)
+        with reviewed_store.connect() as db:
+            db.execute("BEGIN")
+            suites.resolve_reference_in(db, args.tenant, "new-execution-preview", reference)
     routes, roles = load_model_config(args.model_config)
     secrets = load_project_secrets(args.secrets_file, allowed_names={route.key_env for route in routes})
     sandbox = DockerSandbox(SandboxConfig(image=args.sandbox_image))
@@ -78,30 +109,40 @@ async def run(args):
         ready = gateway.readiness("deepseek-flash")
         if not ready.ready:
             raise GatewayError(ready.reason)
-        store = Store(args.db)
+        store = reviewed_store if reviewed_store is not None else Store(args.db)
         workflows = WorkflowService(store)
         prefix = "local-execution:" + uuid4().hex
         tenant = args.tenant
+        audit = {} if operator is None else {"actor": "subject:" + operator.subject_id}
         goal = workflows.create_goal(tenant, prefix, title=job["title"], description=job["description"],
                                      acceptance=["schema.valid", "tests.pass", "report.traceable"],
-                                     cost_limit=1000000, token_limit=2000000)
+                                     cost_limit=1000000, token_limit=2000000, **audit)
         run_id = goal["run_id"]
-        plan = workflows.save_plan(tenant, run_id, prefix + ":plan", definition, 0)
-        workflows.approve_plan(tenant, run_id, prefix + ":approve", plan["revision"], plan["digest"])
-        claim = store.claim_next(tenant, run_id, "local-python-worker", lease_seconds=90)
+        plan = workflows.save_plan(tenant, run_id, prefix + ":plan", definition, 0, **audit)
+        workflows.approve_plan(tenant, run_id, prefix + ":approve", plan["revision"], plan["digest"], **audit)
+        claim = store.claim_next(tenant, run_id, "local-python-worker" if worker is None else worker.subject_id, lease_seconds=90)
         runner = LocalTaskRunner(store, gateway, sandbox)
         if args.max_repairs:
-            result = await runner.run_python_cycle(claim, tests, development, max_output_tokens=args.max_output_tokens)
+            result = await runner.run_python_cycle(claim, tests, None if reference is not None else development,
+                                                   max_output_tokens=args.max_output_tokens)
         else:
             result = await runner.run_python(claim, tests, max_output_tokens=args.max_output_tokens)
         child = store.claim_next(tenant, run_id, "review-check", channel="verification") if result["status"] == "submitted" else None
         chain = store.events(tenant, run_id)
         snapshot = store.snapshot(tenant, run_id)
         replay = store.replay(tenant, run_id)
+        calls = {event["payload"]["call_id"] for event in chain if event["type"] == "tool.intent"}
+        responses = {event["payload"]["call_id"] for event in chain if event["type"] == "tool.done"
+                     and event["payload"].get("call_id") in calls}
         passed = result.get("hard_criteria_passed") is True and result["status"] == "submitted" and child is None and store.verify_events(chain)
         return {"date": datetime.now(timezone(timedelta(hours=8))).isoformat(),
                 "mode": "real-model-and-docker-local-integration", "passed": passed,
-                "real_model_used": True, "full_workflow_completed": False, "counts_as_success": False,
+                "real_model_used": bool(responses), "model_dispatch_admissions": len(calls),
+                "model_responses_received": len(responses),
+                "model_dispatch_outcome": "uncertain" if calls-responses else "response_received" if responses else "not_started",
+                "reviewed_suite_used": reference is not None,
+                "generated_public_checks_executed": reference is not None and any(e["type"] == "development.evaluated" for e in chain),
+                "full_workflow_completed": False, "counts_as_success": False,
                 "run_id": run_id, "execution": result, "event_count": len(chain),
                 "event_chain_valid": store.verify_events(chain), "run_status": snapshot["status"],
                 "accounted_cost_upper_microusd": snapshot["spent"], "accounted_tokens": snapshot["tokens_spent"],
@@ -118,6 +159,8 @@ def main():
     parser.add_argument("--task-file", type=Path, default=Path("configs/python-task.example.json"))
     parser.add_argument("--model-config", type=Path, default=Path("configs/models.example.json"))
     parser.add_argument("--secrets-file", type=Path, required=True)
+    parser.add_argument("--identities-file", type=Path,
+                        help="private named local operator/worker configuration, required for reviewed suites")
     parser.add_argument("--sandbox-image", required=True)
     parser.add_argument("--max-output-tokens", type=int, default=512)
     parser.add_argument("--max-repairs", type=int, default=0,
@@ -133,6 +176,8 @@ def main():
         parser.error("report cannot be stored beside private secrets")
     if args.report.resolve() in {args.secrets_file.resolve(), args.task_file.resolve(), args.model_config.resolve(), Path(args.db).resolve()}:
         parser.error("report cannot overwrite input files or database")
+    if args.identities_file is not None and args.report.resolve() == args.identities_file.resolve():
+        parser.error("report cannot overwrite identities")
     try:
         report = asyncio.run(run(args))
     except (GatewayError, PrivateConfigError, SandboxError, LoomError, ValueError, TypeError, OSError) as error:

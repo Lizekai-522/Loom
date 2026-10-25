@@ -1,6 +1,6 @@
-# 公开检查的编译、审阅与冻结
+# 公开检查的编译、审阅、冻结与执行
 
-当前已实现纯编译器、本机预览入口、独立审阅注册表及具名operator审批API。编译转换未执行的 public-checks 候选，注册表记录精确的development审阅批准。suite工作台表单和新执行合同绑定尚未接入，生成用例没有运行。原宿主 development/acceptance 路径继续沿用已有冻结合同。
+当前已实现纯编译、具名operator审阅/冻结API、精确execution_reference、新执行草案批准和本机CLI的development/有界repair/宿主验收。来源变更后停止，不能修改旧计划、复制新模型来源或用input grant晋升执行权。suite图形表单仍待接入。
 
 ## 已实现：纯转换和预览
 
@@ -17,7 +17,7 @@ Python 入口为 loom.public_checks.compile_public_checks(body, expected_body_ha
 
 ## 协议与接入顺序：单独审阅和冻结
 
-第1–2项注册表核心及具名operator认证API已完成；后续合同引用和执行仍待实现，不能用作当前执行入口。
+下列协议核心及API、引用批准、执行核对已完成并测试；编译或冻结记录本身不授执行权，仍须新计划批准。
 
 1. 具名 operator 明确审阅候选来源、当前 task/epoch、revision、source plan、schema/body hash 和源事件；在同一事务重新验证 ArtifactService 的内容及完整来源。候选已换代、superseded、终止或来源事件不符必须拒绝。HTTP适配层负责operator权限，内部服务不能把任意subject字符串当作角色认证。
 2. 审阅记录使用独立 append-only frozen-suite 注册表，以精确候选引用、原正文摘要、编译版本、按原顺序选定的用例名、development digest、编译摘要和operator绑定。事件、suite正文、回执与outbox同事务。幂等键绑定全部参数；失败不留下部分记录。记录表明“人工批准为development候选套件”，不声明内容正确或来源已独立验证。
@@ -25,7 +25,7 @@ Python 入口为 loom.public_checks.compile_public_checks(body, expected_body_ha
 4. 将suite绑定引入新执行合同前，必须实现单独的来源引用协议：同租户、来源事件/记录完整性、当前源epoch/revision、suite事件、目标plan/version/预算与编译版本一致。源变化时停止并要求重新审阅；保留旧批准记录，不默默取latest，不改写旧计划。已发生费用和效果保留。
 5. development 执行和有界repair沿用原隔离、预算与隐藏验收边界。生成者的公开检查不替代host验收，也不代替独立第二模型；父任务依然只submitted，review硬依赖不被人工suite冻结放行。
 
-验收顺序是注册表与反例 → 权限API/准确预览 → 新草案引用与批准 → 启动时重新核对 → Docker开发检查与repair → 工作台与真实有界交接。每步通过后再推进。当前编译器没有提前实现或绕过这些后续权限。
+验收顺序是注册表与反例 → 权限API/准确预览 → 新草案引用与批准 → 启动时重新核对 → Docker开发检查与repair → 工作台与真实有界交接。每步通过后再推进。纯编译函数始终不执行这些权限动作；0.13本机执行入口见下文。
 
 
 ## 0.11已实现：独立注册表核心
@@ -36,7 +36,7 @@ preview重新核对ArtifactService完整来源，生成review_digest，绑定源
 
 get_suite重新核对suite和freeze事件的完整绑定，默认不返回正文；include_body显式返回新拷贝。源换代或暂停等情况保留历史、标stale，新的冻结拒绝；同键历史重放只返回原回执，没有新授权。记录frozen=true同时execution_connected=false、confers_authority=false、producer_verified=false、independently_verified=false；不会放行原依赖或将Goal置成功。
 
-22项注册表测试和真实NATS确认丢失重投/重启测试通过；两个既有真实模型来源在隔离DB副本验证，主库未执行冻结。API角色认证在0.12完成；新草案来源引用、执行前核对、development/repair和suite工作台仍待接入。
+22项注册表测试和真实NATS确认丢失重投/重启测试通过；两个既有真实模型来源在隔离DB副本验证，主库未执行冻结。API角色认证在0.12完成；0.13已接入新草案和受限执行，suite工作台待接入。
 
 
 ## 0.12已实现：具名operator审批API
@@ -53,4 +53,21 @@ get_suite重新核对suite和freeze事件的完整绑定，默认不返回正文
 
 这三个接口不加载模型秘密、不调用模型/沙箱、不建立执行计划，也不改变原plan/hard depends/状态/费用。新suite.approve只属于本机operator能力，不代表生产OIDC、独立人员或独立模型验证。主库升级只初始化空suite表，实际HTTP冻结验收在隔离副本完成，当前控制台没有suite冻结表单。
 
-接下来实现新草案的suite来源引用、独立host验收摘要、目标预算和首次发起前核对，再接development/repair与工作台。
+0.13已实现下述新草案和执行核对；suite图形表单继续待接入。
+
+
+## 0.13已实现：新执行合同和本机入口
+
+未stale的GET suite增加execution_reference，只有schema/source_run/suite ID、suite/freeze event/review摘要、compiler、development摘要和选定正文hash。将这个对象作为新developer/fixer节点的development_suite，配套原repair.development_digest及不同的evaluation_digest，按原预算/次数批准。None字段省略，旧计划、合同和事件hash不改。
+
+保存草案和批准分别在各自事务中重新验证同tenant的原候选/来源事件、当前epoch/revision、冻结suite及编译版本。新计划不能指向自己的run；来源保留在原run，不复制成新模型候选。套件执行计划的HTTP批准必须具名operator，legacy developer仍可处理旧计划但不能批准该新执行权。
+
+执行器自动载入注册表的精确cases；调用者若另传tests必须摘要一致。即便没有辅助input items，也捕获包含suite引用的执行快照，准入时校验、预占、effect intent和context审计同事务。调用前后、沙箱和提交继续校验；Rebind原子换代前再次校验。源变化停止，不撤销已发生的已知费用，未知intent不自动退款。
+
+产品入口为scripts/run_local_task.py，任务字段加入development_suite并移除development_tests；参考configs/python-task.reviewed.example.json。示例全零摘要/REPLACE ID仅为模板，必须替换成GET suite的execution_reference；不能直接approve模板。host tests由操作器另行冻结，不取生成case作host终验。
+
+    python scripts/run_local_task.py --db <现有DB> --tenant <tenant> --task-file <任务.json> --identities-file <私有身份.json> --secrets-file <私有模型配置.json> --sandbox-image <固定镜像ID> --max-repairs 1 --report <预览.json>
+
+默认仅离线预览，不开DB、不读身份/秘密配置、不调用模型或Docker。显式--approve才检查当前来源和本机operator/worker配置、创建新执行Goal并发起付费；追加--max-output-tokens 768可限制输出，1次修复意味着最多2次请求，隐藏host失败不自动重试。私有身份文件不证明两名独立人员，调用API还须具名operator的真实bearer权限。
+
+真实主库验收run7bf5b872-fae6-4c4d-a154-f2de9470846b：原0.9模型生成3cases经本机审阅冻结，在新计划执行3个development与4个不同输入的host用例通过。1Flash/552tokens/342µUSD上界、预留0，尚未核对账单。目标只submitted，独立review仍等待。

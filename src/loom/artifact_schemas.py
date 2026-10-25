@@ -36,6 +36,19 @@ class ArtifactInput(ArtifactModel):
         return self
 
 
+class DevelopmentSuiteReference(ArtifactModel):
+    """Exact existing review reference; no copied model origin or case body."""
+    schema_version: Literal["loom.development-suite-ref/v1"]
+    source_run_id: str = Field(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_.:-]+$")
+    suite_id: str = Field(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_.:-]+$")
+    suite_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    freeze_event_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    review_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    compiler_version: Literal["loom.public-checks-compiler/v1"]
+    development_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    selected_body_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 class RoleOutput(ArtifactModel):
     kind: ArtifactKind
     schema_version: str = Field(min_length=1, max_length=64)

@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-from .artifact_schemas import ARTIFACT_ROLES, ArtifactInput, RoleOutput
+from .artifact_schemas import ARTIFACT_ROLES, ArtifactInput, DevelopmentSuiteReference, RoleOutput
 from .policy import GateRules, TaskContract, gate_p
 from .store import BudgetExceeded, Conflict, InvalidInput, NotFound, Store, canonical, digest
 
@@ -96,6 +96,7 @@ class TaskNode(StrictModel):
     input_artifacts: list[ArtifactInput] | None = Field(default=None, max_length=8,
                                                       exclude_if=lambda value: value is None)
     role_output: RoleOutput | None = Field(default=None, exclude_if=lambda value: value is None)
+    development_suite: DevelopmentSuiteReference | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @field_validator("title", "instruction")
     @classmethod
@@ -121,6 +122,11 @@ class TaskNode(StrictModel):
                 raise ValueError("explicit role output does not match the source role")
             if self.evaluation_digest is not None or self.repair is not None:
                 raise ValueError("read-only role output does not authorize code evaluation or repair")
+        if self.development_suite is not None:
+            if (self.repair is None or self.role not in {"developer", "fixer"}
+                    or self.repair.development_digest != self.development_suite.development_digest
+                    or self.evaluation_digest == self.development_suite.development_digest):
+                raise ValueError("reviewed development suite requires distinct frozen acceptance and matching Rebind policy")
         return self
 
 
@@ -139,6 +145,10 @@ class WorkflowDefinition(StrictModel):
         if len(nodes) != len(self.nodes):
             raise ValueError("duplicate task node ID")
         for node in self.nodes:
+            if node.development_suite is not None:
+                role = next(role for role in self.roles if role.id == node.role)
+                if not {"artifacts.read", "workspace.write", "tests.run"} <= set(role.tools):
+                    raise ValueError("reviewed suite execution requires read, write and test capabilities")
             if node.role_output is not None:
                 role = next(role for role in self.roles if role.id == node.role)
                 if "artifacts.write" not in role.tools:
@@ -205,6 +215,23 @@ class WorkflowService:
                 # Existing local drafts/contracts are unbound until explicitly
                 # reviewed again; NULL never authorizes executable evaluation.
                 db.execute("ALTER TABLE workflow_tasks ADD COLUMN evaluation_digest TEXT")
+
+    def _suite_validator(self, definition):
+        if definition is not None and any(node.development_suite is not None for node in definition.nodes):
+            from .development_suites import DevelopmentSuiteService
+            return DevelopmentSuiteService(self.store)
+        return None
+
+    @staticmethod
+    def _validate_suites_in(db, suites, tenant, run_id, definition, *, actor=None, approval=False):
+        nodes = [node for node in definition.nodes if node.development_suite is not None]
+        if nodes and approval:
+            from .artifacts import _subject
+            _subject(actor)  # Authentication/role enforcement belongs to the adapter.
+        if nodes and suites is None:
+            raise Conflict("suite references changed before plan approval")
+        for node in nodes:
+            suites.resolve_reference_in(db, tenant, run_id, node.development_suite)
 
     @staticmethod
     def _goal(db, tenant, run_id):
@@ -279,6 +306,7 @@ class WorkflowService:
         except (ValidationError, TypeError, ValueError):
             raise InvalidInput("invalid workflow definition") from None
         body, plan_digest = definition.model_dump(mode="json"), definition.execution_digest
+        suites = self._suite_validator(definition)
         args = dict(run_id=run_id, definition=body, expected_revision=expected_revision)
         if actor is not None:
             _text(actor, "actor", 200)
@@ -290,6 +318,7 @@ class WorkflowService:
                 raise Conflict("approved workflow plans are immutable")
             if goal["plan_revision"] != expected_revision:
                 raise Conflict("plan revision changed")
+            self._validate_suites_in(db, suites, tenant, run_id, definition)
             revision = expected_revision + 1
             db.execute("UPDATE workflow_goals SET plan_revision=?,plan_digest=?,definition=? WHERE tenant=? AND run_id=?",
                        (revision, plan_digest, canonical(body), tenant, run_id))
@@ -311,6 +340,15 @@ class WorkflowService:
             _text(actor, "actor", 200)
             args["actor"] = actor
 
+        # Initialize read adapters before the authority transaction. Approval
+        # reconstructs/rechecks the current definition in that transaction.
+        with self.store.connect() as db:
+            try:
+                preliminary = WorkflowDefinition.model_validate(json.loads(self._goal(db, tenant, run_id)["definition"]))
+            except (ValidationError, TypeError, ValueError):
+                preliminary = None
+        suites = self._suite_validator(preliminary)
+
         def apply(db):
             goal, run = self._goal(db, tenant, run_id), self.store._run(db, tenant, run_id)
             if goal["plan_status"] != "draft" or run["status"] != "draft":
@@ -323,6 +361,7 @@ class WorkflowService:
                 raise Conflict("persisted workflow definition is invalid") from None
             if definition.execution_digest != expected_digest:
                 raise Conflict("persisted plan digest does not match its execution fields")
+            self._validate_suites_in(db, suites, tenant, run_id, definition, actor=actor, approval=True)
             if (sum(node.limits.cost_limit_microusd for node in definition.nodes) > run["cost_limit"]
                     or sum(node.limits.token_limit for node in definition.nodes) > run["token_limit"]):
                 raise BudgetExceeded("task budget caps exceed the frozen goal budget")

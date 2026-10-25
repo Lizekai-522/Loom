@@ -18,7 +18,7 @@ from .failures import classify_failure
 from .policy import ArtifactSubmission
 from .repair import RebindService, RepairStopped
 from .sandbox import DockerSandbox, FrozenTest, SandboxError
-from .store import BudgetExceeded, Claim, Conflict, InvalidInput, StaleClaim, Store, canonical, digest
+from .store import BudgetExceeded, Claim, Conflict, InvalidInput, NotFound, StaleClaim, Store, canonical, digest
 from .workflow import WorkflowService
 
 
@@ -364,7 +364,7 @@ class LocalTaskRunner:
                 "cases": [{"name": case.name, "passed": case.passed} for case in evaluated.cases]}
 
     async def run_python_cycle(self, claim: Claim, acceptance_tests: Sequence[FrozenTest],
-                               development_tests: Sequence[FrozenTest], *, max_output_tokens: int = 512) -> dict:
+                               development_tests: Sequence[FrozenTest] | None = None, *, max_output_tokens: int = 512) -> dict:
         """Approved public-development Rebind; hidden acceptance never feeds back.
 
         The same logical node retains its capacity slot while each repair gets
@@ -439,6 +439,20 @@ class LocalTaskRunner:
         claim = current[0]
         spec = self.workflows.get_task_spec(claim.tenant_id, claim.run_id, claim.task_id)
         acceptance, acceptance_digest = freeze_tests(acceptance_tests)
+        if spec.get("development_suite") is not None:
+            from .development_suites import DevelopmentSuiteService
+            from .public_checks import compile_public_checks
+            with self.store.connect() as db:
+                db.execute("BEGIN")
+                try:
+                    suite = DevelopmentSuiteService(self.store, artifacts=self.artifacts, initialize=False).resolve_reference_in(
+                        db, claim.tenant_id, claim.run_id, spec["development_suite"])
+                except (Conflict, InvalidInput, NotFound):
+                    raise ExecutionContextError("CONTEXT_SUITE_INVALID") from None
+            compiled = compile_public_checks(suite["body"], expected_body_hash=suite["selected_body_hash"])
+            if development_tests is not None and freeze_tests(development_tests)[1] != compiled.development_digest:
+                raise Conflict("supplied development cases differ from the approved reviewed suite")
+            development_tests = compiled.tests
         development, development_digest = freeze_tests(development_tests)
         if (not spec.get("repair") or spec.get("evaluation_digest") != acceptance_digest
                 or spec["repair"]["development_digest"] != development_digest):

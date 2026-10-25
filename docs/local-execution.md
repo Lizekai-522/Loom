@@ -125,3 +125,12 @@ scripts/run_workflow_task.py与configs/workflow-task.example.json提供同run的
 原系统secrets-engine目录即使管理员也无法改名。项目通过进程专用LOCALAPPDATA缓存启动Docker，缓存wsl junction仍指向原磁盘；未改全局环境或设置，原镜像/runner不变。源码入口scripts/start_local_docker.ps1接受必填RuntimeRoot；先用-InspectOnly检查，退出已有Docker后去掉该参数启动。只有已知socket文件的目录才可改名保留，异常链接/额外文件停止，不删除。此入口已实际正常停止/再启动并通过3项真实交接复测；普通Desktop快捷方式的原目录故障没有解决。
 
 本机命令：powershell -NoProfile -File scripts/start_local_docker.ps1 -RuntimeRoot ../../work/loom-docker-cache 。Docker启动后仍须通过固定镜像preflight才进入执行，启动成功不等于引擎健康。详情见第九轮测试指南。
+
+
+## 0.13审阅套件执行补记（2026-10-25）
+
+新增可省略的development_suite精确引用，旧计划/合同hash保持。存草案、具名operator批准、执行准入/返回/沙箱/提交与Rebind前验证同tenant来源、epoch/revision、suite事件/编译与摘要。零辅助items也绑定suite上下文；引用不复制模型来源、不改旧计划，未知intent预留保留。
+
+产品CLI支持新引用任务，默认离线preview，显式approve须现有DB及私有operator/worker配置。自动载入注册表用例，拒绝混用raw development_tests；host验收单独冻结且失败不回流修复。GET suite给出当前execution_reference；API路线仍27条。
+
+完整782主/396子，0失败/跳过，含48真实基础设施。真实run7bf5b872-fae6-4c4d-a154-f2de9470846b，1Flash、3生成+4host用例通过，552tokens/342µUSD上界、预留0、未核对账单，目标submitted/独立review pending。27新+33旧HTTP和17Chromium通过；源码/包/凭据另核。suite图形表单和完整七角色/生产/双签仍未完成。

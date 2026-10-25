@@ -24,8 +24,25 @@ class RebindService:
     ACTOR = "local-repair-coordinator"
 
     def __init__(self, store: Store):
+        from .artifacts import ArtifactService
         self.store = store
         self.workflows = WorkflowService(store)
+        self.artifacts = ArtifactService(store)
+
+    def _assert_reviewed_suite_in(self, db, claim, spec):
+        from .artifacts import ExecutionContextError
+        from .development_suites import DevelopmentSuiteService
+        from .store import NotFound
+        current = self.artifacts._contract(db, claim.tenant_id, claim.run_id, claim.task_id)
+        if current.get("development_suite") is None and spec.get("development_suite") is None:
+            return
+        try:
+            if current.get("development_suite") != spec.get("development_suite"):
+                raise Conflict("reviewed suite contract changed")
+            DevelopmentSuiteService(self.store, artifacts=self.artifacts, initialize=False).resolve_reference_in(
+                db, claim.tenant_id, claim.run_id, current["development_suite"])
+        except (Conflict, InvalidInput, NotFound):
+            raise ExecutionContextError("CONTEXT_SUITE_INVALID") from None
 
     def record_candidate(self, claim, spec, source, call_id, reservation_id):
         payload = {"task_id": claim.task_id, "epoch": claim.epoch, "plan_digest": spec["plan_digest"],
@@ -35,6 +52,7 @@ class RebindService:
                    "reservation_id": reservation_id}
         with self.store.transaction() as db:
             self.store._assert_claim(db, claim, allow_paused=True)
+            self._assert_reviewed_suite_in(db, claim, spec)
             return self.store._event(db, claim.tenant_id, claim.run_id, "execution.candidate", payload, "local-executor")
 
     def record_development(self, claim, spec, candidate, evaluated):
@@ -45,6 +63,7 @@ class RebindService:
                    "image_id": evaluated.image_id}
         with self.store.transaction() as db:
             self.store._assert_claim(db, claim, allow_paused=True)
+            self._assert_reviewed_suite_in(db, claim, spec)
             return self.store._event(db, claim.tenant_id, claim.run_id, "development.evaluated", payload, "local-executor")
 
     def _record(self, db, claim, event_hash, kind, actor):
@@ -124,6 +143,7 @@ class RebindService:
             if self.store._run(db, claim.tenant_id, claim.run_id)["status"] != "open":
                 raise RepairStopped("EXECUTION_RUN_PAUSED")
             spec = self.workflows.get_task_spec(claim.tenant_id, claim.run_id, claim.task_id)
+            self._assert_reviewed_suite_in(db, claim, spec)
             if not spec.get("repair"):
                 raise Conflict("the task has no approved repair policy")
             context, candidate = self._context(db, claim, spec, candidate_event_hash, development_event_hash, claim.epoch)
