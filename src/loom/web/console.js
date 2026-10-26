@@ -159,6 +159,7 @@
     refreshArtifactControls();
     suites.sync();
     reviewDecisions.sync();
+    progression.sync();
     return effects;
   }
 
@@ -424,6 +425,16 @@
   const suites = window.LoomSuitePanel({state, $, node, has, request, mutate, notify, publicError,
     exactBodyText, sameArtifact, runChecked, label});
   const reviewDecisions = window.LoomReviewDecisions({state, $, node, has, request, publicError, sameArtifact, runChecked});
+  const progression = window.LoomProgression({state, $, node, request, publicError, runChecked, label, navigate: navigateProgression});
+
+  async function navigateProgression(item) {
+    if (!runChecked() || state.busy) return;
+    if (["view_inputs", "review_decision", "view_candidate"].includes(item.action)) {
+      const loading = loadArtifacts(item.artifact_id || item.suggested_inputs[0]?.artifact_id || "", item.task_id);
+      switchTab("artifacts");
+      await loading;
+    } else switchTab(item.action === "view_plan" ? "plan" : item.action === "view_interventions" ? "interventions" : "tasks");
+  }
 
   function resetArtifacts() {
     suites.reset();
@@ -657,6 +668,8 @@
     for (const panel of document.querySelectorAll(".tab-panel")) panel.hidden = panel.id !== `tab-${name}`;
     if (name === "events") loadEvents();
     if (name === "artifacts" && state.artifactStatus === "idle") loadArtifacts();
+    progression.sync();
+    if (name === "progression") progression.load();
   }
 
   async function selectRun(runId, tab = state.tab) {

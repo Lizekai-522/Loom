@@ -19,7 +19,7 @@ from loom.review_decisions import ReviewDecisionService
 from tests.test_review_inputs import review_case
 from tests.test_reviewer_handoff import handoff, reviewer_claim, generate, approve_fix
 from tests.test_approved_execution import OP, WORKER
-from tests.test_approved_task_script import script
+from tests.test_approved_node import script
 
 
 pytestmark = pytest.mark.skipif(not os.environ.get('LOOM_SANDBOX_TEST_IMAGE'), reason='explicit approved Docker image required')

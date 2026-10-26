@@ -20,6 +20,7 @@ from .artifact_schemas import MAX_BODY_BYTES
 from .role_summary import submitted_role_source
 from .review_inputs import ReviewFindingsBody, ReviewInputService
 from .review_decisions import Decision, ReviewDecisionService
+from .progression import ProgressionService
 from .operator import OperatorService
 from .local_console import allows_local_console, console_principal
 from .store import Claim, Conflict, InvalidInput, LoomError, NotFound, Store, canonical, digest
@@ -145,6 +146,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     suites = DevelopmentSuiteService(store)
     review_inputs = ReviewInputService(store)
     review_decisions = ReviewDecisionService(store)
+    progression = ProgressionService(store)
     security = HTTPBearer(auto_error=False)
 
     def principal(request: Request, credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)]) -> Principal:
@@ -255,6 +257,10 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     @app.get("/v1/interventions")
     def interventions(tenant: Tenant):
         return {"items": operators.list_interventions(tenant)}
+
+    @app.get("/v1/runs/{run_id}/progression")
+    def read_progression(run_id: str, tenant: Tenant):
+        return progression.read(tenant, run_id)
 
     @app.post("/v1/runs/{run_id}/control/{action}")
     def control(run_id: str, action: str, body: ControlInput, identity: Controller, idempotency_key: Key):

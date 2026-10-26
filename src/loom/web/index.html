@@ -9,6 +9,7 @@
   <script src="/console/assets/console-zh.js" defer></script>
   <script src="/console/assets/console-suites.js" defer></script>
   <script src="/console/assets/console-review-decisions.js" defer></script>
+  <script src="/console/assets/console-progression.js" defer></script>
   <script src="/console/assets/console.js" defer></script>
 </head>
 <body>
@@ -45,9 +46,15 @@
         <dl class="budget-strip"><div><dt>已记账费用</dt><dd id="cost-spent">—</dd></div><div><dt>当前预留</dt><dd id="cost-reserved">—</dd></div><div><dt>已用 词元</dt><dd id="tokens-spent">—</dd></div><div><dt>任务进度</dt><dd id="task-count">—</dd></div></dl>
         <p class="field-help">费用为平台记账，不能代替供应商账单。测试通过的候选仍需独立复核。</p>
         <nav class="tabs" aria-label="运行内容">
-          <button class="tab active" data-tab="tasks" aria-current="page">任务</button><button class="tab" data-tab="plan">计划</button><button class="tab" data-tab="artifacts">产物 / 输入预览</button><button class="tab" data-tab="events">事件</button><button class="tab" data-tab="interventions">人工待办</button>
+          <button class="tab active" data-tab="tasks" aria-current="page">任务</button><button class="tab" data-tab="progression">推进指引</button><button class="tab" data-tab="plan">计划</button><button class="tab" data-tab="artifacts">产物 / 输入预览</button><button class="tab" data-tab="events">事件</button><button class="tab" data-tab="interventions">人工待办</button>
         </nav>
         <section id="tab-tasks" class="tab-panel" aria-label="任务列表"><div class="section-heading"><h2>执行状态</h2><span id="tasks-hint" class="muted"></span></div><div id="task-list" class="task-list"></div></section>
+        <section id="tab-progression" class="tab-panel" aria-label="七角色推进指引" hidden>
+          <div class="section-heading"><h2>七角色推进指引</h2><button id="progression-refresh" type="button">重新核对下一步</button></div>
+          <p class="field-help">按当前已批准计划和真实状态显示下一步。未创建的角色显示 0 项；候选提交、输入批准或审查处置均不代表任务已完成。独立模型仍待配置。</p>
+          <div id="progression-roles" class="role-strip"></div><p id="progression-state" class="field-help" role="status" aria-live="polite"></p>
+          <div id="progression-list"></div><div id="progression-execution" class="suite-panel"></div>
+        </section>
         <section id="tab-plan" class="tab-panel" aria-label="计划审阅" hidden>
           <div class="section-heading"><h2>冻结计划</h2><span id="plan-status" class="badge"></span></div>
           <dl class="metadata"><div><dt>修订</dt><dd id="plan-revision">—</dd></div><div><dt>执行摘要</dt><dd id="plan-digest" class="mono break-word">—</dd></div></dl>

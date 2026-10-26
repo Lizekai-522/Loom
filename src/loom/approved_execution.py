@@ -4,6 +4,7 @@ import json
 import sqlite3
 
 from .artifacts import ArtifactService, _hash
+from .artifact_schemas import ARTIFACT_ROLES
 from .auth import LocalIdentity
 from .development_suites import DevelopmentSuiteService
 from .execution import freeze_tests, FLASH_CONTEXT_LIMIT, cost_upper_microusd
@@ -37,8 +38,11 @@ class ApprovedExecutionService:
         task_id=run_id+':'+node_id
         run=self.store._run(db,tenant,run_id)
         spec=self.artifacts._contract(db,tenant,run_id,task_id)
-        reviewer=spec['role']=='reviewer' and tests is None
-        if reviewer:
+        role_data=spec['role'] in {'analyst','architect','tester'}
+        reviewer=spec['role']=='reviewer'
+        structured=role_data or reviewer
+        if structured:
+            if tests is not None:raise Conflict('structured role execution does not accept host tests')
             tests,evaluation_digest=(),None
         else:
             tests,evaluation_digest=freeze_tests(tests)
@@ -46,7 +50,12 @@ class ApprovedExecutionService:
             raise Conflict('approved plan or frozen host tests differ')
         review_fixer=spec['role']=='fixer' and spec.get('review_subject') is not None
         if run['status']!='open':raise Conflict('execution requires an open run')
-        if reviewer:
+        if role_data:
+            output=spec.get('role_output') or {}
+            if (ARTIFACT_ROLES.get(output.get('kind'))!=spec['role'] or spec.get('review_subject')
+                    or not {'artifacts.read','artifacts.write'}<=set(spec['tools'])):
+                raise Conflict('structured role requires an explicit typed output contract')
+        elif reviewer:
             if (not spec.get('review_subject') or (spec.get('role_output') or {}).get('kind')!='review-findings'
                     or spec.get('input_artifacts') or not {'artifacts.read','artifacts.write'}<=set(spec['tools'])):
                 raise Conflict('reviewer requires an explicit subject and findings contract')
@@ -55,6 +64,9 @@ class ApprovedExecutionService:
             if (len(selectors)!=1 or selectors[0]['kind']!='review-findings' or not selectors[0]['required']
                     or not {'workspace.write','tests.run','artifacts.read'}<=set(spec['tools'])):
                 raise Conflict('review fixer requires one explicitly approved findings input')
+        elif spec['role']=='developer' and not spec.get('development_suite') and not spec.get('repair'):
+            if not {'workspace.write','tests.run'}<=set(spec['tools']):
+                raise Conflict('developer requires explicit executable capabilities')
         else:
             if (spec['role'] not in {'developer','fixer'} or not spec.get('development_suite')
                     or not spec.get('repair') or spec.get('input_artifacts')
@@ -76,12 +88,13 @@ class ApprovedExecutionService:
         if not approvals or not approvals[-1]['actor'].startswith('subject:'):
             raise Conflict('named operator plan approval required')
         review_fields={}
-        if spec.get('review_subject') is not None:
+        if spec.get('review_subject') is not None or spec.get('input_artifacts'):
             context=self.artifacts._preview_context_in(db,tenant,run_id,task_id)
             if not context['ready']:raise Conflict('review findings require explicit operator input approval')
-            review_fields=dict(review_subject=spec['review_subject'],input_context_digest=context['context_digest'],
+            review_fields=dict(input_context_digest=context['context_digest'],
                 input_grants=[{key:item[key] for key in ('artifact_id','grant_id','source_epoch','revision','content_hash','approval_event_hash')}
                               for item in context['items']])
+            if spec.get('review_subject') is not None:review_fields['review_subject']=spec['review_subject']
         cost=cost_upper_microusd(FLASH_CONTEXT_LIMIT,max_output_tokens)
         tokens=FLASH_CONTEXT_LIMIT+max_output_tokens
         limits=spec['limits']
@@ -92,7 +105,7 @@ class ApprovedExecutionService:
         report=dict(schema_version='loom.approved-execution-preview/v1',mode='existing-plan-preview',
             tenant_id=tenant,run_id=run_id,node_id=node_id,task_id=task_id,plan_digest=plan_digest,
             evaluation_digest=evaluation_digest,host_case_count=len(tests),development_suite=spec.get('development_suite'),
-            model_alias=spec['model_alias'],
+            model_alias=spec['model_alias'],role=spec['role'],execution_kind='structured-data' if structured else 'python-json',
             task_limits=limits,max_output_tokens=max_output_tokens,initial_cost_reservation_upper=cost,
             initial_token_reservation=tokens,run_cost_available=run['cost_limit']-run['spent']-run['reserved'],
             run_tokens_available=run['token_limit']-run['tokens_spent']-run['tokens_reserved'],

@@ -1,6 +1,6 @@
 # Loom
 
-基于Loom v2.1修订方案的Agent编排项目，当前 **0.17.1**。中文本机工作台免输入凭据；支持受限审查与单次修复，并新增审查处置、待办历史和等待独立复核分支。处置不代表最终验收。[审查处置步骤](docs/review-decisions.md) · [审查修复步骤](docs/reviewer-execution.md)
+基于Loom v2.1修订方案的Agent编排项目，当前 **0.17.2**。新增中文七角色推进指引和已批准节点的统一执行入口；真实Flash审查并单次修复受控缺陷已验证。第二模型仍待配置，提交候选不代表最终验收。[统一入口与测试步骤](docs/unified-nodes.md) · [审查处置步骤](docs/review-decisions.md)
 
 完整 **898主/396子，零失败/跳过**，含53真实基础设施；83实际HTTP、26Chromium通过。新增一次真实Flash审查2141tokens/979µUSD费用上界、预留0，返回no_findings，没有执行不必要的修复。fixer通过/失败转人工使用模拟提供方和真实Docker验收。[验证记录](docs/validation.md)
 
