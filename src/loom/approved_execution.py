@@ -119,31 +119,35 @@ class ApprovedExecutionService:
             return self._check_in(db,tenant,run_id,node_id,plan_digest,tests,max_output_tokens)[1]
 
     def claim(self,tenant,run_id,node_id,plan_digest,tests,preview_digest,*,operator,worker,max_output_tokens=768):
+        with self.store.transaction() as db:
+            return self._claim_in(db,tenant,run_id,node_id,plan_digest,tests,preview_digest,
+                operator=operator,worker=worker,max_output_tokens=max_output_tokens)
+
+    def _claim_in(self,db,tenant,run_id,node_id,plan_digest,tests,preview_digest,*,operator,worker,max_output_tokens=768):
         _hash(preview_digest)
         if (not isinstance(operator,LocalIdentity) or not isinstance(worker,LocalIdentity)
                 or operator.tenant_id!=tenant or worker.tenant_id!=tenant
                 or 'operator' not in operator.roles or 'worker' not in worker.roles):
             raise InvalidInput('registered same-tenant operator and worker required')
-        with self.store.transaction() as db:
-            spec,current=self._check_in(db,tenant,run_id,node_id,plan_digest,tests,max_output_tokens)
-            if current['preview_digest']!=preview_digest:
-                raise Conflict('execution does not match the current preview')
-            total=db.execute("SELECT count(*) FROM tasks WHERE status='running'").fetchone()[0]
-            business=db.execute("SELECT count(*) FROM tasks WHERE status='running' AND channel='business'").fetchone()[0]
-            if total>=self.store.max_workers or business>=self.store.max_workers-self.store.verify_reserve:
-                raise Conflict('local execution capacity is full')
-            task_id=current['task_id']
-            task=db.execute('SELECT * FROM tasks WHERE tenant=? AND id=?',(tenant,task_id)).fetchone()
-            until=self.store.now(db)+90
-            db.execute("UPDATE tasks SET status='running',worker=?,epoch=1,lease_until=? WHERE tenant=? AND id=?",(worker.subject_id,until,tenant,task_id))
-            self.store._event(db,tenant,run_id,'task.claimed',dict(task_id=task_id,worker=worker.subject_id,
-                epoch=1,lease_until=until,channel=task['channel'],priority=task['priority']),'system')
-            for item in current.get('input_grants',[]):
-                self.artifacts._approve_input_in(db,tenant=tenant,run_id=run_id,target_task_id=task_id,
-                    artifact_id=item['artifact_id'],key='execution-input:'+task_id+':1',actor='subject:'+operator.subject_id,
-                    expected_plan_digest=plan_digest,expected_source_epoch=item['source_epoch'],expected_target_epoch=1,
-                    expected_revision=item['revision'],expected_content_hash=item['content_hash'])
-            self.store._event(db,tenant,run_id,'execution.existing_plan_admitted',dict(task_id=task_id,
-                plan_digest=plan_digest,evaluation_digest=current['evaluation_digest'],preview_digest=preview_digest,
-                operator=operator.subject_id,worker=worker.subject_id),'subject:'+operator.subject_id)
-            return Claim(tenant,run_id,task_id,worker.subject_id,1,until)
+        spec,current=self._check_in(db,tenant,run_id,node_id,plan_digest,tests,max_output_tokens)
+        if current['preview_digest']!=preview_digest:
+            raise Conflict('execution does not match the current preview')
+        total=db.execute("SELECT count(*) FROM tasks WHERE status='running'").fetchone()[0]
+        business=db.execute("SELECT count(*) FROM tasks WHERE status='running' AND channel='business'").fetchone()[0]
+        if total>=self.store.max_workers or business>=self.store.max_workers-self.store.verify_reserve:
+            raise Conflict('local execution capacity is full')
+        task_id=current['task_id']
+        task=db.execute('SELECT * FROM tasks WHERE tenant=? AND id=?',(tenant,task_id)).fetchone()
+        until=self.store.now(db)+90
+        db.execute("UPDATE tasks SET status='running',worker=?,epoch=1,lease_until=? WHERE tenant=? AND id=?",(worker.subject_id,until,tenant,task_id))
+        self.store._event(db,tenant,run_id,'task.claimed',dict(task_id=task_id,worker=worker.subject_id,
+            epoch=1,lease_until=until,channel=task['channel'],priority=task['priority']),'system')
+        for item in current.get('input_grants',[]):
+            self.artifacts._approve_input_in(db,tenant=tenant,run_id=run_id,target_task_id=task_id,
+                artifact_id=item['artifact_id'],key='execution-input:'+task_id+':1',actor='subject:'+operator.subject_id,
+                expected_plan_digest=plan_digest,expected_source_epoch=item['source_epoch'],expected_target_epoch=1,
+                expected_revision=item['revision'],expected_content_hash=item['content_hash'])
+        self.store._event(db,tenant,run_id,'execution.existing_plan_admitted',dict(task_id=task_id,
+            plan_digest=plan_digest,evaluation_digest=current['evaluation_digest'],preview_digest=preview_digest,
+            operator=operator.subject_id,worker=worker.subject_id),'subject:'+operator.subject_id)
+        return Claim(tenant,run_id,task_id,worker.subject_id,1,until)

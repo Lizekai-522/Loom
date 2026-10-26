@@ -1,5 +1,5 @@
 "use strict";
-window.LoomProgression = function ({state, $, node, request, publicError, runChecked, label, navigate}) {
+window.LoomProgression = function ({state, $, node, request, publicError, runChecked, label, navigate, executionPanel}) {
   const stages={contract_unavailable:"执行合同缺失或不受支持",plan_approval_required:"先审阅并批准计划",verified:"已通过受信验收",
     independent_verification_required:"候选已提交，等待独立验证",review_routing_required:"审查意见待处理",awaiting_operator:"待操作员处理",
     awaiting_independent_models:"等待独立模型复核",fixer_input_approved:"已批准单次修复输入",review_source_unavailable:"审查来源无法核对",
@@ -12,7 +12,7 @@ window.LoomProgression = function ({state, $, node, request, publicError, runChe
     view_inputs:"核对目标输入",view_interventions:"查看人工待办",view_execution:"准备本机执行"};
   let binding="",generation=0,pending=false,data=null,error="";
   const ready=()=>runChecked()&&!state.busy;
-  function reset(){generation++;binding="";pending=false;data=null;error="";$("progression-list").replaceChildren();$("progression-roles").replaceChildren();$("progression-execution").replaceChildren();}
+  function reset(){executionPanel.reset();generation++;binding="";pending=false;data=null;error="";$("progression-list").replaceChildren();$("progression-roles").replaceChildren();$("progression-execution").replaceChildren();}
   function controls(){
     $("progression-refresh").disabled=!ready()||pending;
     for(const button of $("progression-list").querySelectorAll('button'))button.disabled=!ready()||pending||Boolean(error);
@@ -30,6 +30,9 @@ window.LoomProgression = function ({state, $, node, request, publicError, runChe
         const button=node('button','',actions[item.action]||'查看任务证据');button.type='button';
         button.addEventListener('click',()=>{if(button.disabled)return;if(item.action==='view_execution')execution(item);else navigate(item);});
         row.append(button);$("progression-list").append(row);
+        if(item.role&&item.role!=='validator'&&item.action!=='view_execution'){
+          const history=node('button','','查看执行请求');history.type='button';history.addEventListener('click',()=>{if(!history.disabled)execution(item);});row.append(history);
+        }
       }
     }
     controls();
@@ -37,17 +40,18 @@ window.LoomProgression = function ({state, $, node, request, publicError, runChe
   function execution(item){
     const panel=$("progression-execution");panel.replaceChildren();
     panel.append(node('h3','',`${label(item.role)} · 本机执行准备`),node('p','field-help',item.requires_host_tests
-      ?'此节点需要本机独立冻结的宿主终验文件。先用统一入口读取当前预览，核对摘要后显式执行；页面不会加载用例正文或模型密钥。'
-      :'此节点只生成结构化候选。先用统一入口读取当前预览，核对后显式执行；页面不会发起模型调用。'));
+      ?'此节点需要本机独立冻结的宿主终验文件。先读取条件，再显式提交给本机执行器；页面不会加载用例正文或模型密钥。'
+      :'此节点只生成结构化候选。读取准备不会调用模型，下方显式提交后由本机执行器处理。'));
     const preparation={schema_version:'loom.node-preparation/v1',run_id:data.run_id,node_id:item.node_id,role:item.role,
       expected_plan_digest:data.plan_digest,evaluation_digest:item.evaluation_digest,max_output_tokens:1024,
       preview_digest:item.execution_preview_digest,requires_host_tests:item.requires_host_tests,requires_explicit_execute:true,counts_as_success:false};
     panel.append(node('pre','',JSON.stringify(preparation,null,2)),node('p','field-help','统一入口：scripts/run_approved_node.py。准备清单不含凭据，不是执行授权或成功回执；执行前会重新核对计划、依赖、输入和预算。'));
+    executionPanel.open(item,panel);
     panel.scrollIntoView({behavior:'auto',block:'nearest'});
   }
   async function load(){
     if(!ready()||pending||!binding)return;
-    const version=++generation,bound=binding,runId=state.runId;pending=true;error="";$("progression-execution").replaceChildren();controls();
+    const version=++generation,bound=binding,runId=state.runId;pending=true;error="";executionPanel.reset();$("progression-execution").replaceChildren();controls();
     try{
       const result=await request('GET',`/v1/runs/${encodeURIComponent(runId)}/progression`);
       if(bound!==binding||version!==generation)return;

@@ -21,6 +21,7 @@ from .role_summary import submitted_role_source
 from .review_inputs import ReviewFindingsBody, ReviewInputService
 from .review_decisions import Decision, ReviewDecisionService
 from .progression import ProgressionService
+from .dispatch import DispatchService
 from .operator import OperatorService
 from .local_console import allows_local_console, console_principal
 from .store import Claim, Conflict, InvalidInput, LoomError, NotFound, Store, canonical, digest
@@ -135,11 +136,16 @@ class ReviewDecisionInput(Input):
     target_task_id: str | None = Field(default=None, min_length=1, max_length=200)
 
 
-def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[LocalIdentity, ...] = (), local_console: bool = False) -> FastAPI:
+class ExecutionRequestInput(Input):
+    expected_dispatch_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    reason: str = Field(min_length=1,max_length=2000)
+
+
+def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[LocalIdentity, ...] = (), local_console: bool = False, executor_config=None) -> FastAPI:
     registry = AuthRegistry(tenant_keys, identities)
     local_identity = console_principal(identities, local_console)
     app = FastAPI(title="Loom local kernel", version=__version__,
-                  description="Local S1 development API. No real model or external write execution.")
+                  description="Single-host audited API. A separately configured private worker processes explicit model execution requests; independent verification remains pending.")
     workflows = WorkflowService(store)
     operators = OperatorService(store)
     artifacts = ArtifactService(store)
@@ -147,6 +153,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     review_inputs = ReviewInputService(store)
     review_decisions = ReviewDecisionService(store)
     progression = ProgressionService(store)
+    dispatch = DispatchService(store,config=executor_config,identities=identities)
     security = HTTPBearer(auto_error=False)
 
     def principal(request: Request, credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)]) -> Principal:
@@ -205,7 +212,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     def me(request: Request, identity: Annotated[Principal, Depends(principal)]):
         return {"tenant_id": identity.tenant_id, "subject_id": identity.subject_id,
                 "roles": sorted(identity.roles), "capabilities": registry.capabilities(identity),
-                "authentication": "local-console" if 'authorization' not in request.headers else "local-bearer", "production_identity": False}
+                "authentication": "public-session" if getattr(request.state, 'public_preview', False) else "local-console" if 'authorization' not in request.headers else "local-bearer", "production_identity": False}
 
     @app.exception_handler(LoomError)
     async def loom_error(_, exc: LoomError):
@@ -261,6 +268,22 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     @app.get("/v1/runs/{run_id}/progression")
     def read_progression(run_id: str, tenant: Tenant):
         return progression.read(tenant, run_id)
+
+    @app.get("/v1/runs/{run_id}/tasks/{task_id}/execution-preview")
+    def execution_preview(run_id: str,task_id: str,tenant: Tenant):
+        return dispatch.preview(tenant,run_id,task_id)
+
+    @app.get("/v1/runs/{run_id}/tasks/{task_id}/execution-requests")
+    def execution_history(run_id: str,task_id: str,tenant: Tenant):
+        return dispatch.history(tenant,run_id,task_id)
+
+    @app.post("/v1/runs/{run_id}/tasks/{task_id}/execution-requests",status_code=201)
+    def request_execution(run_id: str,task_id: str,body: ExecutionRequestInput,identity: Controller,idempotency_key: Key):
+        return dispatch.enqueue(identity.tenant_id,run_id,task_id,idempotency_key,actor='subject:'+identity.subject_id,**body.model_dump())
+
+    @app.post("/v1/runs/{run_id}/execution-requests/{request_id}/cancel")
+    def cancel_execution(run_id: str,request_id: str,body: ControlInput,identity: Controller,idempotency_key: Key):
+        return dispatch.cancel(identity.tenant_id,run_id,request_id,idempotency_key,actor='subject:'+identity.subject_id,reason=body.reason)
 
     @app.post("/v1/runs/{run_id}/control/{action}")
     def control(run_id: str, action: str, body: ControlInput, identity: Controller, idempotency_key: Key):

@@ -74,7 +74,7 @@
   }
 
   function publicError(error) {
-    if (error.status === 401) return "未启用本机开发入口，请使用项目启动器启动服务，再点击“重新连接”。";
+    if (error.status === 401) return window.LoomPreview?.active ? "体验会话已过期，请重新打开体验链接并输入访问码。" : "未启用本机开发入口，请使用项目启动器启动服务，再点击“重新连接”。";
     if (error.status === 403) return "当前身份没有执行此操作的权限。";
     if (error.status === 404) return "目标已不存在，或不属于当前身份可访问的范围。";
     if (error.status === 409) return "操作被拒绝：运行状态、计划版本或核对条件已改变。可点击工作台“刷新”核对；同页面重提相同内容沿用原幂等键。退出或重载页面后须先核对列表，再决定是否重发。";
@@ -95,7 +95,7 @@
       if (key) headers["Idempotency-Key"] = key;
       const response = await fetch(path, {
         method, headers, body: body === undefined ? undefined : JSON.stringify(body),
-        cache: "no-store", credentials: "omit", redirect: "error", signal: controller.signal,
+        cache: "no-store", credentials: "same-origin", redirect: "error", signal: controller.signal,
       });
       if (session !== state.session) throw Object.assign(new Error(), {code: "SESSION_CHANGED"});
       if (!response.ok) throw Object.assign(new Error(), {status: response.status});
@@ -160,6 +160,7 @@
     suites.sync();
     reviewDecisions.sync();
     progression.sync();
+    localExecution.sync();
     return effects;
   }
 
@@ -425,7 +426,8 @@
   const suites = window.LoomSuitePanel({state, $, node, has, request, mutate, notify, publicError,
     exactBodyText, sameArtifact, runChecked, label});
   const reviewDecisions = window.LoomReviewDecisions({state, $, node, has, request, publicError, sameArtifact, runChecked});
-  const progression = window.LoomProgression({state, $, node, request, publicError, runChecked, label, navigate: navigateProgression});
+  const localExecution = window.LoomExecutionPanel({state,node,has,request,publicError,runChecked,refresh:()=>refreshAll()});
+  const progression = window.LoomProgression({state, $, node, request, publicError, runChecked, label, navigate: navigateProgression, executionPanel:localExecution});
 
   async function navigateProgression(item) {
     if (!runChecked() || state.busy) return;
@@ -670,6 +672,7 @@
     if (name === "artifacts" && state.artifactStatus === "idle") loadArtifacts();
     progression.sync();
     if (name === "progression") progression.load();
+    localExecution.sync();
   }
 
   async function selectRun(runId, tab = state.tab) {
@@ -790,22 +793,27 @@
       if (session !== state.session) return;
       if (!principal || !Array.isArray(principal.roles) || !Array.isArray(principal.capabilities)) throw Object.assign(new Error(), {code: "BAD_JSON"});
       state.principal = principal;
-      $("identity-label").textContent = `${principal.authentication === "local-console" ? "本机开发 · " : ""}${principal.roles.map((role) => roleNames[role] || role).join(" / ")}`;
+      window.LoomPreview?.configure(principal, () => mutate("POST", "/preview/examples", {}, "体验草案已创建，请在“计划”中审阅并批准，再按“推进指引”执行。", async result => { await refreshAll(result.run_id); }));
+      $("identity-label").textContent = `${principal.authentication === "public-session" ? "受邀体验 · " : principal.authentication === "local-console" ? "本机开发 · " : ""}${principal.roles.map((role) => roleNames[role] || role).join(" / ")}`;
       $("login-panel").hidden = true;
       $("workspace").hidden = false;
       $("logout-button").hidden = $("refresh-button").hidden = false;
       refreshControls();
-      notify("已连接本机工作台。");
+      notify(window.LoomPreview?.active ? "已连接公网体验工作台。共享空间最多 20 个目标，单目标预算上限 $1；保守预留，按实际用量记账。" : "已连接本机工作台。");
       await refreshAll();
       $("workspace").focus();
     } catch (error) {
       if (session !== state.session) return;
       logout(false);
+      if (error.status === 401 && window.LoomPreview?.active) { window.location.assign("/preview/login"); return; }
       notify(publicError(error), true);
     } finally { if (session === state.session) $("login-button").disabled = false; }
   }
   $("login-form").addEventListener("submit", (event) => { event.preventDefault(); connect(); });
-  $("logout-button").addEventListener("click", () => logout());
+  $("logout-button").addEventListener("click", async () => {
+    try { if (await window.LoomPreview?.logout()) return; logout(); }
+    catch { notify("退出未确认，请重试；停止公网进程可使全部体验会话失效。", true); }
+  });
   $("refresh-button").addEventListener("click", () => refreshAll());
   $("goal-search").addEventListener("input", renderGoals);
   $("artifacts-refresh").addEventListener("click", () => { if (!state.busy) loadArtifacts(); });
