@@ -1,0 +1,10 @@
+{
+  "title": "Stable deduplication of integer arrays",
+  "description": "Implement a Python JSON program. Input is an object with a values array containing integers. Return an object with values equal to the unique integers in their original first-occurrence order, and duplicates_removed equal to original length minus unique length. Handle empty arrays and negative integers. Read one JSON input from stdin and print exactly one JSON output. Do not read files or use the network.",
+  "tests": [
+    {"name": "mixed_duplicates", "input": {"values": [3, 1, 3, 2, 1]}, "expected": {"values": [3, 1, 2], "duplicates_removed": 2}},
+    {"name": "empty", "input": {"values": []}, "expected": {"values": [], "duplicates_removed": 0}},
+    {"name": "negative_and_zero", "input": {"values": [-1, 0, -1, 0, 2]}, "expected": {"values": [-1, 0, 2], "duplicates_removed": 2}},
+    {"name": "all_same", "input": {"values": [7, 7, 7]}, "expected": {"values": [7], "duplicates_removed": 2}}
+  ]
+}

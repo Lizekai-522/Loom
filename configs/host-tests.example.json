@@ -1,0 +1,6 @@
+{
+  "tests": [
+    {"name": "host-positive-01", "input": {"values": [11, 22, -3, 0]}, "expected": {"sum": 33, "count": 2, "invalid_indices": []}},
+    {"name": "host-invalid-02", "input": {"values": [true, 1.0, "2", null, 4]}, "expected": {"sum": 4, "count": 1, "invalid_indices": [0, 1, 2, 3]}}
+  ]
+}

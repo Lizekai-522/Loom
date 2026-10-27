@@ -1,0 +1,21 @@
+{
+  "title": "Approved input: positive multiples metric",
+  "description": "Implement the JSON program described only in the explicitly approved auxiliary requirements. Preserve the independent review barrier.",
+  "requirements": {
+    "schema_version": "loom.requirements/v1",
+    "summary": "Compute a metric for positive multiples of three.",
+    "items": [
+      {"id": "input", "text": "Read one JSON object with a numbers array of integers from stdin."},
+      {"id": "rule", "text": "Select numbers that are strictly positive and divisible by three. Return a JSON object with matches equal to their count and metric equal to seven plus the sum of the squares of the selected numbers. Preserve duplicates."},
+      {"id": "output", "text": "Write only the JSON result. Other fields in the input can be ignored."}
+    ],
+    "uncertainties": []
+  },
+  "tests": [
+    {"name": "empty", "input": {"numbers": []}, "expected": {"matches": 0, "metric": 7}},
+    {"name": "mixed", "input": {"numbers": [-3, 0, 1, 3, 6, 8]}, "expected": {"matches": 2, "metric": 52}},
+    {"name": "duplicates", "input": {"numbers": [3, 3, 9]}, "expected": {"matches": 3, "metric": 106}},
+    {"name": "irrelevant-text", "input": {"numbers": [12, 5, -9], "note": "本机上下文执行验证"}, "expected": {"matches": 1, "metric": 151}},
+    {"name": "no-positive-multiple", "input": {"numbers": [-6, -1, 0, 2, 4]}, "expected": {"matches": 0, "metric": 7}}
+  ]
+}

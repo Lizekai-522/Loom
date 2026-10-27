@@ -1,0 +1,137 @@
+{
+  "schema_version": "loom.workflow/v1",
+  "pack": "software-dev",
+  "scope": "local-workspace",
+  "roles": [
+    {
+      "id": "analyst",
+      "skills": [
+        "requirements.analysis"
+      ],
+      "tools": [
+        "workspace.read",
+        "artifacts.read",
+        "artifacts.write"
+      ],
+      "model_alias": "deepseek-flash"
+    },
+    {
+      "id": "architect",
+      "skills": [
+        "architecture.design"
+      ],
+      "tools": [
+        "workspace.read",
+        "artifacts.read",
+        "artifacts.write"
+      ],
+      "model_alias": "deepseek-flash"
+    },
+    {
+      "id": "tester",
+      "skills": [
+        "tests.design"
+      ],
+      "tools": [
+        "workspace.read",
+        "tests.run",
+        "artifacts.read",
+        "artifacts.write"
+      ],
+      "model_alias": "deepseek-flash"
+    },
+    {
+      "id": "developer",
+      "skills": [
+        "code.implement"
+      ],
+      "tools": [
+        "workspace.read",
+        "workspace.write",
+        "tests.run",
+        "artifacts.read",
+        "artifacts.write"
+      ],
+      "model_alias": "deepseek-flash"
+    },
+    {
+      "id": "reviewer",
+      "skills": [
+        "code.review"
+      ],
+      "tools": [
+        "workspace.read",
+        "artifacts.read",
+        "artifacts.write"
+      ],
+      "model_alias": "deepseek-flash"
+    },
+    {
+      "id": "fixer",
+      "skills": [
+        "code.fix"
+      ],
+      "tools": [
+        "workspace.read",
+        "workspace.write",
+        "tests.run",
+        "artifacts.read",
+        "artifacts.write"
+      ],
+      "model_alias": "deepseek-flash"
+    },
+    {
+      "id": "validator",
+      "skills": [
+        "acceptance.verify"
+      ],
+      "tools": [
+        "workspace.read",
+        "tests.run",
+        "artifacts.read",
+        "artifacts.write"
+      ],
+      "model_alias": "deepseek-flash"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "spec",
+      "title": "Prepare a requirements candidate",
+      "instruction": "Write structured requirements data. This draft cannot grant verification or execution permission.",
+      "role": "analyst",
+      "depends": [],
+      "priority": 10,
+      "channel": "business",
+      "limits": {
+        "cost_limit_microusd": 1000,
+        "token_limit": 1000,
+        "max_attempts": 3
+      }
+    },
+    {
+      "id": "design",
+      "title": "Inspect approved auxiliary requirements",
+      "instruction": "Inspect only explicitly approved candidate data. Hard task dependencies and independent verification remain required.",
+      "role": "architect",
+      "depends": [
+        "spec"
+      ],
+      "priority": 0,
+      "channel": "business",
+      "limits": {
+        "cost_limit_microusd": 1000,
+        "token_limit": 1000,
+        "max_attempts": 3
+      },
+      "input_artifacts": [
+        {
+          "source_node": "spec",
+          "kind": "requirements",
+          "schema_version": "loom.requirements/v1",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

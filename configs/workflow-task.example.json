@@ -1,0 +1,11 @@
+{
+  "title": "Strict positive integer summary",
+  "description": "Read one JSON object with a values array. Return exactly an object with sum, count and invalid_indices. Include in sum/count only integers strictly greater than zero, preserving duplicates. Zero and negative integers are valid but ignored. Booleans, strings, floats and null are invalid even when numerically integer-like; list their zero-based positions in invalid_indices in input order. Ignore unrelated input fields. Use Python standard library only and write exactly one JSON result to stdout.",
+  "tests": [
+    {"name": "empty", "input": {"values": []}, "expected": {"sum": 0, "count": 0, "invalid_indices": []}},
+    {"name": "signed-integers", "input": {"values": [-9, 0, 3, 12, 3]}, "expected": {"sum": 18, "count": 3, "invalid_indices": []}},
+    {"name": "strict-types", "input": {"values": [true, 7, "8", 2.0, null, false, 4]}, "expected": {"sum": 11, "count": 2, "invalid_indices": [0, 2, 3, 4, 5]}},
+    {"name": "ignored-fields", "input": {"values": [5, -2, 6], "note": "local workflow test"}, "expected": {"sum": 11, "count": 2, "invalid_indices": []}},
+    {"name": "large-integers", "input": {"values": [9007199254740993, 1, -1]}, "expected": {"sum": 9007199254740994, "count": 2, "invalid_indices": []}}
+  ]
+}

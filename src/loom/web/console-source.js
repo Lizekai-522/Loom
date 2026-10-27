@@ -1,0 +1,109 @@
+"use strict";
+window.LoomSourcePanel = function ({state, node, request, publicError, runChecked}) {
+  const root = document.getElementById("source-panel");
+  let generation = 0, binding = "", task = null, data = null, fileHash = "", busy = false, refs = null;
+  const hashPattern = /^[0-9a-f]{64}$/;
+  const exact = (value, keys) => value && typeof value === "object" && !Array.isArray(value)
+    && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
+  const stable = value => Array.isArray(value) ? value.map(stable) : value && typeof value === "object"
+    ? Object.fromEntries(Object.keys(value).sort().map(key => [key, stable(value[key])])) : value;
+  const canonical = value => JSON.stringify(stable(value));
+  async function hash(value) {
+    const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+    return [...new Uint8Array(bytes)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+  }
+  const selection = () => JSON.stringify([state.session, state.selection, state.runId]);
+  const current = () => binding && binding === selection() && runChecked();
+  function reset() {
+    generation++; binding = ""; task = data = refs = null; fileHash = ""; busy = false;
+    root.replaceChildren(); root.hidden = true;
+    root.removeAttribute("aria-busy");
+  }
+  function controls() {
+    if (!refs) return;
+    root.setAttribute("aria-busy", busy ? "true" : "false");
+    const enabled = current() && state.tab === "tasks" && !state.busy && !busy;
+    refs.read.disabled = !enabled;
+    refs.source.disabled = refs.record.disabled = !enabled || !data;
+  }
+  function sync() { if (binding && binding !== selection()) reset(); else controls(); }
+  async function validate(value) {
+    const subject = value?.subject, summary = value?.execution_summary;
+    if (value?.schema_version !== "loom.review-input/v1" || value.source_included !== true
+        || value.hidden_tests_included !== false || value.untrusted_source !== true
+        || value.independently_verified !== false || value.counts_as_success !== false || value.execution_authorized !== false
+        || !exact(subject, ["schema_version", "run_id", "task_id", "epoch", "plan_digest", "content_hash", "source_sha256", "evaluation_digest", "evaluation_event_hash", "submission_event_hash"])
+        || !exact(summary, ["cases_executed", "cases_passed", "hard_criteria_passed", "report_digest", "evidence_source"])
+        || subject.schema_version !== "loom.review-subject-ref/v1" || subject.run_id !== state.runId || subject.task_id !== task.id
+        || !Number.isSafeInteger(subject.epoch) || subject.epoch !== task.epoch
+        || subject.plan_digest !== state.plan?.digest || subject.content_hash !== task.artifact?.content_hash
+        || subject.evaluation_digest !== task.evaluation_digest || !hashPattern.test(value.input_digest)
+        || ["plan_digest", "content_hash", "source_sha256", "evaluation_digest", "evaluation_event_hash", "submission_event_hash"].some(key => !hashPattern.test(subject[key]))
+        || !value.files || Object.keys(value.files).length !== 1 || typeof value.files["main.py"] !== "string"
+        || !value.files["main.py"].trim() || new TextEncoder().encode(value.files["main.py"]).length > 65536
+        || !Number.isSafeInteger(summary?.cases_executed) || summary.cases_executed < 1 || summary.cases_executed > 32
+        || !Number.isSafeInteger(summary.cases_passed) || summary.cases_passed < 0 || summary.cases_passed > summary.cases_executed
+        || typeof summary.hard_criteria_passed !== "boolean" || !hashPattern.test(summary.report_digest)
+        || summary.evidence_source !== "local-executor-host-frozen-tests") throw Object.assign(new Error(), {code: "BAD_JSON"});
+    const context = {schema_version: value.schema_version, subject, execution_summary: summary, files: value.files};
+    if (await hash(canonical(value.files)) !== subject.source_sha256 || await hash(canonical(context)) !== value.input_digest)
+      throw Object.assign(new Error(), {code: "BAD_JSON"});
+    return hash(value.files["main.py"]);
+  }
+  function show(value) {
+    refs.code.textContent = value.files["main.py"];
+    refs.details.replaceChildren();
+    const summary = value.execution_summary;
+    refs.status.textContent = `精确版本已核对 · 宿主终验 ${summary.cases_passed}/${summary.cases_executed} · 候选仍待独立复核`;
+    for (const [name, text] of [["任务", value.subject.task_id], ["轮次", value.subject.epoch], ["输入版本摘要", value.input_digest],
+      ["源码合同摘要", value.subject.source_sha256], ["main.py 文件 SHA256", fileHash]]) {
+      refs.details.append(node("p", "mono break-word", `${name} ${text}`));
+    }
+  }
+  function download(bytes, name, type) {
+    const url = URL.createObjectURL(new Blob([bytes], {type}));
+    const link = document.createElement("a"); link.href = url; link.download = name;
+    document.body.append(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  async function load(kind = null) {
+    if (!current() || busy || state.busy || state.tab !== "tasks" || (kind && !data)) return;
+    const version = ++generation, bound = binding, prior = data?.input_digest;
+    const path = `/v1/runs/${encodeURIComponent(state.runId)}/tasks/${encodeURIComponent(task.id)}/review-input?include_source=true`;
+    busy = true; refs.status.textContent = kind ? "正在重新核对导出版本…" : "正在读取并核对源码…"; controls();
+    try {
+      const value = await request("GET", path);
+      if (version !== generation || bound !== binding || !current() || state.tab !== "tasks") return;
+      const verifiedHash = await validate(value);
+      if (version !== generation || bound !== binding || !current() || state.tab !== "tasks") return;
+      if (kind && prior !== value.input_digest) throw Object.assign(new Error(), {code: "SOURCE_CHANGED"});
+      data = value; fileHash = verifiedHash; show(value);
+      if (kind === "source") download(value.files["main.py"], "main.py", "text/plain;charset=utf-8");
+      else if (kind === "record") download(JSON.stringify({schema_version: "loom.source-export/v1", subject: value.subject,
+        input_digest: value.input_digest, execution_summary: value.execution_summary, file: "main.py", file_sha256: verifiedHash,
+        independently_verified: false, counts_as_success: false, hidden_tests_included: false}, null, 2) + "\n", "loom-source-record.json", "application/json;charset=utf-8");
+    } catch (error) {
+      if (version === generation && bound === binding && error.code !== "SESSION_CHANGED") {
+        data = null; fileHash = ""; refs.code.textContent = ""; refs.details.replaceChildren();
+        refs.status.textContent = error.code === "SOURCE_CHANGED" ? "源码或证据版本已变化，请重新读取并审阅后再导出。" : `源码核对失败，当前不能导出。${publicError(error)}`;
+      }
+    } finally { if (version === generation && bound === binding) { busy = false; controls(); } }
+  }
+  function open(value) {
+    if (!runChecked() || state.busy || value.artifact?.kind !== "python-json-program") return;
+    reset(); task = value; binding = selection(); root.hidden = false;
+    const heading = node("div", "section-heading"), close = node("button", "quiet", "关闭源码"); close.type = "button";
+    heading.append(node("h3", "", `源码与导出 · ${value.title || value.id}`), close);
+    const status = node("p", "field-help"), details = node("div"), pre = node("pre", "source-code"), code = node("code");
+    status.setAttribute("role", "status"); status.setAttribute("aria-live", "polite"); pre.append(code);
+    const actions = node("div", "source-actions"), read = node("button", "", "重新读取源码"), source = node("button", "", "下载 main.py"), record = node("button", "", "下载版本记录 JSON");
+    for (const button of [read, source, record]) button.type = "button";
+    actions.append(read, source, record);
+    root.append(heading, node("p", "field-help", "源码按当前任务、计划和执行证据核对。每次下载都会重新核对版本；文件和版本记录均保留候选未独立验证的状态。"), status, details, actions, pre);
+    refs = {status, details, code, read, source, record};
+    status.id = "source-state"; code.id = "source-code"; source.id = "source-download"; record.id = "source-record-download"; read.id = "source-refresh";
+    close.addEventListener("click", reset); read.addEventListener("click", () => load()); source.addEventListener("click", () => load("source")); record.addEventListener("click", () => load("record"));
+    root.scrollIntoView({behavior: "auto", block: "nearest"}); void load();
+  }
+  return {open, reset, sync};
+};

@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Loom · 本机工作台</title>
+  <link rel="stylesheet" href="/console/assets/console.css">
+  <script src="/console/assets/console-zh.js" defer></script>
+  <script src="/console/assets/console-suites.js" defer></script>
+  <script src="/console/assets/console-review-decisions.js" defer></script>
+  <script src="/console/assets/console-progression.js" defer></script>
+  <script src="/console/assets/console-execution.js" defer></script>
+  <script src="/console/assets/console-preview.js" defer></script>
+  <script src="/console/assets/console-source.js" defer></script>
+  <script src="/console/assets/console.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#workspace">跳到工作区</a>
+  <header class="topbar">
+    <a class="brand" href="/console" aria-label="Loom 工作台首页">LOOM<span>工作台</span></a>
+    <span class="environment">本机实例</span>
+    <div class="top-actions"><span id="identity-label" class="muted"></span><button id="refresh-button" class="quiet" hidden>刷新</button><button id="logout-button" class="quiet" hidden>断开</button></div>
+  </header>
+  <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+  <section id="login-panel" class="login-panel" aria-labelledby="login-title">
+    <div class="eyebrow">运行与人工处理</div>
+    <h1 id="login-title">正在连接本机工作台</h1>
+    <p class="muted">自动进入本机开发环境，查看目标、审阅计划并处理运行。</p>
+    <form id="login-form" class="login-form">
+      <p class="field-help">正在自动连接本机开发实例，无需输入访问凭据。</p>
+      <button id="login-button" type="submit" class="primary">重新连接</button>
+    </form>
+    <p class="local-note">Flash 已接通 · 双签待配置 · 最终验收保持独立验证约束</p>
+  </section>
+  <main id="workspace" class="workspace" tabindex="-1" hidden>
+    <aside class="sidebar" aria-labelledby="goals-title">
+      <div class="section-heading"><h2 id="goals-title">目标</h2><button id="new-goal-button" class="small" data-cap="goal.write">新建</button></div>
+      <label class="sr-only" for="goal-search">筛选目标</label><input id="goal-search" class="search" type="search" placeholder="筛选标题或运行 ID" autocomplete="off">
+      <p id="goals-state" class="muted" aria-live="polite">正在读取目标…</p>
+      <ul id="goal-list" class="goal-list"></ul>
+      <div class="sidebar-footer"><span>人工待办</span><strong id="intervention-count">—</strong><button id="show-interventions" class="text-button">查看</button></div>
+    </aside>
+    <section class="content" aria-labelledby="run-title">
+      <div id="empty-selection" class="empty-state"><div class="eyebrow">工作区</div><h1>选择一个目标</h1><p>查看任务、冻结计划和事件，或创建一个新的目标草案。</p></div>
+      <div id="run-content" hidden>
+        <header class="run-header"><div><div class="eyebrow">目标运行</div><h1 id="run-title"></h1><p id="run-id" class="mono muted"></p></div><span id="run-status" class="badge"></span></header>
+        <p id="run-description" class="run-description"></p>
+        <dl class="budget-strip"><div><dt>已记账费用</dt><dd id="cost-spent">—</dd></div><div><dt>当前预留</dt><dd id="cost-reserved">—</dd></div><div><dt>已用 词元</dt><dd id="tokens-spent">—</dd></div><div><dt>任务进度</dt><dd id="task-count">—</dd></div></dl>
+        <p class="field-help">费用为平台记账，不能代替供应商账单。测试通过的候选仍需独立复核。</p>
+        <nav class="tabs" aria-label="运行内容">
+          <button class="tab active" data-tab="tasks" aria-current="page">任务</button><button class="tab" data-tab="progression">推进指引</button><button class="tab" data-tab="plan">计划</button><button class="tab" data-tab="artifacts">产物 / 输入预览</button><button class="tab" data-tab="events">事件</button><button class="tab" data-tab="interventions">人工待办</button>
+        </nav>
+        <section id="tab-tasks" class="tab-panel" aria-label="任务列表"><div class="section-heading"><h2>执行状态</h2><span id="tasks-hint" class="muted"></span></div><div id="task-list" class="task-list"></div><section id="source-panel" class="suite-panel" aria-label="源码与版本导出" hidden></section></section>
+        <section id="tab-progression" class="tab-panel" aria-label="七角色推进指引" hidden>
+          <div class="section-heading"><h2>七角色推进指引</h2><button id="progression-refresh" type="button">重新核对下一步</button></div>
+          <p class="field-help">按当前已批准计划和真实状态显示下一步。未创建的角色显示 0 项；候选提交、输入批准或审查处置均不代表任务已完成。独立模型仍待配置。</p>
+          <div id="progression-roles" class="role-strip"></div><p id="progression-state" class="field-help" role="status" aria-live="polite"></p>
+          <div id="progression-list"></div><div id="progression-execution" class="suite-panel"></div>
+        </section>
+        <section id="tab-plan" class="tab-panel" aria-label="计划审阅" hidden>
+          <div class="section-heading"><h2>冻结计划</h2><span id="plan-status" class="badge"></span></div>
+          <dl class="metadata"><div><dt>修订</dt><dd id="plan-revision">—</dd></div><div><dt>执行摘要</dt><dd id="plan-digest" class="mono break-word">—</dd></div></dl>
+          <p class="field-help">批准必须匹配当前修订及摘要。批准后不能在此改写任务合同。</p>
+          <form id="plan-form">
+            <label for="plan-file">导入工作流 JSON</label><input id="plan-file" type="file" accept="application/json,.json" data-cap="goal.write">
+            <label for="plan-definition">计划定义</label><textarea id="plan-definition" class="code-input" rows="15" spellcheck="false" maxlength="262144" aria-describedby="plan-help"></textarea>
+            <p id="plan-help" class="field-help">填写完整的 loom.workflow/v1 定义。任务描述不会授予权限或改变验收标准。</p>
+            <button id="save-plan-button" type="submit" data-cap="goal.write">保存新修订</button>
+          </form>
+          <form id="approve-plan-form" class="approval-form"><label class="check-label"><input id="plan-reviewed" type="checkbox" required>我已审阅上方修订、摘要及任务定义</label><button id="approve-plan-button" type="submit" class="primary" data-cap="plan.approve">批准当前计划</button></form>
+        </section>
+        <section id="tab-artifacts" class="tab-panel" aria-label="产物和辅助输入预览" hidden>
+          <div class="section-heading"><h2>候选产物</h2><button id="artifacts-refresh" type="button">重新读取</button></div>
+          <p class="field-help">候选可来自具名 执行器 提交或模型网关响应；模型来源记录与内容验证分别显示，候选仍未独立验证。批准辅助输入只供目标节点参考，不放行父任务或依赖。本次预览不会发起执行，实际绑定看“人工待办”中的执行记录。</p>
+          <p id="artifacts-state" class="muted" role="status" aria-live="polite"></p><div id="artifact-list" class="artifact-list"></div><div id="artifact-detail"></div>
+          <section id="review-decision-panel" class="suite-panel" hidden aria-labelledby="review-decision-heading">
+            <div class="section-heading"><h2 id="review-decision-heading">审查处置</h2><button id="review-decision-refresh" type="button">刷新处置记录</button></div>
+            <p class="field-help">核对所选候选正文与精确版本，再记录处理去向。未发现问题仍需独立验收；第二模型待配置。处置仅记录待办或批准修复输入，不会发起模型、完成任务或放行依赖。</p>
+            <p id="review-decision-state" class="field-help" role="status" aria-live="polite"></p>
+            <p id="review-decision-binding" class="mono break-word"></p>
+            <form id="review-decision-form">
+              <label for="review-decision-action">处理方式</label><select id="review-decision-action"></select>
+              <div id="review-decision-target-row" hidden><label for="review-decision-target">单次修复目标</label><select id="review-decision-target"></select></div>
+              <label for="review-decision-reason">处置理由</label><textarea id="review-decision-reason" rows="3" maxlength="2000" required></textarea>
+              <label class="check-label"><input id="review-decision-reviewed" type="checkbox" required>我已核对候选正文、精确版本与处理方式；此操作不代表独立验收通过</label>
+              <button id="review-decision-submit" type="submit" class="primary">记录处置</button>
+            </form>
+            <h3 class="preview-heading">处置历史</h3><div id="review-decision-history"></div>
+          </section>
+          <section id="suite-panel" class="suite-panel" hidden aria-labelledby="suite-heading">
+            <h2 id="suite-heading">公开开发检查 · 单独审阅</h2>
+            <p class="field-help">核对原始用例并选择需要的部分，再读取服务端编译摘要。冻结只记录审阅结果；来源仍未独立验证，旧计划和 宿主终验 终验不变。</p>
+            <div id="suite-cases"></div>
+            <button id="suite-preview" type="button">核对选中用例</button>
+            <p id="suite-state" class="field-help" role="status" aria-live="polite"></p><div id="suite-review"></div>
+            <form id="suite-freeze-form" class="approval-form" hidden>
+              <label class="check-label"><input id="suite-reviewed" type="checkbox" required>我已逐项核对选中用例、原始来源与编译摘要，仅冻结为公开开发检查</label>
+              <button id="suite-freeze" type="submit" class="primary">冻结选中用例</button>
+            </form>
+            <div class="suite-history">
+              <button id="suite-history" type="button">读取此候选的冻结记录</button><p id="suite-history-state" class="field-help" role="status"></p><div id="suite-history-list"></div>
+            </div>
+            <div id="suite-frozen"></div>
+            <form id="suite-draft-form" class="approval-form" hidden>
+              <h3>准备新的执行计划</h3>
+              <p class="field-help">生成可导入新目标的计划草案。请先在本机冻结并保存独立的宿主终验用例，将验收摘要填在下方。终验用例正文不应写入模型需求；此页面不会生成测试结果。</p>
+              <label for="suite-draft-title">新任务标题</label><input id="suite-draft-title" maxlength="500" required>
+              <label for="suite-draft-instruction">开发需求（仅公开内容）</label><textarea id="suite-draft-instruction" rows="4" maxlength="16000" required></textarea>
+              <label for="suite-host-digest">冻结的宿主终验摘要</label><input id="suite-host-digest" class="mono" minlength="64" maxlength="64" pattern="[0-9a-f]{64}" required autocomplete="off" spellcheck="false">
+              <div class="two-fields"><div><label for="suite-cost">任务总费用上限（微美元）</label><input id="suite-cost" type="number" min="0" max="999999999000" step="1" value="500000" required></div><div><label for="suite-tokens">任务总词元上限</label><input id="suite-tokens" type="number" min="1" max="10000000" step="1" value="1100000" required></div></div>
+              <label for="suite-repairs">最多修复次数（共用任务预算）</label><select id="suite-repairs"><option value="1">1 次</option><option value="2">2 次</option></select>
+              <button id="suite-prepare" type="submit">重新核对来源并生成草案</button>
+            </form>
+            <div id="suite-draft-result" hidden><p id="suite-draft-help" class="field-help"></p><pre id="suite-draft-json" tabindex="0" aria-label="未批准的新执行计划 JSON"></pre><button id="suite-download" type="button">下载未批准的计划 JSON</button></div>
+          </section>
+          <div class="input-preview-panel">
+            <h2>目标节点的辅助输入</h2><label for="input-target">目标任务</label><select id="input-target" aria-describedby="input-selectors"></select><p id="input-selectors" class="field-help"></p>
+            <form id="auxiliary-form" class="approval-form">
+              <p id="auxiliary-binding" class="mono break-word"></p>
+              <label class="check-label"><input id="auxiliary-reviewed" type="checkbox" required>我已核对候选正文、源与目标 轮次、修订、内容摘要及计划摘要，仅批准作为不可信辅助输入</label>
+              <button id="auxiliary-approve" type="submit" class="primary" data-cap="control">批准为辅助输入</button><p id="auxiliary-help" class="field-help"></p>
+            </form>
+            <div class="section-heading preview-heading"><h3>只读上下文预览</h3><button id="context-refresh" type="button">刷新预览</button></div>
+            <p id="context-state" class="muted" role="status" aria-live="polite"></p><div id="context-preview"></div>
+            <p class="field-help">正文上限 32 KiB，完整预览上限 64 KiB。这是静态 UTF-8 字节限制，不是精确词元预算；数据齐备不表示任务可执行或验收通过。</p>
+          </div>
+        </section>
+        <section id="tab-events" class="tab-panel" aria-label="事件记录" hidden><div class="section-heading"><h2>事件记录</h2><span id="integrity-label" class="muted"></span></div><p id="events-state" class="muted"></p><ol id="event-list" class="event-list"></ol><p class="field-help">页面最多展示最近 200 条。完整事件仍保存在本机台账。</p></section>
+        <section id="tab-interventions" class="tab-panel" aria-label="人工待办" hidden><div class="section-heading"><h2>人工待办</h2><span class="muted">核对后再推进</span></div><div id="intervention-list"></div><div id="review-summary"></div></section>
+      </div>
+    </section>
+    <aside id="actions-panel" class="actions-panel" aria-labelledby="actions-title">
+      <div class="section-heading"><h2 id="actions-title">运行控制</h2><span class="eyebrow">人工</span></div>
+      <p id="action-state" class="muted">选择目标后可查看可用操作。</p>
+      <div id="control-fields" hidden>
+        <label for="control-reason">操作理由</label><textarea id="control-reason" rows="4" maxlength="2000" placeholder="记录暂停、恢复或终止的原因"></textarea>
+        <div class="action-buttons"><button id="pause-button" data-cap="control">暂停运行</button><button id="resume-button" data-cap="control">恢复运行</button></div>
+        <details class="terminate-section"><summary>终止此运行</summary><p class="field-help">终止会撤销后续执行权。未知调用和未核对预留继续保留，不能视为已退款。</p><label for="terminate-confirm">输入“终止”确认</label><input id="terminate-confirm" type="text" autocomplete="off" maxlength="2"><button id="terminate-button" class="danger" data-cap="control">确认终止</button></details>
+      </div>
+      <section id="reconcile-section" class="reconcile-section" hidden aria-labelledby="reconcile-title">
+        <h3 id="reconcile-title">核对未知模型调用</h3><p class="field-help">只填写已从提供方核实的结果。核对不会生成签名或把候选直接判为成功。</p>
+        <form id="reconcile-form">
+          <label for="effect-select">调用</label><select id="effect-select" required></select>
+          <label for="effect-decision">核对结论</label><select id="effect-decision"><option value="completed">已完成，使用量已核实</option><option value="not_sent">确定未发送，且无用量</option></select>
+          <label for="effect-reference">依据引用</label><input id="effect-reference" type="text" maxlength="500" required placeholder="可追查的请求记录或账单编号">
+          <label for="effect-evidence">核对说明</label><textarea id="effect-evidence" rows="3" maxlength="2000" required placeholder="已核实的结果及依据；不要填入凭据"></textarea>
+          <label for="effect-cost">已核实费用（微美元）</label><input id="effect-cost" type="number" min="0" max="1000000000000" step="1" required value="0">
+          <label for="effect-tokens">已核实 词元</label><input id="effect-tokens" type="number" min="0" max="1000000000" step="1" required value="0">
+          <button id="reconcile-button" type="submit" data-cap="control">记录核对结果</button>
+        </form>
+      </section>
+      <div class="boundary-note"><strong>双签待配置</strong><p>这里的人工操作不代替模型独立复核，也不会创建验收成功记录。</p></div>
+    </aside>
+  </main>
+  <dialog id="goal-dialog" aria-labelledby="new-goal-title">
+    <form id="goal-form"><div class="section-heading"><h2 id="new-goal-title">创建目标草案</h2><button type="button" id="close-goal-dialog" class="quiet">关闭</button></div>
+      <label for="goal-title">目标标题</label><input id="goal-title" type="text" maxlength="500" required>
+      <label for="goal-description">需求说明</label><textarea id="goal-description" rows="6" maxlength="32000" required></textarea>
+      <div class="two-fields"><div><label for="goal-cost-limit">费用上限（微美元）</label><input id="goal-cost-limit" type="number" min="0" max="1000000000000" step="1" value="1000000" required></div><div><label for="goal-token-limit">词元 上限</label><input id="goal-token-limit" type="number" min="0" max="1000000000" step="1" value="2000000" required></div></div>
+      <fieldset><legend>冻结验收判据</legend><label class="check-label"><input type="checkbox" name="criterion" value="schema.valid" checked>结构有效</label><label class="check-label"><input type="checkbox" name="criterion" value="tests.pass" checked>受信测试通过</label><label class="check-label"><input type="checkbox" name="criterion" value="report.traceable" checked>证据可追查</label></fieldset>
+      <p class="field-help">创建草案不会调用模型或执行代码。模型密钥不要写入需求说明。</p><button type="submit" id="create-goal-button" class="primary">创建草案</button>
+    </form>
+  </dialog>
+</body>
+</html>

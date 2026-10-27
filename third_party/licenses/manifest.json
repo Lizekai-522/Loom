@@ -1,0 +1,422 @@
+{
+  "schema_version": 1,
+  "observed_date": "2026-10-23",
+  "source": "Installed distribution metadata and packaged licenses in work/loom-venv; pip excluded as installer; native NATS/PostgreSQL runtimes excluded from source deliverable",
+  "packages": [
+    {
+      "name": "annotated-doc",
+      "version": "0.0.5",
+      "license": "MIT",
+      "source": "https://github.com/fastapi/annotated-doc",
+      "scope": "runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/annotated-doc-0.0.5/LICENSE",
+          "sha256": "fff170779a6acbf65abdb405c087f1cee1786691e4a96a4034517e4a504a0cdf"
+        }
+      ]
+    },
+    {
+      "name": "annotated-types",
+      "version": "0.8.0",
+      "license": "MIT",
+      "source": "https://github.com/annotated-types/annotated-types",
+      "scope": "runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/annotated-types-0.8.0/LICENSE",
+          "sha256": "fe1049884b1a0d9342901e88e07f32925d24b3121d9972b6a6805fb9824b095d"
+        }
+      ]
+    },
+    {
+      "name": "anyio",
+      "version": "4.15.1",
+      "license": "MIT",
+      "source": "https://github.com/agronholm/anyio",
+      "scope": "runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/anyio-4.15.1/LICENSE",
+          "sha256": "5361ac9dc58f2ef5fd2e9b09c68297c17f04950909bbc8023bdb82eacf22c2b0"
+        }
+      ]
+    },
+    {
+      "name": "certifi",
+      "version": "2026.10.19",
+      "license": "MPL-2.0",
+      "source": "https://github.com/certifi/python-certifi",
+      "scope": "runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/certifi-2026.10.19/LICENSE",
+          "sha256": "e93716da6b9c0d5a4a1df60fe695b370f0695603d21f6f83f053e42cfc10caf7"
+        }
+      ]
+    },
+    {
+      "name": "cffi",
+      "version": "2.1.1",
+      "license": "MIT-0",
+      "source": "https://github.com/python-cffi/cffi",
+      "scope": "S2-runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/cffi-2.1.1/LICENSE",
+          "sha256": "5ba24ddc57067f9249add644c3afc41a5d6dc37e23433ef759d95df370b0af63"
+        }
+      ]
+    },
+    {
+      "name": "click",
+      "version": "8.5.0",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/pallets/click/",
+      "scope": "runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/click-8.5.0/LICENSE.txt",
+          "sha256": "9a8ad106a394e853bfe21f42f4e72d592819a22805d991b5f3275029292b658d"
+        }
+      ]
+    },
+    {
+      "name": "colorama",
+      "version": "0.4.6",
+      "license": "BSD-3-Clause (from packaged LICENSE.txt)",
+      "source": "https://github.com/tartley/colorama",
+      "scope": "runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/colorama-0.4.6/LICENSE.txt",
+          "sha256": "cac35c02686e5d04a5a7140bfb3b36e73aed496656e891102e428886d7930318"
+        }
+      ]
+    },
+    {
+      "name": "cryptography",
+      "version": "50.0.2",
+      "license": "Apache-2.0 OR BSD-3-Clause",
+      "source": "https://github.com/pyca/cryptography/",
+      "scope": "S2-runtime",
+      "license_files": [
+        {
+          "path": "third_party/licenses/cryptography-50.0.2/LICENSE",
+          "sha256": "3e0c7c091a948b82533ba98fd7cbb40432d6f1a9acbf85f5922d2f99a93ae6bb"
+        },
+        {
+          "path": "third_party/licenses/cryptography-50.0.2/LICENSE.APACHE",
+          "sha256": "aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe"
+        },
+        {
+          "path": "third_party/licenses/cryptography-50.0.2/LICENSE.BSD",
+          "sha256": "602c4c7482de6479dd2e9793cda275e5e63d773dacd1eca689232ab7008fb4fb"
+        }
+      ]
+    },
+    {
+      "name": "fastapi",
+      "version": "0.159.1",
+      "license": "MIT",
+      "source": "https://github.com/fastapi/fastapi",
+      "scope": "direct-runtime",
+      "license_files": [
+        {
+          "path": "third_party/licenses/fastapi-0.159.1/LICENSE",
+          "sha256": "4ec89ffc81485b97fec584b2d4a961032eeffe834453894fd9c1274906cc744e"
+        }
+      ]
+    },
+    {
+      "name": "h11",
+      "version": "0.16.0",
+      "license": "MIT",
+      "source": "https://github.com/python-hyper/h11",
+      "scope": "runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/h11-0.16.0/LICENSE.txt",
+          "sha256": "37db5bb85926db28a427a25867f10b1232003aea1be69ccb851138adb8e6f361"
+        }
+      ]
+    },
+    {
+      "name": "httpcore",
+      "version": "1.0.9",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/encode/httpcore",
+      "scope": "runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/httpcore-1.0.9/LICENSE.md",
+          "sha256": "fdcb59154c74cbaba16a11242f7740bea9f23d6feb5547917d8c5f94a80392a5"
+        }
+      ]
+    },
+    {
+      "name": "httpx",
+      "version": "0.28.1",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/encode/httpx",
+      "scope": "direct-runtime-and-test",
+      "license_files": [
+        {
+          "path": "third_party/licenses/httpx-0.28.1/LICENSE.md",
+          "sha256": "4ec59d544f12b5f539a3a716fd321ac58ccd8030b465221f2c880200cdf28d8d"
+        }
+      ]
+    },
+    {
+      "name": "idna",
+      "version": "3.20",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/kjd/idna",
+      "scope": "runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/idna-3.20/LICENSE.md",
+          "sha256": "1a9a4f0e3d479a27240ddd59a9137a66ab4a0f9dfdc8ca6188cc0bfd85187f04"
+        }
+      ]
+    },
+    {
+      "name": "iniconfig",
+      "version": "2.3.1",
+      "license": "MIT",
+      "source": "https://github.com/pytest-dev/iniconfig",
+      "scope": "test-or-test-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/iniconfig-2.3.1/LICENSE",
+          "sha256": "3409fa91f7ace557894632676656e32264fe5ef7581535725dc9a23774551bd4"
+        }
+      ]
+    },
+    {
+      "name": "nats-py",
+      "version": "2.16.0",
+      "license": "Apache-2.0",
+      "source": "https://github.com/nats-io/nats.py",
+      "scope": "S2-runtime",
+      "license_files": [
+        {
+          "path": "third_party/licenses/nats-py-2.16.0/LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ]
+    },
+    {
+      "name": "opentelemetry-api",
+      "version": "1.45.1",
+      "license": "Apache-2.0",
+      "source": "https://github.com/open-telemetry/opentelemetry-python",
+      "scope": "runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/opentelemetry-api-1.45.1/LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ]
+    },
+    {
+      "name": "packaging",
+      "version": "26.3",
+      "license": "Apache-2.0 OR BSD-2-Clause",
+      "source": "https://github.com/pypa/packaging",
+      "scope": "test-or-test-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/packaging-26.3/LICENSE",
+          "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+        },
+        {
+          "path": "third_party/licenses/packaging-26.3/LICENSE.APACHE",
+          "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+        },
+        {
+          "path": "third_party/licenses/packaging-26.3/LICENSE.BSD",
+          "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+        }
+      ]
+    },
+    {
+      "name": "pluggy",
+      "version": "1.7.0",
+      "license": "MIT",
+      "source": "https://github.com/pytest-dev/pluggy",
+      "scope": "test-or-test-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/pluggy-1.7.0/LICENSE",
+          "sha256": "d6b65e6c213a5d0b577911d34d6e5949b9f59d76c238c5071a2f3fc16cfb2606"
+        }
+      ]
+    },
+    {
+      "name": "psycopg",
+      "version": "3.3.6",
+      "license": "LGPL-3.0-only",
+      "source": "https://github.com/psycopg/psycopg",
+      "scope": "postgres-integration-driver",
+      "license_files": [
+        {
+          "path": "third_party/licenses/psycopg-3.3.6/LICENSE.txt",
+          "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+        }
+      ]
+    },
+    {
+      "name": "psycopg-binary",
+      "version": "3.3.6",
+      "license": "LGPL-3.0-only",
+      "source": "https://github.com/psycopg/psycopg",
+      "scope": "postgres-integration-driver-binary",
+      "license_files": [
+        {
+          "path": "third_party/licenses/psycopg-binary-3.3.6/LICENSE.txt",
+          "sha256": "7d3a95e5e06978064ed3f8e2b7c8f845e7fd8a405294727cc708f94cb83b8059"
+        }
+      ]
+    },
+    {
+      "name": "pycparser",
+      "version": "3.12",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/eliben/pycparser",
+      "scope": "S2-runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/pycparser-3.12/LICENSE",
+          "sha256": "0a9e78156ae8b96caf1b4f11ac2df424b83de29736f9e757630548a6272fdf90"
+        }
+      ]
+    },
+    {
+      "name": "pydantic",
+      "version": "2.14.1",
+      "license": "MIT",
+      "source": "https://github.com/pydantic/pydantic",
+      "scope": "direct-runtime",
+      "license_files": [
+        {
+          "path": "third_party/licenses/pydantic-2.14.1/LICENSE",
+          "sha256": "a9e186f3ca16b5eef84318e7a701721351a00cb7b8ae3a4394b67b49e3529ef3"
+        }
+      ]
+    },
+    {
+      "name": "pydantic_core",
+      "version": "2.50.1",
+      "license": "MIT",
+      "source": "https://github.com/pydantic/pydantic/tree/main/pydantic-core",
+      "scope": "runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/pydantic-core-2.50.1/LICENSE",
+          "sha256": "fbe7f615f18d135c07000e5a86325db27f42c7729699ef166ac1f7a3f4586bf4"
+        }
+      ]
+    },
+    {
+      "name": "Pygments",
+      "version": "2.21.0",
+      "license": "BSD-2-Clause",
+      "source": "https://github.com/pygments/pygments",
+      "scope": "test-or-test-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/pygments-2.21.0/AUTHORS",
+          "sha256": "71a83872ad82f57be692cf827e048e2cd51d45169cfa1ea3f28706d97a872c0f"
+        },
+        {
+          "path": "third_party/licenses/pygments-2.21.0/LICENSE",
+          "sha256": "a9d66f1d526df02e29dce73436d34e56e8632f46c275bbdffc70569e882f9f17"
+        }
+      ]
+    },
+    {
+      "name": "pytest",
+      "version": "9.1.1",
+      "license": "MIT",
+      "source": "https://github.com/pytest-dev/pytest",
+      "scope": "test-or-test-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/pytest-9.1.1/LICENSE",
+          "sha256": "ca836a5f9ecca3b2f350230faa20a48fb8b145653b5568d784862df864706b9b"
+        }
+      ]
+    },
+    {
+      "name": "starlette",
+      "version": "1.9.0",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/Kludex/starlette",
+      "scope": "runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/starlette-1.9.0/LICENSE.md",
+          "sha256": "dcb95677a02240243187e964f941847d19b17821cf99e5afae684fab328c19bf"
+        }
+      ]
+    },
+    {
+      "name": "typing-inspection",
+      "version": "0.4.4",
+      "license": "MIT",
+      "source": "https://github.com/pydantic/typing-inspection",
+      "scope": "runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/typing-inspection-0.4.4/LICENSE",
+          "sha256": "804b59b25f2c31bd278f9202a19ae49a3945aa2664387e2d0a128c7cacc61ec3"
+        }
+      ]
+    },
+    {
+      "name": "typing_extensions",
+      "version": "4.16.0",
+      "license": "PSF-2.0",
+      "source": "https://github.com/python/typing_extensions",
+      "scope": "runtime-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/typing-extensions-4.16.0/LICENSE",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ]
+    },
+    {
+      "name": "tzdata",
+      "version": "2026.5",
+      "license": "Apache-2.0",
+      "source": "https://github.com/python/tzdata",
+      "scope": "postgres-integration-driver-transitive",
+      "license_files": [
+        {
+          "path": "third_party/licenses/tzdata-2026.5/LICENSE",
+          "sha256": "df58f69ea88683035d720b5375bcef0cf5aeaa98a1d098d572e0992c378deb46"
+        },
+        {
+          "path": "third_party/licenses/tzdata-2026.5/licenses/LICENSE_APACHE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ]
+    },
+    {
+      "name": "uvicorn",
+      "version": "0.54.0",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/Kludex/uvicorn",
+      "scope": "direct-runtime",
+      "license_files": [
+        {
+          "path": "third_party/licenses/uvicorn-0.54.0/LICENSE.md",
+          "sha256": "efe1acf3e62fb99c288b0ec73e5a773b7268ef4320fe757ea994214e4b63c371"
+        }
+      ]
+    }
+  ],
+  "initial_observed_date": "2026-10-22"
+}

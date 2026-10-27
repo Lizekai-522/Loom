@@ -1,0 +1,21 @@
+{
+  "title": "Reviewed development suite: strict positive integer summary",
+  "description": "Read one JSON object with a values array. Return exactly an object with sum, count and invalid_indices. Include only integers strictly greater than zero in sum/count, preserving duplicates. Ignore zero and negative integers. Booleans, strings, floats and null are invalid; list their zero-based positions in order. Ignore unrelated input fields. Use Python standard library only; read and write exactly one JSON value.",
+  "development_suite": {
+    "schema_version": "loom.development-suite-ref/v1",
+    "source_run_id": "REPLACE_SOURCE_RUN_ID",
+    "suite_id": "REPLACE_SUITE_ID",
+    "suite_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "freeze_event_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "review_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "compiler_version": "loom.public-checks-compiler/v1",
+    "development_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "selected_body_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "tests": [
+    {"name": "host-mixed", "input": {"values": [11, false, "nine", null, 0, -8, 12]}, "expected": {"sum": 23, "count": 2, "invalid_indices": [1, 2, 3]}},
+    {"name": "host-repeated", "input": {"values": [6, 6, -6, 0, true, 2.0]}, "expected": {"sum": 12, "count": 2, "invalid_indices": [4, 5]}},
+    {"name": "host-big-integers", "input": {"values": [9007199254740999, 2, -9007199254740993, "3"]}, "expected": {"sum": 9007199254741001, "count": 2, "invalid_indices": [3]}},
+    {"name": "host-ignored-fields", "input": {"values": [-4, 0, 19], "ignored": {"value": true}}, "expected": {"sum": 19, "count": 1, "invalid_indices": []}}
+  ]
+}
