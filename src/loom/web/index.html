@@ -12,6 +12,7 @@
   <script src="/console/assets/console-progression.js" defer></script>
   <script src="/console/assets/console-execution.js" defer></script>
   <script src="/console/assets/console-preview.js" defer></script>
+  <script src="/console/assets/console-source.js" defer></script>
   <script src="/console/assets/console.js" defer></script>
 </head>
 <body>
@@ -50,7 +51,7 @@
         <nav class="tabs" aria-label="运行内容">
           <button class="tab active" data-tab="tasks" aria-current="page">任务</button><button class="tab" data-tab="progression">推进指引</button><button class="tab" data-tab="plan">计划</button><button class="tab" data-tab="artifacts">产物 / 输入预览</button><button class="tab" data-tab="events">事件</button><button class="tab" data-tab="interventions">人工待办</button>
         </nav>
-        <section id="tab-tasks" class="tab-panel" aria-label="任务列表"><div class="section-heading"><h2>执行状态</h2><span id="tasks-hint" class="muted"></span></div><div id="task-list" class="task-list"></div></section>
+        <section id="tab-tasks" class="tab-panel" aria-label="任务列表"><div class="section-heading"><h2>执行状态</h2><span id="tasks-hint" class="muted"></span></div><div id="task-list" class="task-list"></div><section id="source-panel" class="suite-panel" aria-label="源码与版本导出" hidden></section></section>
         <section id="tab-progression" class="tab-panel" aria-label="七角色推进指引" hidden>
           <div class="section-heading"><h2>七角色推进指引</h2><button id="progression-refresh" type="button">重新核对下一步</button></div>
           <p class="field-help">按当前已批准计划和真实状态显示下一步。未创建的角色显示 0 项；候选提交、输入批准或审查处置均不代表任务已完成。独立模型仍待配置。</p>

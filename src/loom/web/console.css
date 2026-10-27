@@ -8,3 +8,4 @@
 #review-decision-binding{white-space:pre-wrap}#review-decision-panel form>button{margin-top:10px}#review-decision-panel .preview-heading{margin-bottom:16px}
 .role-strip{display:flex;flex-wrap:wrap;gap:7px;margin:16px 0}#progression-execution:empty{display:none}#progression-execution pre{max-height:320px}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+.source-open{font-size:12px;margin-top:10px}.source-actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.source-actions button{font-size:12px}.source-code{white-space:pre;overflow-wrap:normal;max-height:480px}#source-panel .section-heading{gap:12px}#source-panel h3{overflow-wrap:anywhere}

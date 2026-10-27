@@ -1,9 +1,9 @@
 {
-  "version": "0.17.3",
-  "stage": "public-preview-alpha",
+  "version": "0.17.4",
+  "stage": "public-preview-source-export-alpha",
   "client_delivery_date": "2026-10-27",
-  "generated_at": "2026-10-27T00:59:10.631543+08:00",
-  "release_status": "audited_dispatch_and_invited_public_preview_passed",
+  "generated_at": "2026-10-27T19:01:57.435072+08:00",
+  "release_status": "source_view_export_and_invited_preview_passed",
   "production_ready": false,
   "files": [
     {
@@ -18,8 +18,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 18133,
-      "sha256": "24a4ffc6d8e2295f158164bda39d053ab5ce5d87f6deeed60063b41a73485282"
+      "bytes": 18238,
+      "sha256": "ff1f4a8d5bed69c15d05632b613df76eb64142262cf098df8c6db01428694e7c"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -84,7 +84,7 @@
     {
       "path": "docs/api/openapi.json",
       "bytes": 85184,
-      "sha256": "d6ea870eca1496839314d6465fbb55ca1b54f2cb5ea7d99ccd5953b7666b2082"
+      "sha256": "cb85d585b7c25d1f758cea70fd8386b7d1b510a635100093bf62444beaecc904"
     },
     {
       "path": "docs/approved-execution.md",
@@ -127,9 +127,14 @@
       "sha256": "502a1714ccb2d5fa636e112f8ad798e4c9ec4d9ed88f87396be8870102265089"
     },
     {
+      "path": "docs/github-start.md",
+      "bytes": 2170,
+      "sha256": "95c5d3c22dbf5af0498afd335798ab40e43e49547e68d443453a6169afdc711e"
+    },
+    {
       "path": "docs/implementation-plan.md",
-      "bytes": 43074,
-      "sha256": "76305ef9680fb24cf974a3036317bcbdf8c299da5b320ee723ce9c157d267079"
+      "bytes": 43862,
+      "sha256": "cc66f415f7db6bafe8a5a0c8e60d6c7c3b4080d9a23a1d0c52cb093489931e4e"
     },
     {
       "path": "docs/local-auth.md",
@@ -158,8 +163,8 @@
     },
     {
       "path": "docs/nats-integration.md",
-      "bytes": 14799,
-      "sha256": "e6e6c8941288862aa4adc02fc3483f08a636f4c2e16c93da1294971f22a680d9"
+      "bytes": 14749,
+      "sha256": "a31c08f7575f2c10b5bd055f3c2a0e6c9c54dbd0163bdc6c0b7e76008d5fc4ad"
     },
     {
       "path": "docs/operator-controls.md",
@@ -173,8 +178,8 @@
     },
     {
       "path": "docs/progress-cycle.md",
-      "bytes": 20481,
-      "sha256": "7201024f33efbb8795fa56dba7076a4f83b9da91a9e632fcb66b71672054df06"
+      "bytes": 20873,
+      "sha256": "c73fd5a8a85cb974cfd390ede27adc90f524addef5d15e61a67d840b1b043010"
     },
     {
       "path": "docs/public-checks.md",
@@ -183,18 +188,23 @@
     },
     {
       "path": "docs/public-preview.md",
-      "bytes": 5595,
-      "sha256": "71188192b261d3e7941a0e35c54a1036e6bddf91e993cf6e8df3cddc5963f789"
+      "bytes": 5802,
+      "sha256": "65056856a5b641f710a4097e2e743a6e0a37663f235b732d262ecae8423b25b5"
     },
     {
       "path": "docs/release-roadmap.md",
-      "bytes": 4773,
-      "sha256": "f0a89a867900fb15975d97a388b6622c0ae30263abc69609ca335de9602c453f"
+      "bytes": 5022,
+      "sha256": "975ade3f76e1aed4db06ab5ee277ec9538d63b08664a03449c4416bc3fcc6c12"
     },
     {
       "path": "docs/review-0.17.3.md",
       "bytes": 5018,
       "sha256": "574364d40a19dccf842b871695c33f0bf3cf5792350a7ac1404b36fc3fc6198c"
+    },
+    {
+      "path": "docs/review-0.17.4.md",
+      "bytes": 3751,
+      "sha256": "12b064d8574c2e02f20e4c7a9977836e6ee66749562895b26f5b76ecbc37d1ed"
     },
     {
       "path": "docs/review-decisions.md",
@@ -220,6 +230,11 @@
       "path": "docs/reviewer-input.md",
       "bytes": 3609,
       "sha256": "08ce69b549d7436b394474e2ee61b5d28e5cea3e444b3dc3f28354df9eecdece"
+    },
+    {
+      "path": "docs/source-exports.md",
+      "bytes": 2418,
+      "sha256": "e313a18d0a2c3cb9ad714fd8dc36813917cf738413e7f2304912c87f209bcafe"
     },
     {
       "path": "docs/third-party-notices.md",
@@ -277,6 +292,11 @@
       "sha256": "ab029307f17f48715588fa3ed6442a4efe3b5be82a0303833c600a56f82f37f4"
     },
     {
+      "path": "docs/validation-0.17.3.md",
+      "bytes": 3935,
+      "sha256": "63bdd835a250bed541567b9fe2b20bfa4886c11997f6e03537786881e2bca6a6"
+    },
+    {
       "path": "docs/validation-0.17.md",
       "bytes": 3576,
       "sha256": "23184628ad5779fce0f68305a43f0e4019e413149b81e20cf2bf784690ed3b70"
@@ -318,8 +338,8 @@
     },
     {
       "path": "docs/validation.md",
-      "bytes": 3935,
-      "sha256": "63bdd835a250bed541567b9fe2b20bfa4886c11997f6e03537786881e2bca6a6"
+      "bytes": 3121,
+      "sha256": "b3b176e286c4948d200e61e9b05c54b113f91c01544cf2be2d3f6f0f38ef96da"
     },
     {
       "path": "docs/workflow.md",
@@ -344,7 +364,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 771,
-      "sha256": "6178dee185a83ce351f4005eab951d6cde663aed1822cac2bfac2301b143ad09"
+      "sha256": "70cf1d6a73d0bcfe29f8ab9510a155514019279f60b0ae70993d55db40ebd1b9"
     },
     {
       "path": "requirements.lock",
@@ -420,6 +440,11 @@
       "path": "scripts/check_sandbox.py",
       "bytes": 2340,
       "sha256": "39b505b5d14642128dbce161c1f3864ec3c19837294659de3ef753e97e963e26"
+    },
+    {
+      "path": "scripts/check_source_panel.js",
+      "bytes": 8589,
+      "sha256": "e16c55596b77c666d56d0f8340f6c58edd23059969156e6d1aa4dfea2d606c4a"
     },
     {
       "path": "scripts/check_spec.py",
@@ -512,6 +537,11 @@
       "sha256": "f64adc9ed0b3fcf9653e9037fa9484a577204c6e2d58ce143cb9992fb092f6d7"
     },
     {
+      "path": "scripts/serve_source_fixture.py",
+      "bytes": 2066,
+      "sha256": "d41719a38ea191b547e7d8434e26d49bfd9d036d9d407ea5b6eba1114fd4c797"
+    },
+    {
       "path": "scripts/start_local_dev.ps1",
       "bytes": 3041,
       "sha256": "60b5db46f9ed5832ae1c690c665b0efa0ed5dce524401e3c46f4dec27c6602d6"
@@ -539,7 +569,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "b8792a6235e025d85d94cb5939c2d1c6549f9687b281e997279a24f3ef029c42"
+      "sha256": "8444755845e36c23c0cd54cd56484cb7a81a4d2357cd356431c76f7499e16c3f"
     },
     {
       "path": "src/loom/__main__.py",
@@ -722,6 +752,11 @@
       "sha256": "bb3918e123a0c51a8dc4408cfe5dd011d7d754ff76a4075615aacb36664ef0b4"
     },
     {
+      "path": "src/loom/web/console-source.js",
+      "bytes": 8794,
+      "sha256": "64e2cd3adbeb914f0e9f2daf01d3428892309be65cc80bc5da207585aaf1e953"
+    },
+    {
       "path": "src/loom/web/console-suites.js",
       "bytes": 18525,
       "sha256": "7c15e3b654beb3cdc9ace3d24a95fde4871568b2042169ee458b405aa5b8e884"
@@ -733,18 +768,18 @@
     },
     {
       "path": "src/loom/web/console.css",
-      "bytes": 14172,
-      "sha256": "8585ddffe024aeb860fc180553ccf0142cb45230f3a9fbe38dbfefb5ac59e5e4"
+      "bytes": 14468,
+      "sha256": "fde302121f901fb6a0ce24a7d2b48cd34c4ad24efda8879c6a6efcc30998aead"
     },
     {
       "path": "src/loom/web/console.js",
-      "bytes": 62551,
-      "sha256": "a8a3cb2aa163f3b30818e410f4e07126d5cddd27916c8eab74bc69120bd39753"
+      "bytes": 63310,
+      "sha256": "dd2ff8ba7588b06a29f3474e24155dda9a975c918a43089c6429abb69c8189e4"
     },
     {
       "path": "src/loom/web/index.html",
-      "bytes": 18589,
-      "sha256": "fe101d033f1ba20d78847ed4a5a1e4f1b086f3ad7a4f03bed47c49d3ecbfbbdb"
+      "bytes": 18754,
+      "sha256": "208f3b560155e1a2451d864ce37bd4b7c2c4a3bdb2694bbc46217dd138885395"
     },
     {
       "path": "src/loom/workflow.py",
@@ -1297,7 +1332,7 @@
       "sha256": "efe1acf3e62fb99c288b0ec73e5a773b7268ef4320fe757ea994214e4b63c371"
     }
   ],
-  "source_file_count_excluding_manifest": 258,
+  "source_file_count_excluding_manifest": 265,
   "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
   "raw_crlf_exception_paths": [
     "DELIVERY_MANIFEST.json",
@@ -1308,18 +1343,25 @@
     "third_party/licenses/pydantic-core-2.50.1/LICENSE"
   ],
   "validation": {
-    "main_tests_passed": 1029,
-    "subtests_passed": 396,
-    "real_infrastructure_main_tests_included": 62,
+    "fresh_main_tests_passed": 967,
+    "fresh_subtests_passed": 382,
+    "reused_real_infrastructure_tests": 62,
+    "reused_infrastructure_subtests": 14,
+    "combined_coverage_main_tests": 1029,
+    "combined_coverage_subtests": 396,
+    "real_infrastructure_suite_rerun": false,
     "failures": 0,
     "skipped": 0,
-    "fresh_browser_assertions": 45,
-    "main_http_checks": 61,
-    "public_https_checks": 21,
-    "real_ledger_checks": 18,
-    "new_live_model_requests": 2,
-    "real_host_cases": 6,
-    "initial_source_is_live_model": true,
+    "fresh_browser_assertions": 63,
+    "main_http_resource_database_checks": 64,
+    "public_http_file_source_database_checks": 27,
+    "fresh_runtime_preflight": [
+      "Docker immutable image and capability",
+      "NATS health",
+      "PostgreSQL read-only SELECT"
+    ],
+    "new_live_model_requests": 0,
+    "source_exports_checked": 3,
     "main_database_counts": {
       "runs": 40,
       "events": 621,
@@ -1329,6 +1371,7 @@
     "all_original_rows_unchanged": true
   },
   "real_execution": {
+    "source": "reused audited 0.17.3 run",
     "run_id": "ffa5d81e-c087-4b25-bb08-05579cb10905",
     "provider": "deepseek",
     "model": "deepseek-flash",
@@ -1336,6 +1379,7 @@
     "tokens": 2124,
     "cost_upper_microusd": 1245,
     "reserved": 0,
+    "host_cases_from_0173": 6,
     "provider_invoice_verified": false,
     "full_workflow_completed": false,
     "independent_second_model": "pending_configuration"
@@ -1350,6 +1394,7 @@
     "per_goal_cost_limit_microusd": 1000000,
     "per_goal_token_limit": 3200000,
     "temporary_tunnel": true,
+    "previous_tunnel_expired_and_replaced": true,
     "host_must_remain_online": true,
     "independent_mobile_network_tested": false,
     "normal_default_docker_shortcut_verified": false
@@ -1359,15 +1404,18 @@
     "requirement": "public_online_experience",
     "hosting": "local_machine_temporary_https_tunnel",
     "public_preview_started": true,
-    "project_repository_pushed": false,
+    "github_publication_requested": true,
+    "publication_status": "recorded separately after upload",
     "production_release_gates_passed": false
   },
   "notes": [
     "Original 62 requirements retained; temporary invited preview is not production 1.0.",
-    "Real analyst and developer remain submitted; validator pending and independently done0/3.",
-    "All old main database rows are unchanged. New public run and failed draft are isolated and audited.",
-    "Final post-gate source change is Chinese event-name mapping only, covered by actual browser checks.",
-    "HTTPS/client/browser tests traverse actual public Cloudflare endpoint from the local host; external page tool and independent mobile network not verified.",
-    "Invite code, cookies, model secrets, internal identity tokens, databases and cloudflared binary are excluded."
+    "Source panel is read-only, checks exact version and digests, and never executes exported code.",
+    "Independent second model remains unconfigured; existing analyst and developer submitted, validator pending and independently done0/3.",
+    "Fresh 967/382 unit/local checks;62/14 infrastructure checks reused with unchanged backend proof, not rerun.",
+    "Old main and preview database rows are unchanged. No new paid provider request in this release cycle.",
+    "Expired temporary tunnel was replaced; current address and invite are recorded in the private local access file.",
+    "Public HTTPS/browser tests originate from this host; independent mobile network still requires validation.",
+    "Invite code, cookies, model secrets, internal identity tokens, databases, private work files and runtime binaries are excluded."
   ]
 }

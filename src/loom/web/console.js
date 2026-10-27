@@ -156,11 +156,13 @@
     $("reconcile-button").disabled = state.busy || unchecked || !has("control") || effects.length === 0;
     $("refresh-button").disabled = state.busy;
     document.querySelectorAll(".goal-button, .intervention-item button").forEach((button) => { button.disabled = state.busy; });
+    document.querySelectorAll(".source-open").forEach((button) => { button.disabled = state.busy || !runChecked(); });
     refreshArtifactControls();
     suites.sync();
     reviewDecisions.sync();
     progression.sync();
     localExecution.sync();
+    sourcePanel.sync();
     return effects;
   }
 
@@ -248,6 +250,11 @@
           const recorded = artifact.model_source_recorded === true && artifact.model_source_status === "recorded"
             && validRoleSource(source) && source.source_epoch === task.epoch && source.plan_digest === state.plan?.digest;
           content.append(roleSourceDisplay(recorded ? source : null, recorded ? "recorded" : artifact.model_source_status, true));
+        }
+        if (artifact.kind === "python-json-program" && artifact.trusted_evaluation === true && ["submitted", "done"].includes(task.status)) {
+          const button = node("button", "source-open", "查看源码与导出"); button.type = "button"; button.dataset.sourceTask = task.id;
+          button.disabled = state.busy || !runChecked(); button.addEventListener("click", () => { if (!button.disabled) sourcePanel.open(task); });
+          content.append(button);
         }
       }
       row.append(node("span", "task-number", String(index + 1).padStart(2, "0")), content, badge(task.status));
@@ -427,6 +434,7 @@
     exactBodyText, sameArtifact, runChecked, label});
   const reviewDecisions = window.LoomReviewDecisions({state, $, node, has, request, publicError, sameArtifact, runChecked});
   const localExecution = window.LoomExecutionPanel({state,node,has,request,publicError,runChecked,refresh:()=>refreshAll()});
+  const sourcePanel = window.LoomSourcePanel({state,node,request,publicError,runChecked});
   const progression = window.LoomProgression({state, $, node, request, publicError, runChecked, label, navigate: navigateProgression, executionPanel:localExecution});
 
   async function navigateProgression(item) {
@@ -439,6 +447,7 @@
   }
 
   function resetArtifacts() {
+    sourcePanel.reset();
     suites.reset();
     reviewDecisions.reset();
     state.artifactVersion += 1; state.detailVersion += 1; state.contextVersion += 1;
@@ -668,6 +677,7 @@
       else button.removeAttribute("aria-current");
     }
     for (const panel of document.querySelectorAll(".tab-panel")) panel.hidden = panel.id !== `tab-${name}`;
+    sourcePanel.sync();
     if (name === "events") loadEvents();
     if (name === "artifacts" && state.artifactStatus === "idle") loadArtifacts();
     progression.sync();

@@ -27,7 +27,7 @@ LICENSE SHA-256: c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab
 本轮运行时目录：
 
 ```text
-C:/Users/14764/Documents/Codex/2026-10-22/zhi/work/loom-infra/nats/
+<工作区>/work/loom-infra/nats/
   prepare_nats.py
   runtime-manifest.json
   SHA256SUMS
@@ -45,7 +45,7 @@ C:/Users/14764/Documents/Codex/2026-10-22/zhi/work/loom-infra/nats/
 - 主执行者通过前台受控会话启动真实 broker，测试客户端使用 `nats://127.0.0.1:4223`。
 
 ```powershell
-$natsRoot = 'C:/Users/14764/Documents/Codex/2026-10-22/zhi/work/loom-infra/nats'
+$natsRoot = [IO.Path]::GetFullPath('../../work/loom-infra/nats')
 & "$natsRoot/nats-server-v2.15.1-windows-amd64/nats-server.exe" -c "$natsRoot/loopback.conf"
 ```
 
