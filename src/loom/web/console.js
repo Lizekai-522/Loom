@@ -359,6 +359,18 @@
       return option;
     }));
     if (unknown.some((effect) => effect.call_id === prior)) $("effect-select").value = prior;
+    syncEffectEvidence();
+  }
+
+  function syncEffectEvidence() {
+    const effect = (state.review?.effects || []).find((item) => item.call_id === $("effect-select").value);
+    const option = $("effect-decision").querySelector('option[value="not_sent"]');
+    const allowed = effect?.not_sent_conflicts_with_evidence === false;
+    option.disabled = !allowed;
+    if (!allowed && $("effect-decision").value === "not_sent") $("effect-decision").value = "completed";
+    $("effect-evidence-state").textContent = !effect ? "" : effect.not_sent_conflicts_with_evidence === true
+      ? "已有部分调用证据，不能登记为确定未发送；请核对真实用量。"
+      : allowed ? "仅在确有可靠依据时才能登记为确定未发送。" : "调用证据状态未能核对，请刷新后再处理。";
   }
 
   function renderRun() {
@@ -944,6 +956,7 @@
   $("effect-decision").addEventListener("change", () => {
     if ($("effect-decision").value === "not_sent") { $("effect-cost").value = "0"; $("effect-tokens").value = "0"; }
   });
+  $("effect-select").addEventListener("change", syncEffectEvidence);
   $("reconcile-form").addEventListener("submit", (event) => {
     event.preventDefault();
     if (!has("control") || !state.runId) return;
