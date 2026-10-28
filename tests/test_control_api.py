@@ -181,6 +181,25 @@ def test_cross_tenant_resources_and_controls_are_not_found(api):
     assert api.request("GET", "/v1/interventions", role="other").json() == {"items": []}
 
 
+def test_resume_preview_is_tenant_scoped_read_only_and_does_not_authorize_execution(api):
+    run_id = api.managed_goal()
+    unknown_model_fixture(api, run_id)
+    path = f"/v1/runs/{run_id}/resume-preview"
+    before = api.store.snapshot("a", run_id)
+    events = api.store.events("a", run_id)
+    assert api.client.get(path).status_code == 401
+    assert api.request("GET", path, role="other").status_code == 404
+    result = api.request("GET", path, role="viewer")
+    assert result.status_code == 200
+    assert result.json()["reason"] == "UNKNOWN_EFFECTS"
+    assert result.json()["ready"] is False
+    assert result.json()["counts_as_success"] is False
+    assert result.json()["model_dispatched"] is False
+    assert api.store.snapshot("a", run_id) == before
+    assert api.store.events("a", run_id) == events
+    assert api.request("POST", f"/v1/runs/{run_id}/control/resume", {"reason": "viewer"}, role="viewer", key="viewer").status_code == 403
+
+
 def test_named_goal_plan_actors_and_idempotency_are_bound_to_subject(api):
     goal_body = {"title": "Actor test", "description": "No live execution", "acceptance": ["tests.pass"]}
     created = api.request("POST", "/v1/goals", goal_body, key="actor-create")
