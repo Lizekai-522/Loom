@@ -97,6 +97,35 @@ class OperatorTests(unittest.TestCase):
         self.assertIsNotNone(self.store.claim_next("tenant", run_id, "fresh-worker"))
         self.assertFalse(result["counts_as_success"])
 
+    def test_resume_preview_is_read_only_and_matches_recovery_gates(self):
+        claim, call_id, _ = self.attempt()
+        before = self.store.snapshot("tenant", claim.run_id)
+        event_count = len(self.events(claim.run_id))
+        blocked = self.ops.resume_preview("tenant", claim.run_id)
+        self.assertFalse(blocked["ready"])
+        self.assertEqual(blocked["reason"], "UNKNOWN_EFFECTS")
+        self.assertEqual(self.store.snapshot("tenant", claim.run_id), before)
+        self.assertEqual(len(self.events(claim.run_id)), event_count)
+        self.reconcile(claim, call_id, decision="not_sent", cost=0, tokens=0)
+        preview = self.ops.resume_preview("tenant", claim.run_id)
+        self.assertTrue(preview["ready"])
+        self.assertEqual(preview["retry_task_count"], 1)
+        self.assertFalse(preview["counts_as_success"])
+        self.assertEqual(self.ops.resume("tenant", claim.run_id, "resume", ACTOR, "Resume after accounting.")["status"], "open")
+        with self.assertRaises(NotFound):
+            self.ops.resume_preview("other", claim.run_id)
+
+    def test_resume_rejects_changed_approved_projection_without_partial_updates(self):
+        run_id, ids = self.managed(child=True)
+        self.ops.pause("tenant", run_id, "pause", ACTOR, "Inspect.")
+        with self.store.transaction() as db:
+            db.execute("UPDATE tasks SET priority=priority+1 WHERE tenant=? AND id=?", ("tenant", ids["review"]))
+        before = self.store.snapshot("tenant", run_id)
+        self.assertEqual(self.ops.resume_preview("tenant", run_id)["reason"], "PLAN_BINDING_INVALID")
+        with self.assertRaises(Conflict):
+            self.ops.resume("tenant", run_id, "resume", ACTOR, "Do not resume modified plan.")
+        self.assertEqual(self.store.snapshot("tenant", run_id), before)
+
     def test_resume_refuses_unknown_effects_and_preserves_receipt_atomicity(self):
         claim, _, _ = self.attempt()
         count = len(self.events(claim.run_id))

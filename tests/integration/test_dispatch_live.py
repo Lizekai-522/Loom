@@ -11,6 +11,7 @@ import pytest
 from loom.dispatch import DispatchService
 from loom.executor_config import LocalExecutorConfig
 from loom.jetstream import JetStreamBridge
+from loom.operator import OperatorService
 from loom.sandbox import DockerSandbox,SandboxConfig
 from loom.review_decisions import ReviewDecisionService
 from tests.test_dispatch import dispatch_case,enqueue,drain
@@ -69,3 +70,33 @@ def test_request_audit_survives_real_confirmation_loss_and_redelivery(dispatch_c
             assert seen.count('execution.requested')==1
         finally:await js.delete_stream(stream);await nc.close()
     asyncio.run(relay());assert b['dispatch'].history(*b['params'])['items'][0]['request_id']==request['request_id']
+
+
+@pytest.mark.skipif(not os.environ.get('LOOM_NATS_TEST_URL'),reason='real JetStream required')
+def test_resume_preview_and_recovery_event_reach_real_jetstream(dispatch_case):
+    b=dispatch_case();ops=OperatorService(b['store'])
+    ops.pause('a',b['run'],'preview-pause','subject:operator','暂停后核对恢复条件')
+    before=b['store'].events('a',b['run'])
+    preview=ops.resume_preview('a',b['run'])
+    assert preview['ready'] and preview['counts_as_success'] is False
+    assert b['store'].events('a',b['run'])==before
+    ops.resume('a',b['run'],'preview-resume','subject:operator','显式恢复')
+    events=b['store'].events('a',b['run'])
+    async def relay():
+        stream='LOOM_RESUME_'+uuid4().hex[:16];prefix='resumetest.'+uuid4().hex[:16]
+        bridge=JetStreamBridge(b['store'],stream=stream,prefix=prefix)
+        nc=await nats.connect(os.environ['LOOM_NATS_TEST_URL'],allow_reconnect=False,connect_timeout=3)
+        js=nc.jetstream();seen=[]
+        try:
+            await bridge.provision(js)
+            sub=await bridge.subscribe(js,tenant='a',run_id=b['run'],durable='resume-worker',ack_wait=1)
+            await bridge.publish_pending(js,limit=1000)
+            for _ in events:
+                msg=(await sub.fetch(1,timeout=3))[0]
+                await bridge.consume_message(msg,tenant='a',run_id=b['run'],durable='resume-worker',apply=lambda db,event:seen.append(event['type']))
+            assert seen.count('run.resumed')==1
+            assert seen.count('run.paused')==1
+        finally:
+            await js.delete_stream(stream)
+            await nc.close()
+    asyncio.run(relay())

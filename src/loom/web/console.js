@@ -144,6 +144,7 @@
       : "所有控制操作都会写入台账，并保留操作理由。";
     $("pause-button").disabled = state.busy || unchecked || !has("control") || status !== "open";
     $("resume-button").disabled = state.busy || unchecked || !has("control") || !["paused", "awaiting_human"].includes(status);
+    $("resume-preview-button").disabled = state.busy || unchecked || !has("control") || !selected;
     $("terminate-button").disabled = state.busy || unchecked || !has("control") || !selected || terminalStates.has(status);
     $("save-plan-button").disabled = state.busy || unchecked || !has("goal.write") || !state.plan || approved || status !== "draft";
     $("plan-file").disabled = $("save-plan-button").disabled;
@@ -195,6 +196,7 @@
     for (const id of ["run-title", "run-id", "run-description", "plan-digest", "plan-revision", "cost-spent", "cost-reserved", "tokens-spent", "task-count"]) $(id).textContent = "";
     $("plan-definition").value = "";
     $("control-reason").value = "";
+    $("resume-preview-state").textContent = "检查不会恢复运行或发起模型调用。";
     $("effect-evidence").value = "";
     $("effect-reference").value = "";
     $("goal-form").reset();
@@ -693,6 +695,7 @@
     refreshControls();
     $("run-content").classList.add("loading");
     $("control-reason").value = "";
+    $("resume-preview-state").textContent = "检查不会恢复运行或发起模型调用。";
     $("terminate-confirm").value = "";
     renderGoals();
     const runPath = `/v1/runs/${encodeURIComponent(runId)}`;
@@ -911,6 +914,32 @@
   }
   $("pause-button").addEventListener("click", () => control("pause"));
   $("resume-button").addEventListener("click", () => control("resume"));
+  $("resume-preview-button").addEventListener("click", async () => {
+    if (!state.runId || !runChecked()) return;
+    const runId = state.runId, selection = state.selection;
+    $("resume-preview-state").textContent = "正在检查恢复条件…";
+    try {
+      const result = await request("GET", `/v1/runs/${encodeURIComponent(runId)}/resume-preview`);
+      if (selection !== state.selection || runId !== state.runId) return;
+      const reasons = {
+        RUN_NOT_PAUSED: "当前运行不处于暂停或待人工处理状态。",
+        PLAN_NOT_APPROVED: "工作流计划尚未批准。",
+        UNKNOWN_EFFECTS: "存在结果未知的调用，请先核对。",
+        UNSETTLED_RESERVATIONS: "存在未结算的预算预留，请先核对。",
+        RUN_BUDGET_EXCEEDED: "运行实际用量超过已批准预算。",
+        TASK_BUDGET_EXCEEDED: "任务实际用量超过已批准预算。",
+        ACTIVE_OWNER: "任务执行者仍持有有效租约，请等待其停止。",
+        RETRY_CONTRACT_MISSING: "缺少已批准的任务重试合同。",
+        ATTEMPTS_EXHAUSTED: "任务已用尽批准的尝试次数。",
+        PLAN_BINDING_INVALID: "计划或任务记录不一致，请检查审计记录。",
+      };
+      $("resume-preview-state").textContent = result.ready === true && Number.isInteger(result.retry_task_count)
+        ? `目前满足恢复条件，恢复后 ${result.retry_task_count} 个任务可重新排队。实际操作时会再次检查；此检查不代表验收通过。`
+        : `${reasons[result.reason] || "无法确认恢复条件，请刷新后重试。"} 此检查不会修改运行。`;
+    } catch {
+      if (selection === state.selection && runId === state.runId) $("resume-preview-state").textContent = "恢复条件读取失败，请刷新后重试。";
+    }
+  });
   $("terminate-button").addEventListener("click", () => control("terminate"));
   $("effect-decision").addEventListener("change", () => {
     if ($("effect-decision").value === "not_sent") { $("effect-cost").value = "0"; $("effect-tokens").value = "0"; }

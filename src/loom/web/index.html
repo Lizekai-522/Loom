@@ -136,6 +136,7 @@
       <div id="control-fields" hidden>
         <label for="control-reason">操作理由</label><textarea id="control-reason" rows="4" maxlength="2000" placeholder="记录暂停、恢复或终止的原因"></textarea>
         <div class="action-buttons"><button id="pause-button" data-cap="control">暂停运行</button><button id="resume-button" data-cap="control">恢复运行</button></div>
+        <button id="resume-preview-button" type="button">检查恢复条件</button><p id="resume-preview-state" class="field-help" aria-live="polite">检查不会恢复运行或发起模型调用。</p>
         <details class="terminate-section"><summary>终止此运行</summary><p class="field-help">终止会撤销后续执行权。未知调用和未核对预留继续保留，不能视为已退款。</p><label for="terminate-confirm">输入“终止”确认</label><input id="terminate-confirm" type="text" autocomplete="off" maxlength="2"><button id="terminate-button" class="danger" data-cap="control">确认终止</button></details>
       </div>
       <section id="reconcile-section" class="reconcile-section" hidden aria-labelledby="reconcile-title">

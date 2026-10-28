@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-from .store import Conflict, InvalidInput, NotFound, Store, digest
+from .store import Conflict, InvalidInput, NotFound, PlanBindingConflict, Store, digest
 from .workflow import WorkflowService
 
 
@@ -100,7 +100,7 @@ class OperatorService:
             # The old fixture contract has no reviewed retry limit. A new Goal
             # is required rather than silently granting unlimited new attempts.
             return None
-        spec = self.workflows.get_task_spec(tenant, run_id, task["id"])
+        spec = self.workflows._task_spec_in(db, self.store, tenant, run_id, task["id"])
         usage = db.execute("""SELECT coalesce(sum(actual_cost),0),coalesce(sum(actual_tokens),0)
                               FROM reservations WHERE tenant=? AND run_id=? AND task_id=?""",
                            (tenant, run_id, task["id"])).fetchone()
@@ -108,40 +108,71 @@ class OperatorService:
             raise Conflict("task usage exceeds its approved budget")
         return spec["limits"]
 
+    def _resume_plan_in(self, db, tenant, run_id):
+        run = self.store._run(db, tenant, run_id)
+        if run["status"] not in {"paused", "awaiting_human"}:
+            raise Conflict("only paused or awaiting-human runs can resume")
+        plan = self.store._workflow_plan(db, tenant, run_id)
+        if plan is not None and plan["plan_status"] != "approved":
+            raise Conflict("workflow plan has not been approved")
+        if db.execute("SELECT 1 FROM effects WHERE tenant=? AND run_id=? AND state IN ('intent','indeterminate','partial')",
+                      (tenant, run_id)).fetchone():
+            raise Conflict("unknown effects require reconciliation before resume")
+        if db.execute("SELECT 1 FROM reservations WHERE tenant=? AND run_id=? AND state='reserved'", (tenant, run_id)).fetchone():
+            raise Conflict("outstanding reservations require reconciliation before resume")
+        if run["spent"] > run["cost_limit"] or run["tokens_spent"] > run["token_limit"]:
+            raise Conflict("run usage exceeds its approved budget")
+        now = self.store.now(db)
+        tasks = db.execute("SELECT * FROM tasks WHERE tenant=? AND run_id=? ORDER BY rowid", (tenant, run_id)).fetchall()
+        updates = []
+        for task in tasks:
+            limits = self._task_limits(db, tenant, run_id, task)
+            retry = task["status"] in {"awaiting_human", "indeterminate"} or (
+                task["status"] == "running" and task["lease_until"] is not None and task["lease_until"] <= now)
+            if not retry:
+                continue
+            if task["lease_until"] is not None and task["lease_until"] > now:
+                raise Conflict("active task owner must stop before retry authorization")
+            if limits is None:
+                raise Conflict("retry requires an approved task attempt contract")
+            if task["epoch"] + 1 > limits["max_attempts"]:
+                raise Conflict("approved task attempts are exhausted")
+            updates.append({"task_id": task["id"], "status": "pending", "epoch": task["epoch"]})
+        return updates
+
+    def resume_preview(self, tenant: str, run_id: str) -> dict:
+        """Inspect the same recovery gates without changing state or granting execution."""
+        _text(tenant, 200, "tenant")
+        _text(run_id, 200, "run identifier")
+        reasons = {
+            "only paused or awaiting-human runs can resume": "RUN_NOT_PAUSED",
+            "workflow plan has not been approved": "PLAN_NOT_APPROVED",
+            "unknown effects require reconciliation before resume": "UNKNOWN_EFFECTS",
+            "outstanding reservations require reconciliation before resume": "UNSETTLED_RESERVATIONS",
+            "run usage exceeds its approved budget": "RUN_BUDGET_EXCEEDED",
+            "task usage exceeds its approved budget": "TASK_BUDGET_EXCEEDED",
+            "active task owner must stop before retry authorization": "ACTIVE_OWNER",
+            "retry requires an approved task attempt contract": "RETRY_CONTRACT_MISSING",
+            "approved task attempts are exhausted": "ATTEMPTS_EXHAUSTED",
+        }
+        with self.store.connect() as db:
+            db.execute("BEGIN")
+            self.store._run(db, tenant, run_id)
+            try:
+                updates = self._resume_plan_in(db, tenant, run_id)
+            except (Conflict, NotFound) as exc:
+                reason = "PLAN_BINDING_INVALID" if isinstance(exc, (PlanBindingConflict, NotFound)) else reasons.get(str(exc), "PLAN_BINDING_INVALID")
+                return {"run_id": run_id, "ready": False, "reason": reason, "retry_task_count": None,
+                        "counts_as_success": False, "model_dispatched": False}
+            return {"run_id": run_id, "ready": True, "reason": None, "retry_task_count": len(updates),
+                    "counts_as_success": False, "model_dispatched": False}
+
     def resume(self, tenant: str, run_id: str, key: str, actor: str, reason: str) -> dict:
         self._identity(tenant, key)
         args = self._command_args(run_id, actor, reason)
 
         def apply(db):
-            run = self.store._run(db, tenant, run_id)
-            if run["status"] not in {"paused", "awaiting_human"}:
-                raise Conflict("only paused or awaiting-human runs can resume")
-            plan = self.store._workflow_plan(db, tenant, run_id)
-            if plan is not None and plan["plan_status"] != "approved":
-                raise Conflict("workflow plan has not been approved")
-            if db.execute("SELECT 1 FROM effects WHERE tenant=? AND run_id=? AND state IN ('intent','indeterminate','partial')",
-                          (tenant, run_id)).fetchone():
-                raise Conflict("unknown effects require reconciliation before resume")
-            if db.execute("SELECT 1 FROM reservations WHERE tenant=? AND run_id=? AND state='reserved'", (tenant, run_id)).fetchone():
-                raise Conflict("outstanding reservations require reconciliation before resume")
-            if run["spent"] > run["cost_limit"] or run["tokens_spent"] > run["token_limit"]:
-                raise Conflict("run usage exceeds its approved budget")
-            now = self.store.now(db)
-            tasks = db.execute("SELECT * FROM tasks WHERE tenant=? AND run_id=? ORDER BY rowid", (tenant, run_id)).fetchall()
-            updates = []
-            for task in tasks:
-                limits = self._task_limits(db, tenant, run_id, task)
-                retry = task["status"] in {"awaiting_human", "indeterminate"} or (
-                    task["status"] == "running" and task["lease_until"] is not None and task["lease_until"] <= now)
-                if not retry:
-                    continue
-                if task["lease_until"] is not None and task["lease_until"] > now:
-                    raise Conflict("active task owner must stop before retry authorization")
-                if limits is None:
-                    raise Conflict("retry requires an approved task attempt contract")
-                if task["epoch"] + 1 > limits["max_attempts"]:
-                    raise Conflict("approved task attempts are exhausted")
-                updates.append({"task_id": task["id"], "status": "pending", "epoch": task["epoch"]})
+            updates = self._resume_plan_in(db, tenant, run_id)
             # Validate all candidate retries first, then change every projection.
             for update in updates:
                 db.execute("UPDATE tasks SET status='pending',worker=NULL,lease_until=NULL WHERE tenant=? AND id=?",

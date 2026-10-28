@@ -265,6 +265,10 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     def interventions(tenant: Tenant):
         return {"items": operators.list_interventions(tenant)}
 
+    @app.get("/v1/runs/{run_id}/resume-preview")
+    def resume_preview(run_id: str, tenant: Tenant):
+        return operators.resume_preview(tenant, run_id)
+
     @app.get("/v1/runs/{run_id}/progression")
     def read_progression(run_id: str, tenant: Tenant):
         return progression.read(tenant, run_id)

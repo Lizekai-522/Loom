@@ -1,10 +1,10 @@
 {
-  "version": "0.17.5",
-  "stage": "approved-plan-binding-alpha",
+  "version": "0.17.6",
+  "stage": "recovery-preview-alpha",
   "production_ready": false,
-  "generated_at": "2026-10-28T16:40:18.807905+08:00",
+  "generated_at": "2026-10-28T17:30:51.357818+08:00",
   "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
-  "source_file_count_excluding_manifest": 269,
+  "source_file_count_excluding_manifest": 271,
   "files": [
     {
       "path": ".gitignore",
@@ -18,8 +18,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 18226,
-      "sha256": "cf0c21d770302893af264a8d697e6e8a1abba03d2c92adbdb4e9aeb3dbf2a63b"
+      "bytes": 18223,
+      "sha256": "5cc046101d6d195b025818af801f07d4b42efe3eca07b4ef18c669c1e0d8b72a"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -83,8 +83,8 @@
     },
     {
       "path": "docs/api/openapi.json",
-      "bytes": 85184,
-      "sha256": "c34162d72b0502552528315d6dcd9189f460a4f529071b9ec4e4986720553a3c"
+      "bytes": 86264,
+      "sha256": "83e3d019e7ec011b3e19939fd4fa280db81a2a1213eff18fd31b3931b20bbc7a"
     },
     {
       "path": "docs/approved-execution.md",
@@ -133,8 +133,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 44019,
-      "sha256": "83a95eee3dbefc70e371b61cece7b4f197579f139ef44f99098c92b635d16fb4"
+      "bytes": 44516,
+      "sha256": "d2ceb790a602680d931a0113013fe578a9177bbe6206e8159fcacd03f212f486"
     },
     {
       "path": "docs/local-auth.md",
@@ -183,8 +183,8 @@
     },
     {
       "path": "docs/project-plan-2026-10-28.md",
-      "bytes": 12133,
-      "sha256": "72f91b9f7a7390b6cfd394341dab35a1ac3b4a5fd29cd9d6fda38d37bd84e5ea"
+      "bytes": 12499,
+      "sha256": "0f32aa2474ad42c7d384d261db9303fcd9563d60d724feda3f92157b5cfa2b74"
     },
     {
       "path": "docs/public-checks.md",
@@ -215,6 +215,11 @@
       "path": "docs/review-0.17.5.md",
       "bytes": 2863,
       "sha256": "e76ef962991ddd07abdb160c87a6137e25ea70b85ea02564288d643333ea3523"
+    },
+    {
+      "path": "docs/review-0.17.6.md",
+      "bytes": 949,
+      "sha256": "19b4b63f8e3c77f07196d5dcdb370b02a01e12719e263cba3aae65701ed1b42f"
     },
     {
       "path": "docs/review-decisions.md",
@@ -312,6 +317,11 @@
       "sha256": "fc61a15d71fe325c27f071dbc96bdb502f8a3c3c079846e6215fe301fb7d340f"
     },
     {
+      "path": "docs/validation-0.17.6.md",
+      "bytes": 1791,
+      "sha256": "9bccfc8148f70ced70735766dad0e5f1fa2625bca16fc0651fc1e38959984c91"
+    },
+    {
       "path": "docs/validation-0.17.md",
       "bytes": 3576,
       "sha256": "23184628ad5779fce0f68305a43f0e4019e413149b81e20cf2bf784690ed3b70"
@@ -379,7 +389,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 771,
-      "sha256": "74f360c532d8962a10e77145926224926c1a657d9e853ff4eb0c28c94ad9d149"
+      "sha256": "ca501dd358d7243ed5083a92ed3d53ad7cd82ac961d802f577ed9d17dff54ccb"
     },
     {
       "path": "requirements.lock",
@@ -584,7 +594,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "557dc4fcdb257844ca824b18822c8785bd2cdd6b025b9c15ff535d532beeacb8"
+      "sha256": "26fdf5f7665fda5be92676bb8c26d8b3ecb38a3909299b80ec75cf95926ec445"
     },
     {
       "path": "src/loom/__main__.py",
@@ -593,8 +603,8 @@
     },
     {
       "path": "src/loom/api.py",
-      "bytes": 25151,
-      "sha256": "745f715c1784bb1706b2a29cf63b6d94f9cbfae0d20f94c050ecc0a4c3818b3a"
+      "bytes": 25310,
+      "sha256": "fc413dbe79c8522faa201d37190fac35e3d53fbf24d6fa21085e113153fec1de"
     },
     {
       "path": "src/loom/approved_execution.py",
@@ -688,8 +698,8 @@
     },
     {
       "path": "src/loom/operator.py",
-      "bytes": 16085,
-      "sha256": "cbf3e26c8badd1e102c941c59089abe36e2d5531121be7433f4276f082133ef2"
+      "bytes": 17921,
+      "sha256": "e5bf739aa56f47f1c041a0be9b62635a5643e992aa7e02996f4ef9414bd8d9ca"
     },
     {
       "path": "src/loom/policy.py",
@@ -788,13 +798,13 @@
     },
     {
       "path": "src/loom/web/console.js",
-      "bytes": 63310,
-      "sha256": "dd2ff8ba7588b06a29f3474e24155dda9a975c918a43089c6429abb69c8189e4"
+      "bytes": 65434,
+      "sha256": "f94c5156345e8d970647fce0c1ab5f59208687471cbd37f1212cbfdee0410d7d"
     },
     {
       "path": "src/loom/web/index.html",
-      "bytes": 18754,
-      "sha256": "208f3b560155e1a2451d864ce37bd4b7c2c4a3bdb2694bbc46217dd138885395"
+      "bytes": 18958,
+      "sha256": "11604f179ad3d9bf281ca34198b06add59ece080e855b6f781d02401bb0a394a"
     },
     {
       "path": "src/loom/workflow.py",
@@ -833,8 +843,8 @@
     },
     {
       "path": "tests/integration/test_dispatch_live.py",
-      "bytes": 5051,
-      "sha256": "71a8fa4503e08c09554de4f47e9c6f4854cd570ba6274260dce9443c6e8a18ba"
+      "bytes": 6721,
+      "sha256": "ec9b6123414470b5051a95f4fdb278dc34f5e158e6196d7600d0b42b2920e498"
     },
     {
       "path": "tests/integration/test_nats_live.py",
@@ -948,8 +958,8 @@
     },
     {
       "path": "tests/test_control_api.py",
-      "bytes": 20126,
-      "sha256": "914500a53175fcd5b05988dc2bc52fa52d135e7ef3c818e0f4fa42983f8605c6"
+      "bytes": 21084,
+      "sha256": "8392c70e2dcc69fd8fb84665adb9779681e3c57f8b4cb60e5c9f0b6ae83fa60c"
     },
     {
       "path": "tests/test_demo.py",
@@ -1023,8 +1033,8 @@
     },
     {
       "path": "tests/test_operator.py",
-      "bytes": 27459,
-      "sha256": "d68b8382986fb4c3c03a7d959fef0141bd2f7fd96202652d980aac1d698d43eb"
+      "bytes": 29269,
+      "sha256": "201c0512be0e53710b8cef938ff726c0009a437ddf90c26f2e453665dc0e56d4"
     },
     {
       "path": "tests/test_plan_integrity.py",
@@ -1353,17 +1363,20 @@
     }
   ],
   "validation": {
-    "full_local_main_tests": 974,
+    "full_local_main_tests": 978,
     "full_local_subtests": 382,
     "failures": 0,
     "skipped": 0,
-    "queued_projection_tampering_test_added_after_full_suite": 1,
-    "real_docker_jetstream_tests": 12,
+    "version_metadata_change_after_full_suite": true,
+    "final_targeted_main_tests": 120,
+    "final_targeted_subtests": 18,
+    "real_docker_jetstream_tests": 9,
+    "new_real_jetstream_recovery_test": 1,
     "model_transport": "mock in current infrastructure suite",
     "new_paid_model_requests": 0,
     "post_upgrade_main_http_and_data_checks": 64,
     "post_upgrade_public_and_export_checks": 27,
-    "existing_managed_tasks_checked": 144
+    "post_upgrade_resume_preview_checks": 8
   },
   "notes": [
     "Original 62 requirements remain; version 3.1 full source remains unavailable.",
