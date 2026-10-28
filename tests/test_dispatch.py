@@ -139,6 +139,17 @@ def test_queued_model_policy_change_blocks_before_any_request(dispatch_case):
     assert b['store'].snapshot('a',b['run'])['tasks'][0]['epoch']==0
 
 
+def test_queued_task_projection_change_blocks_before_any_provider_call(dispatch_case):
+    b=dispatch_case();enqueue(b)
+    with b['store'].transaction() as db:
+        db.execute('UPDATE tasks SET priority=999 WHERE tenant=? AND id=?',('a',b['params'][2]))
+    result,requests=drain(b)
+    assert result['state']=='blocked' and requests==[]
+    with b['store'].connect() as db:
+        assert db.execute('SELECT count(*) FROM effects').fetchone()[0]==0
+        assert db.execute('SELECT count(*) FROM reservations').fetchone()[0]==0
+
+
 def test_known_submission_is_recovered_without_repeating_provider(dispatch_case):
     b=dispatch_case();enqueue(b);original=b['dispatch'].finish
     with patch.object(DispatchService,'finish',side_effect=RuntimeError('simulated process exit after output commit')):

@@ -16,8 +16,8 @@ from pydantic import ValidationError
 from .artifact_schemas import (ARTIFACT_ROLES, MAX_CONTEXT_BYTES, ModelProvenance,
                                RoleGenerationRequest, RoleModelResult, RoleOutputError,
                                decode_role_output, validate_body)
-from .store import Claim, Conflict, InvalidInput, NotFound, Store, canonical, digest
-from .workflow import WorkflowDefinition, WorkflowService
+from .store import Claim, Conflict, InvalidInput, NotFound, PlanBindingConflict, Store, canonical, digest
+from .workflow import WorkflowService
 
 
 SCHEMA = """
@@ -93,29 +93,7 @@ class ArtifactService:
 
     def _contract(self, db, tenant, run_id, task_id):
         """Rebuild from the frozen definition in the caller's same snapshot."""
-        run = self.store._run(db, tenant, run_id)
-        goal = WorkflowService._goal(db, tenant, run_id)
-        row = db.execute("SELECT * FROM workflow_tasks WHERE tenant=? AND run_id=? AND task_id=?",
-                         (tenant, run_id, task_id)).fetchone()
-        if row is None:
-            raise NotFound("workflow task not found in tenant/run")
-        if goal["plan_status"] != "approved" or row["plan_digest"] != goal["plan_digest"]:
-            raise Conflict("artifact operation requires the approved workflow plan")
-        try:
-            definition = WorkflowDefinition.model_validate(json.loads(goal["definition"]))
-            actual = json.loads(row["contract"])
-            node = next((node for node in definition.nodes if node.id == row["node_id"]), None)
-            if node is None or run_id + ":" + node.id != task_id:
-                raise ValueError
-            expected = WorkflowService._contract(definition, node, goal, run)
-            if (definition.execution_digest != goal["plan_digest"]
-                    or expected["evaluation_digest"] != row["evaluation_digest"]
-                    or canonical({k: v for k, v in actual.items() if k != "status"})
-                    != canonical({k: v for k, v in expected.items() if k != "status"})):
-                raise ValueError
-        except (ValidationError, TypeError, ValueError, AttributeError, RecursionError):
-            raise Conflict("approved artifact contract binding is inconsistent") from None
-        return expected
+        return WorkflowService._task_spec_in(db, self.store, tenant, run_id, task_id)
 
     @staticmethod
     def _candidate_binding(row):
@@ -469,7 +447,10 @@ class ArtifactService:
         return self._bounded_context(context, execution=execution)
 
     def _capture_execution_context_in(self, db, claim):
-        self.store._assert_claim(db, claim)
+        try:
+            self.store._assert_claim(db, claim)
+        except PlanBindingConflict:
+            raise ExecutionContextError("CONTEXT_BINDING_INVALID") from None
         try:
             target = self._contract(db, claim.tenant_id, claim.run_id, claim.task_id)
             if not target.get("input_artifacts") and not target.get("development_suite") and not target.get("review_subject"):
