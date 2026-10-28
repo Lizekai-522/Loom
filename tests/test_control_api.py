@@ -200,6 +200,27 @@ def test_resume_preview_is_tenant_scoped_read_only_and_does_not_authorize_execut
     assert api.request("POST", f"/v1/runs/{run_id}/control/resume", {"reason": "viewer"}, role="viewer", key="viewer").status_code == 403
 
 
+def test_reconcile_rejects_not_sent_when_partial_result_was_recorded(api):
+    run_id = api.managed_goal()
+    _, call_id, reservation_id = unknown_model_fixture(api, run_id)
+    with api.store.transaction() as db:
+        db.execute("UPDATE effects SET result=? WHERE tenant='a' AND id=?", ('{"fragment":"fixture"}', call_id))
+    review = api.request("GET", f"/v1/runs/{run_id}/review", role="viewer")
+    assert review.status_code == 200
+    assert review.json()["effects"][0]["not_sent_conflicts_with_evidence"] is True
+    assert 'fragment' not in review.text
+    before = api.store.snapshot("a", run_id)
+    events = api.store.events("a", run_id)
+    response = api.request("POST", f"/v1/runs/{run_id}/effects/{call_id}/reconcile", {
+        "decision": "not_sent", "evidence": {"reference": "fixture", "summary": "Conflicting claim"},
+        "actual_cost_microusd": 0, "actual_tokens": 0}, key="contradict-result")
+    assert response.status_code == 409
+    assert api.store.snapshot("a", run_id) == before
+    assert api.store.events("a", run_id) == events
+    with api.store.connect() as db:
+        assert db.execute("SELECT state FROM reservations WHERE tenant='a' AND id=?", (reservation_id,)).fetchone()[0] == "reserved"
+
+
 def test_named_goal_plan_actors_and_idempotency_are_bound_to_subject(api):
     goal_body = {"title": "Actor test", "description": "No live execution", "acceptance": ["tests.pass"]}
     created = api.request("POST", "/v1/goals", goal_body, key="actor-create")

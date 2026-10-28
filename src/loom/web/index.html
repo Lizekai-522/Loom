@@ -143,6 +143,7 @@
         <h3 id="reconcile-title">核对未知模型调用</h3><p class="field-help">只填写已从提供方核实的结果。核对不会生成签名或把候选直接判为成功。</p>
         <form id="reconcile-form">
           <label for="effect-select">调用</label><select id="effect-select" required></select>
+          <p id="effect-evidence-state" class="field-help" aria-live="polite"></p>
           <label for="effect-decision">核对结论</label><select id="effect-decision"><option value="completed">已完成，使用量已核实</option><option value="not_sent">确定未发送，且无用量</option></select>
           <label for="effect-reference">依据引用</label><input id="effect-reference" type="text" maxlength="500" required placeholder="可追查的请求记录或账单编号">
           <label for="effect-evidence">核对说明</label><textarea id="effect-evidence" rows="3" maxlength="2000" required placeholder="已核实的结果及依据；不要填入凭据"></textarea>

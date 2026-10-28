@@ -346,8 +346,9 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
                         item["artifact"]["cases"] = [{key: case.get(key) for key in ("name", "passed", "status")} for case in tests["cases"][:32] if isinstance(case, dict)]
                 tasks.append(item)
             effects = []
-            for row in db.execute("SELECT id,task_id,epoch,state FROM effects WHERE tenant=? AND run_id=? ORDER BY rowid", (tenant, run_id)):
+            for row in db.execute("SELECT id,task_id,epoch,state,result FROM effects WHERE tenant=? AND run_id=? ORDER BY rowid", (tenant, run_id)):
                 effects.append({"call_id": row["id"], "task_id": row["task_id"], "epoch": row["epoch"], "state": row["state"],
+                    "not_sent_conflicts_with_evidence": row["state"] == "partial" or row["result"] is not None,
                     "model_generation": row["id"] == digest({"tenant_id": tenant, "run_id": run_id, "task_id": row["task_id"], "operation_id": f"model-generation:{row['epoch']}"})})
             reservations = [{"reservation_id": row["id"], **{key: row[key] for key in ("task_id", "epoch", "state", "cost", "tokens", "actual_cost", "actual_tokens")}} for row in db.execute("SELECT * FROM reservations WHERE tenant=? AND run_id=? ORDER BY rowid", (tenant, run_id))]
             return {"run": run, "tasks": tasks, "effects": effects, "reservations": reservations,

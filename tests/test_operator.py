@@ -317,6 +317,27 @@ class OperatorTests(unittest.TestCase):
         self.assertEqual(effect["state"], "reconciled")
         self.assertEqual(self.events(claim.run_id, "artifact.verified"), [])
 
+    def test_not_sent_cannot_contradict_partial_or_recorded_result(self):
+        for state, result in (("partial", None), ("partial", canonical({"fragment": "fixture"})),
+                              ("indeterminate", canonical({"fragment": "fixture"}))):
+            with self.subTest(state=state, has_result=result is not None):
+                claim, call_id, reservation_id = self.attempt(state=state)
+                if result is not None:
+                    with self.store.transaction() as db:
+                        db.execute("UPDATE effects SET result=? WHERE tenant=? AND id=?", (result, "tenant", call_id))
+                before = self.store.snapshot("tenant", claim.run_id)
+                events = self.events(claim.run_id)
+                key = "cannot-deny-result:" + claim.run_id
+                with self.assertRaises(Conflict):
+                    self.reconcile(claim, call_id, decision="not_sent", cost=0, tokens=0, key=key)
+                self.assertEqual(self.store.snapshot("tenant", claim.run_id), before)
+                self.assertEqual(self.events(claim.run_id), events)
+                self.assertEqual(self.row("effects", "tenant", call_id)["state"], state)
+                self.assertEqual(self.row("effects", "tenant", call_id)["result"], result)
+                self.assertEqual(self.row("reservations", "tenant", reservation_id)["state"], "reserved")
+                with self.store.connect() as db:
+                    self.assertIsNone(db.execute("SELECT 1 FROM receipts WHERE tenant=? AND key=?", ("tenant", key)).fetchone())
+
     def test_run_overrun_prevents_resume_and_keeps_true_accounting(self):
         claim, call_id, _ = self.attempt(node_cost=100, node_tokens=100, goal_cost=100, goal_tokens=100)
         result = self.reconcile(claim, call_id, cost=101, tokens=102)

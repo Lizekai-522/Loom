@@ -12,6 +12,7 @@ from loom.dispatch import DispatchService
 from loom.executor_config import LocalExecutorConfig
 from loom.jetstream import JetStreamBridge
 from loom.operator import OperatorService
+from loom.store import Conflict, canonical
 from loom.sandbox import DockerSandbox,SandboxConfig
 from loom.review_decisions import ReviewDecisionService
 from tests.test_dispatch import dispatch_case,enqueue,drain
@@ -96,6 +97,50 @@ def test_resume_preview_and_recovery_event_reach_real_jetstream(dispatch_case):
                 await bridge.consume_message(msg,tenant='a',run_id=b['run'],durable='resume-worker',apply=lambda db,event:seen.append(event['type']))
             assert seen.count('run.resumed')==1
             assert seen.count('run.paused')==1
+        finally:
+            await js.delete_stream(stream)
+            await nc.close()
+    asyncio.run(relay())
+
+
+@pytest.mark.skipif(not os.environ.get('LOOM_NATS_TEST_URL'),reason='real JetStream required')
+def test_reconciliation_preserves_partial_evidence_and_publishes_only_valid_decision(dispatch_case):
+    b=dispatch_case();store=b['store'];ops=OperatorService(store)
+    claim=store.claim_next('a',b['run'],'fixture-worker',lease_seconds=300)
+    reservation=f'python:{claim.task_id}:{claim.epoch}'
+    store.reserve(claim,reservation,max_cost=100,max_tokens=100)
+    call=store.begin_effect(claim,f'model-generation:{claim.epoch}',{'fixture':'no live model request'})['call_id']
+    fragment=canonical({'fragment':'synthetic'})
+    with store.transaction() as db:
+        db.execute("UPDATE effects SET state='partial',result=? WHERE tenant='a' AND id=?",(fragment,call))
+        db.execute("UPDATE tasks SET status='awaiting_human',worker=NULL,lease_until=NULL WHERE tenant='a' AND id=?",(claim.task_id,))
+        db.execute("UPDATE runs SET status='awaiting_human' WHERE tenant='a' AND id=?",(b['run'],))
+        store._event(db,'a',b['run'],'tool.indeterminate',{'call_id':call,'state':'partial'},'fixture')
+        store._event(db,'a',b['run'],'execution.blocked',{'task_id':claim.task_id,'run_status':'awaiting_human'},'fixture')
+    evidence={'reference':'fixture:ledger','summary':'synthetic evidence'}
+    before=store.events('a',b['run'])
+    with pytest.raises(Conflict):
+        ops.reconcile_effect('a',b['run'],call,'deny-partial','subject:operator','not_sent',evidence,0,0)
+    assert store.events('a',b['run'])==before
+    result=ops.reconcile_effect('a',b['run'],call,'verify-usage','subject:operator','completed',evidence,10,20)
+    assert result['state']=='reconciled' and result['counts_as_success'] is False
+    with store.connect() as db:
+        assert db.execute("SELECT result FROM effects WHERE tenant='a' AND id=?",(call,)).fetchone()[0]==fragment
+        assert db.execute("SELECT state FROM reservations WHERE tenant='a' AND id=?",(reservation,)).fetchone()[0]=='settled'
+    events=store.events('a',b['run'])
+    async def relay():
+        stream='LOOM_RECON_'+uuid4().hex[:16];prefix='recontest.'+uuid4().hex[:16]
+        bridge=JetStreamBridge(store,stream=stream,prefix=prefix)
+        nc=await nats.connect(os.environ['LOOM_NATS_TEST_URL'],allow_reconnect=False,connect_timeout=3)
+        js=nc.jetstream();seen=[]
+        try:
+            await bridge.provision(js)
+            sub=await bridge.subscribe(js,tenant='a',run_id=b['run'],durable='reconcile-worker',ack_wait=1)
+            await bridge.publish_pending(js,limit=1000)
+            for _ in events:
+                msg=(await sub.fetch(1,timeout=3))[0]
+                await bridge.consume_message(msg,tenant='a',run_id=b['run'],durable='reconcile-worker',apply=lambda db,event:seen.append(event['type']))
+            assert seen.count('effect.reconciled')==1
         finally:
             await js.delete_stream(stream)
             await nc.close()

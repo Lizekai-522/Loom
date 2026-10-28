@@ -237,6 +237,8 @@ class OperatorService:
                 raise NotFound("effect not found in tenant/run")
             if effect["state"] not in _UNKNOWN:
                 raise Conflict("effect is already known or reconciled")
+            if decision == "not_sent" and (effect["state"] == "partial" or effect["result"] is not None):
+                raise Conflict("not-sent decision contradicts recorded effect evidence")
             task = db.execute("SELECT * FROM tasks WHERE tenant=? AND run_id=? AND id=?", (tenant, run_id, effect["task_id"])).fetchone()
             if (task["status"] == "running" and task["lease_until"] is not None
                     and task["lease_until"] > self.store.now(db)):
