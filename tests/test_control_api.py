@@ -221,6 +221,32 @@ def test_reconcile_rejects_not_sent_when_partial_result_was_recorded(api):
         assert db.execute("SELECT state FROM reservations WHERE tenant='a' AND id=?", (reservation_id,)).fetchone()[0] == "reserved"
 
 
+def test_completed_unsettled_model_call_can_be_accounted_via_named_operator(api):
+    run_id = api.managed_goal()
+    current, call_id, reservation_id = unknown_model_fixture(api, run_id)
+    with api.store.transaction() as db:
+        db.execute("UPDATE effects SET state='done',result=? WHERE tenant='a' AND id=?", ('{"fixture":"private response"}', call_id))
+    review = api.request("GET", f"/v1/runs/{run_id}/review", role="viewer")
+    assert review.status_code == 200
+    item = review.json()["effects"][0]
+    assert item["needs_manual_accounting"] is True
+    assert item["not_sent_conflicts_with_evidence"] is True
+    assert "private response" not in review.text
+    body = {"decision": "completed", "evidence": {"reference": "fixture-ledger", "summary": "Reviewed fixture usage"},
+            "actual_cost_microusd": 10, "actual_tokens": 20}
+    path = f"/v1/runs/{run_id}/effects/{call_id}/reconcile"
+    assert api.request("POST", path, body, role="viewer", key="viewer-denied").status_code == 403
+    assert api.request("POST", path, body, role="other", key="cross-tenant").status_code == 404
+    response = api.request("POST", path, body, key="manual-completed")
+    assert response.status_code == 200
+    assert response.json()["state"] == "done" and response.json()["verified"] is False
+    assert api.request("POST", path, body, key="manual-completed").json() == response.json()
+    with api.store.connect() as db:
+        assert db.execute("SELECT state FROM reservations WHERE tenant='a' AND id=?", (reservation_id,)).fetchone()[0] == "settled"
+        assert db.execute("SELECT result FROM effects WHERE tenant='a' AND id=?", (call_id,)).fetchone()[0] == '{"fixture":"private response"}'
+    assert api.request("GET", f"/v1/runs/{run_id}/resume-preview").json()["ready"] is True
+
+
 def test_named_goal_plan_actors_and_idempotency_are_bound_to_subject(api):
     goal_body = {"title": "Actor test", "description": "No live execution", "acceptance": ["tests.pass"]}
     created = api.request("POST", "/v1/goals", goal_body, key="actor-create")

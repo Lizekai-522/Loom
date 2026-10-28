@@ -152,7 +152,7 @@
     const suiteApprovalMissing = state.plan?.definition?.nodes?.some((task) => task.development_suite) && !has("suite.approve");
     $("approve-plan-button").disabled = state.busy || unchecked || !has("plan.approve") || suiteApprovalMissing || !state.plan?.digest || approved || status !== "draft";
     $("plan-reviewed").disabled = $("approve-plan-button").disabled;
-    const effects = (state.review?.effects || []).filter((effect) => unknownStates.has(effect.state) && effect.model_generation === true);
+    const effects = (state.review?.effects || []).filter(reconcilableEffect);
     $("reconcile-section").hidden = !selected || !has("control") || effects.length === 0;
     $("reconcile-button").disabled = state.busy || unchecked || !has("control") || effects.length === 0;
     $("refresh-button").disabled = state.busy;
@@ -282,7 +282,8 @@
       const article = node("article", "intervention-item");
       article.append(node("strong", "", item.title || item.run_id), badge(item.status));
       const unknown = Array.isArray(item.unknown_effects) ? item.unknown_effects.length : (integer(item.unknown_effects) ? item.unknown_effects : 0);
-      article.append(node("p", "muted", `未知调用 ${unknown} · 待复核候选 ${str(item.awaiting_independent_verification, "0")}`));
+      article.append(node("p", "muted", `未知调用 ${unknown} · 待核对预留 ${str(item.stranded_reservations, "0")} · 待复核候选 ${str(item.awaiting_independent_verification, "0")}`));
+      if (integer(item.stranded_reservations) && item.stranded_reservations > 0) article.append(node("p", "field-help", "预留不会自动释放；无法关联模型调用时，请保留记录并人工追查。"));
       const counts = item.task_counts && typeof item.task_counts === "object" ? Object.entries(item.task_counts) : [];
       const taskSummary = counts.filter(([, total]) => integer(total) && total > 0).map(([status, total]) => `${statusNames[status] || status} ${count(total)}`).join(" · ");
       if (taskSummary) article.append(node("p", "muted", taskSummary));
@@ -303,7 +304,9 @@
     if (!effects.length) summary.append(node("p", "muted", "没有模型外部调用记录。"));
     for (const effect of effects) {
       const article = node("article", "intervention-item");
-      article.append(node("strong", "mono", effect.call_id), badge(effect.state), node("p", "muted", `任务 ${str(effect.task_id)} · 轮次 ${str(effect.epoch)}`));
+      const effectBadge = badge(effect.state);
+      if (effect.state === "done") effectBadge.textContent = "调用已完成";
+      article.append(node("strong", "mono", effect.call_id), effectBadge, node("p", "muted", `任务 ${str(effect.task_id)} · 轮次 ${str(effect.epoch)}`));
       summary.append(article);
     }
     for (const reservation of Array.isArray(review.reservations) ? review.reservations : []) {
@@ -352,14 +355,18 @@
       summary.append(article);
     }
     const prior = $("effect-select").value;
-    const unknown = effects.filter((effect) => unknownStates.has(effect.state) && effect.model_generation === true);
+    const unknown = effects.filter(reconcilableEffect);
     $("effect-select").replaceChildren(...unknown.map((effect) => {
-      const option = node("option", "", `${effect.call_id} · ${statusNames[effect.state] || effect.state}`);
+      const option = node("option", "", `${effect.call_id} · ${effect.needs_manual_accounting === true ? "调用已完成，用量待核对" : statusNames[effect.state] || effect.state}`);
       option.value = effect.call_id;
       return option;
     }));
     if (unknown.some((effect) => effect.call_id === prior)) $("effect-select").value = prior;
     syncEffectEvidence();
+  }
+
+  function reconcilableEffect(effect) {
+    return effect.model_generation === true && (unknownStates.has(effect.state) || effect.needs_manual_accounting === true);
   }
 
   function syncEffectEvidence() {
@@ -368,7 +375,9 @@
     const allowed = effect?.not_sent_conflicts_with_evidence === false;
     option.disabled = !allowed;
     if (!allowed && $("effect-decision").value === "not_sent") $("effect-decision").value = "completed";
-    $("effect-evidence-state").textContent = !effect ? "" : effect.not_sent_conflicts_with_evidence === true
+    $("effect-evidence-state").textContent = !effect ? "" : effect.needs_manual_accounting === true
+      ? "调用已完成但用量尚未结算，请核对后记录；不会自动恢复任务。"
+      : effect.not_sent_conflicts_with_evidence === true
       ? "已有部分调用证据，不能登记为确定未发送；请核对真实用量。"
       : allowed ? "仅在确有可靠依据时才能登记为确定未发送。" : "调用证据状态未能核对，请刷新后再处理。";
   }

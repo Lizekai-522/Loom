@@ -53,6 +53,7 @@ class OperatorService:
         """Return tenant-owned summaries, never prompts, output, or effect bodies."""
         _text(tenant, 200, "tenant")
         with self.store.connect() as db:
+            db.execute("BEGIN")
             now = self.store.now(db)
             runs = db.execute("""SELECT * FROM runs r WHERE tenant=? AND (
                 status IN ('paused','awaiting_human') OR EXISTS (
@@ -60,9 +61,15 @@ class OperatorService:
                     AND (e.state IN ('indeterminate','partial') OR (e.state='intent' AND NOT EXISTS (
                         SELECT 1 FROM tasks owner WHERE owner.tenant=e.tenant AND owner.id=e.task_id
                         AND owner.epoch=e.epoch AND owner.status='running' AND owner.lease_until>?)))) OR (
+                    EXISTS (SELECT 1 FROM reservations b WHERE b.tenant=r.tenant AND b.run_id=r.id
+                        AND b.state='reserved' AND NOT EXISTS (SELECT 1 FROM tasks owner
+                            WHERE owner.tenant=b.tenant AND owner.run_id=b.run_id AND owner.id=b.task_id
+                            AND owner.epoch=b.epoch AND owner.status='running' AND owner.lease_until>?))) OR (
+                    r.status NOT IN ('cancelled','succeeded') AND EXISTS (SELECT 1 FROM tasks t
+                        WHERE t.tenant=r.tenant AND t.run_id=r.id AND t.status IN ('indeterminate','awaiting_human'))) OR (
                     r.status NOT IN ('cancelled','succeeded') AND EXISTS (
                         SELECT 1 FROM tasks t WHERE t.tenant=r.tenant AND t.run_id=r.id
-                        AND t.status='submitted'))) ORDER BY r.rowid DESC""", (tenant, now)).fetchall()
+                        AND t.status='submitted'))) ORDER BY r.rowid DESC""", (tenant, now, now)).fetchall()
             result = []
             for run in runs:
                 tasks = db.execute("SELECT status,count(*) AS n FROM tasks WHERE tenant=? AND run_id=? GROUP BY status",
@@ -71,8 +78,14 @@ class OperatorService:
                     "SELECT id AS call_id,task_id,epoch,state FROM effects WHERE tenant=? AND run_id=? AND state IN ('intent','indeterminate','partial') ORDER BY rowid",
                     (tenant, run["id"]))]
                 counts = {row["status"]: row["n"] for row in tasks}
+                stranded = db.execute("""SELECT count(*) FROM reservations b WHERE b.tenant=? AND b.run_id=?
+                    AND b.state='reserved' AND NOT EXISTS (SELECT 1 FROM tasks owner
+                    WHERE owner.tenant=b.tenant AND owner.run_id=b.run_id AND owner.id=b.task_id
+                    AND owner.epoch=b.epoch AND owner.status='running' AND owner.lease_until>?)""",
+                    (tenant, run["id"], now)).fetchone()[0]
                 result.append({"run_id": run["id"], "status": run["status"],
                                "task_counts": counts, "unknown_effects": unknown,
+                               "stranded_reservations": stranded,
                                "awaiting_independent_verification": counts.get("submitted", 0),
                                "reserved_cost_microusd": run["reserved"],
                                "reserved_tokens": run["tokens_reserved"],
@@ -235,8 +248,11 @@ class OperatorService:
             effect = db.execute("SELECT * FROM effects WHERE tenant=? AND run_id=? AND id=?", (tenant, run_id, call_id)).fetchone()
             if effect is None:
                 raise NotFound("effect not found in tenant/run")
-            if effect["state"] not in _UNKNOWN:
+            completed_unsettled = effect["state"] == "done"
+            if effect["state"] not in _UNKNOWN and not completed_unsettled:
                 raise Conflict("effect is already known or reconciled")
+            if completed_unsettled and (decision != "completed" or effect["result"] is None):
+                raise Conflict("completed effect requires recorded result and completed accounting")
             if decision == "not_sent" and (effect["state"] == "partial" or effect["result"] is not None):
                 raise Conflict("not-sent decision contradicts recorded effect evidence")
             task = db.execute("SELECT * FROM tasks WHERE tenant=? AND run_id=? AND id=?", (tenant, run_id, effect["task_id"])).fetchone()
@@ -252,6 +268,8 @@ class OperatorService:
                                   (tenant, run_id, effect["task_id"], effect["epoch"], reservation_id)).fetchone()
             if reserved is None:
                 raise Conflict("model reservation is unavailable for reconciliation")
+            if completed_unsettled and reserved["state"] != "reserved":
+                raise Conflict("completed effect has no unsettled reservation")
             overrun = actual_cost > reserved["cost"] or actual_tokens > reserved["tokens"]
             budget_state = "overrun" if overrun else "settled"
             # Accounting evidence never resumes work. In particular a scheduler
@@ -270,7 +288,7 @@ class OperatorService:
             elif (reserved["state"] not in {"settled", "overrun"}
                     or (reserved["actual_cost"], reserved["actual_tokens"]) != (actual_cost, actual_tokens)):
                 raise Conflict("recorded usage cannot be rewritten during reconciliation")
-            state = "not_sent" if decision == "not_sent" else "reconciled"
+            state = "done" if completed_unsettled else "not_sent" if decision == "not_sent" else "reconciled"
             result = {**args, "task_id": effect["task_id"], "epoch": effect["epoch"], "state": state,
                       "reservation_id": reservation_id, "budget_state": budget_state,
                       "run_status": run_status, "counts_as_success": False, "verified": False}

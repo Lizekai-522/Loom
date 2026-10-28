@@ -291,7 +291,9 @@ class Store:
         for task in db.execute("SELECT * FROM tasks WHERE status='running' AND lease_until<=?", (now,)).fetchall():
             uncertain = db.execute("SELECT 1 FROM effects WHERE tenant=? AND task_id=? AND state IN ('intent','indeterminate','partial')",
                                    (task["tenant"], task["id"])).fetchone()
-            state = "indeterminate" if uncertain else "pending"
+            unsettled = db.execute("SELECT 1 FROM reservations WHERE tenant=? AND run_id=? AND task_id=? AND state='reserved'",
+                                   (task["tenant"], task["run_id"], task["id"])).fetchone()
+            state = "indeterminate" if uncertain or unsettled else "pending"
             db.execute("UPDATE tasks SET status=?,worker=NULL,lease_until=NULL WHERE tenant=? AND id=?",
                        (state, task["tenant"], task["id"]))
             if uncertain:
