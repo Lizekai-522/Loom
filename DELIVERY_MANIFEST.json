@@ -1,10 +1,10 @@
 {
-  "version": "0.17.4",
-  "stage": "public-preview-source-export-alpha",
-  "client_delivery_date": "2026-10-27",
-  "generated_at": "2026-10-27T19:01:57.435072+08:00",
-  "release_status": "source_view_export_and_invited_preview_passed",
+  "version": "0.17.5",
+  "stage": "approved-plan-binding-alpha",
   "production_ready": false,
+  "generated_at": "2026-10-28T16:40:18.807905+08:00",
+  "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
+  "source_file_count_excluding_manifest": 269,
   "files": [
     {
       "path": ".gitignore",
@@ -18,8 +18,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 18238,
-      "sha256": "ff1f4a8d5bed69c15d05632b613df76eb64142262cf098df8c6db01428694e7c"
+      "bytes": 18226,
+      "sha256": "cf0c21d770302893af264a8d697e6e8a1abba03d2c92adbdb4e9aeb3dbf2a63b"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -84,7 +84,7 @@
     {
       "path": "docs/api/openapi.json",
       "bytes": 85184,
-      "sha256": "cb85d585b7c25d1f758cea70fd8386b7d1b510a635100093bf62444beaecc904"
+      "sha256": "c34162d72b0502552528315d6dcd9189f460a4f529071b9ec4e4986720553a3c"
     },
     {
       "path": "docs/approved-execution.md",
@@ -133,8 +133,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 43862,
-      "sha256": "cc66f415f7db6bafe8a5a0c8e60d6c7c3b4080d9a23a1d0c52cb093489931e4e"
+      "bytes": 44019,
+      "sha256": "83a95eee3dbefc70e371b61cece7b4f197579f139ef44f99098c92b635d16fb4"
     },
     {
       "path": "docs/local-auth.md",
@@ -182,6 +182,11 @@
       "sha256": "c73fd5a8a85cb974cfd390ede27adc90f524addef5d15e61a67d840b1b043010"
     },
     {
+      "path": "docs/project-plan-2026-10-28.md",
+      "bytes": 12133,
+      "sha256": "72f91b9f7a7390b6cfd394341dab35a1ac3b4a5fd29cd9d6fda38d37bd84e5ea"
+    },
+    {
       "path": "docs/public-checks.md",
       "bytes": 12195,
       "sha256": "15e4508afd2e9d1934b8705501f97be47d37dbe4a42303a1fb4cae4bc72f1567"
@@ -205,6 +210,11 @@
       "path": "docs/review-0.17.4.md",
       "bytes": 3751,
       "sha256": "12b064d8574c2e02f20e4c7a9977836e6ee66749562895b26f5b76ecbc37d1ed"
+    },
+    {
+      "path": "docs/review-0.17.5.md",
+      "bytes": 2863,
+      "sha256": "e76ef962991ddd07abdb160c87a6137e25ea70b85ea02564288d643333ea3523"
     },
     {
       "path": "docs/review-decisions.md",
@@ -297,6 +307,11 @@
       "sha256": "63bdd835a250bed541567b9fe2b20bfa4886c11997f6e03537786881e2bca6a6"
     },
     {
+      "path": "docs/validation-0.17.5.md",
+      "bytes": 1950,
+      "sha256": "fc61a15d71fe325c27f071dbc96bdb502f8a3c3c079846e6215fe301fb7d340f"
+    },
+    {
       "path": "docs/validation-0.17.md",
       "bytes": 3576,
       "sha256": "23184628ad5779fce0f68305a43f0e4019e413149b81e20cf2bf784690ed3b70"
@@ -338,8 +353,8 @@
     },
     {
       "path": "docs/validation.md",
-      "bytes": 3121,
-      "sha256": "b3b176e286c4948d200e61e9b05c54b113f91c01544cf2be2d3f6f0f38ef96da"
+      "bytes": 3237,
+      "sha256": "6c7ce5474eb7c8cfd79cbd68ebfb329f7e17d65945aa5b0979e536fe7f0b5e45"
     },
     {
       "path": "docs/workflow.md",
@@ -364,7 +379,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 771,
-      "sha256": "70cf1d6a73d0bcfe29f8ab9510a155514019279f60b0ae70993d55db40ebd1b9"
+      "sha256": "74f360c532d8962a10e77145926224926c1a657d9e853ff4eb0c28c94ad9d149"
     },
     {
       "path": "requirements.lock",
@@ -569,7 +584,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "8444755845e36c23c0cd54cd56484cb7a81a4d2357cd356431c76f7499e16c3f"
+      "sha256": "557dc4fcdb257844ca824b18822c8785bd2cdd6b025b9c15ff535d532beeacb8"
     },
     {
       "path": "src/loom/__main__.py",
@@ -593,8 +608,8 @@
     },
     {
       "path": "src/loom/artifacts.py",
-      "bytes": 48119,
-      "sha256": "c91e8b58432ac1854562a77ddcc4751b56b267acf1000f3bbc0432a9c133cd22"
+      "bytes": 46814,
+      "sha256": "9014630205a45756141c445421f1edb08795465671e8f0dbff836b270eb9cd24"
     },
     {
       "path": "src/loom/attempts.py",
@@ -728,8 +743,8 @@
     },
     {
       "path": "src/loom/store.py",
-      "bytes": 43291,
-      "sha256": "a85369cac4813820d8a75f98b9ef4e386ef54d0ed720d29d014d97c4873c35f0"
+      "bytes": 44848,
+      "sha256": "97ca1b617b3aa6e8416acbce3e8f313a1554c91b9fef08fd347121bc579a2381"
     },
     {
       "path": "src/loom/web/console-execution.js",
@@ -783,8 +798,8 @@
     },
     {
       "path": "src/loom/workflow.py",
-      "bytes": 28622,
-      "sha256": "6338fb375bf04e7c1908492abbbb4fd2689c1973c6dd417aaba7a74e1c8aab70"
+      "bytes": 29207,
+      "sha256": "c8b13ae8ec5321e1ddbfccf088311870b92eef1de30de66c3406bdd2e56556bd"
     },
     {
       "path": "tests/__init__.py",
@@ -953,8 +968,8 @@
     },
     {
       "path": "tests/test_dispatch.py",
-      "bytes": 12301,
-      "sha256": "f7fc821696be0e85864f65b8754b69783fcc5b7f353dc4dd7d37029175ab972e"
+      "bytes": 12837,
+      "sha256": "404bb3ba969aed14b6805dea3420f99c84ba6310b2ad7161de263e93c54fa067"
     },
     {
       "path": "tests/test_execution.py",
@@ -1010,6 +1025,11 @@
       "path": "tests/test_operator.py",
       "bytes": 27459,
       "sha256": "d68b8382986fb4c3c03a7d959fef0141bd2f7fd96202652d980aac1d698d43eb"
+    },
+    {
+      "path": "tests/test_plan_integrity.py",
+      "bytes": 4100,
+      "sha256": "63ea3d8272392b33a8fdd8e8588694f3a8a03c08ca544ac9d6547b6c5d99ad1f"
     },
     {
       "path": "tests/test_policy.py",
@@ -1332,90 +1352,23 @@
       "sha256": "efe1acf3e62fb99c288b0ec73e5a773b7268ef4320fe757ea994214e4b63c371"
     }
   ],
-  "source_file_count_excluding_manifest": 265,
-  "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
-  "raw_crlf_exception_paths": [
-    "DELIVERY_MANIFEST.json",
-    "docs/api/openapi.json",
-    "docs/third-party-notices.md",
-    "third_party/licenses/manifest.json",
-    "third_party/licenses/psycopg-binary-3.3.6/LICENSE.txt",
-    "third_party/licenses/pydantic-core-2.50.1/LICENSE"
-  ],
   "validation": {
-    "fresh_main_tests_passed": 967,
-    "fresh_subtests_passed": 382,
-    "reused_real_infrastructure_tests": 62,
-    "reused_infrastructure_subtests": 14,
-    "combined_coverage_main_tests": 1029,
-    "combined_coverage_subtests": 396,
-    "real_infrastructure_suite_rerun": false,
+    "full_local_main_tests": 974,
+    "full_local_subtests": 382,
     "failures": 0,
     "skipped": 0,
-    "fresh_browser_assertions": 63,
-    "main_http_resource_database_checks": 64,
-    "public_http_file_source_database_checks": 27,
-    "fresh_runtime_preflight": [
-      "Docker immutable image and capability",
-      "NATS health",
-      "PostgreSQL read-only SELECT"
-    ],
-    "new_live_model_requests": 0,
-    "source_exports_checked": 3,
-    "main_database_counts": {
-      "runs": 40,
-      "events": 621,
-      "development_suites": 1,
-      "review_decisions": 2
-    },
-    "all_original_rows_unchanged": true
-  },
-  "real_execution": {
-    "source": "reused audited 0.17.3 run",
-    "run_id": "ffa5d81e-c087-4b25-bb08-05579cb10905",
-    "provider": "deepseek",
-    "model": "deepseek-flash",
-    "responses": 2,
-    "tokens": 2124,
-    "cost_upper_microusd": 1245,
-    "reserved": 0,
-    "host_cases_from_0173": 6,
-    "provider_invoice_verified": false,
-    "full_workflow_completed": false,
-    "independent_second_model": "pending_configuration"
-  },
-  "runtime": {
-    "public_preview_separate_database": true,
-    "public_preview_invite_cookie": true,
-    "local_operator_loopback_only": true,
-    "private_worker_dispatch": true,
-    "project_only_model_secret_not_shipped": true,
-    "public_goal_cap": 20,
-    "per_goal_cost_limit_microusd": 1000000,
-    "per_goal_token_limit": 3200000,
-    "temporary_tunnel": true,
-    "previous_tunnel_expired_and_replaced": true,
-    "host_must_remain_online": true,
-    "independent_mobile_network_tested": false,
-    "normal_default_docker_shortcut_verified": false
-  },
-  "delivery": {
-    "deadline": "2026-10-28",
-    "requirement": "public_online_experience",
-    "hosting": "local_machine_temporary_https_tunnel",
-    "public_preview_started": true,
-    "github_publication_requested": true,
-    "publication_status": "recorded separately after upload",
-    "production_release_gates_passed": false
+    "queued_projection_tampering_test_added_after_full_suite": 1,
+    "real_docker_jetstream_tests": 12,
+    "model_transport": "mock in current infrastructure suite",
+    "new_paid_model_requests": 0,
+    "post_upgrade_main_http_and_data_checks": 64,
+    "post_upgrade_public_and_export_checks": 27,
+    "existing_managed_tasks_checked": 144
   },
   "notes": [
-    "Original 62 requirements retained; temporary invited preview is not production 1.0.",
-    "Source panel is read-only, checks exact version and digests, and never executes exported code.",
-    "Independent second model remains unconfigured; existing analyst and developer submitted, validator pending and independently done0/3.",
-    "Fresh 967/382 unit/local checks;62/14 infrastructure checks reused with unchanged backend proof, not rerun.",
-    "Old main and preview database rows are unchanged. No new paid provider request in this release cycle.",
-    "Expired temporary tunnel was replaced; current address and invite are recorded in the private local access file.",
-    "Public HTTPS/browser tests originate from this host; independent mobile network still requires validation.",
-    "Invite code, cookies, model secrets, internal identity tokens, databases, private work files and runtime binaries are excluded."
+    "Original 62 requirements remain; version 3.1 full source remains unavailable.",
+    "Independent second model, full human adjudication, canvas, general Rewire, and production PostgreSQL are pending.",
+    "Current public preview uses an invited temporary HTTPS tunnel from this machine.",
+    "Model secrets, invite, session cookies, private identities and databases are excluded."
   ]
 }

@@ -1,8 +1,8 @@
 # Loom
 
-基于Loom v2.1修订方案的Agent编排项目，当前 **0.17.4**。工作台可查看并精确导出生成程序及版本记录，临时公网入口继续运行；此前真实Flash分析→输入批准→代码→Docker已通过，第二模型仍待配置。[源码查看与首轮测试](docs/source-exports.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
+基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.17.5已完成本轮验收**已批准计划与调度任务一致性；工作台可查看并精确导出生成程序及版本记录。此前真实Flash分析→输入批准→代码→Docker已通过，第二模型仍待配置。[本轮验证](docs/validation-0.17.5.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
 
-本轮重测 **967主/382子，零失败/跳过**，Chromium63项；生产后端未变，复用此前62项真实基础设施/14子检查，另做当前Docker/NATS/PostgreSQL预检。三份源码下载均与权威原始字节一致，本轮新增付费调用0。[验证记录](docs/validation.md)
+0.17.4历史重测967主/382子、Chromium63项，三份源码下载与权威原始字节一致；0.17.5本轮测试与真实基础设施证据单独登记，未新增付费调用。[历史验证](docs/validation.md)
 
 10月28日周三必须公网可体验，按用户选择采用本机临时Cloudflare HTTPS隧道；主机须保持在线。原62项及独立验证/生产门槛继续追踪。[交付路线](docs/release-roadmap.md)
 

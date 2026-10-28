@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from .artifact_schemas import ARTIFACT_ROLES, ArtifactInput, DevelopmentSuiteReference, RoleOutput, ReviewSubjectReference
 from .policy import GateRules, TaskContract, gate_p
-from .store import BudgetExceeded, Conflict, InvalidInput, NotFound, Store, canonical, digest
+from .store import BudgetExceeded, Conflict, InvalidInput, NotFound, PlanBindingConflict, Store, canonical, digest
 
 
 RoleId = Literal["analyst", "architect", "tester", "developer", "reviewer", "fixer", "validator"]
@@ -447,31 +447,41 @@ class WorkflowService:
             ids = [row[0] for row in db.execute("SELECT run_id FROM workflow_goals WHERE tenant=? ORDER BY rowid DESC", (tenant,))]
         return [self.get_goal(tenant, run_id) for run_id in ids]
 
-    def get_task_spec(self, tenant, run_id, task_id):
-        with self.store.connect() as db:
-            goal, run = self._goal(db, tenant, run_id), self.store._run(db, tenant, run_id)
-            row = db.execute("SELECT node_id,contract,evaluation_digest,plan_digest FROM workflow_tasks WHERE tenant=? AND run_id=? AND task_id=?",
-                             (tenant, run_id, task_id)).fetchone()
-            if row is None:
-                raise NotFound("workflow task not found in tenant/run")
-            if goal["plan_status"] != "approved" or row["plan_digest"] != goal["plan_digest"]:
-                raise Conflict("workflow contract does not belong to the approved plan")
-            try:
-                definition = WorkflowDefinition.model_validate(json.loads(goal["definition"]))
-                contract = json.loads(row["contract"])
-            except (ValidationError, TypeError, ValueError):
-                raise Conflict("persisted workflow definition or contract is invalid") from None
+    @staticmethod
+    def _task_spec_in(db, store, tenant, run_id, task_id):
+        """Validate frozen contract and scheduler projection in one DB snapshot."""
+        goal, run = WorkflowService._goal(db, tenant, run_id), store._run(db, tenant, run_id)
+        row = db.execute("SELECT node_id,contract,evaluation_digest,plan_digest FROM workflow_tasks WHERE tenant=? AND run_id=? AND task_id=?",
+                         (tenant, run_id, task_id)).fetchone()
+        if row is None:
+            raise NotFound("workflow task not found in tenant/run")
+        if goal["plan_status"] != "approved" or row["plan_digest"] != goal["plan_digest"]:
+            raise PlanBindingConflict("workflow contract does not belong to the approved plan")
+        try:
+            definition = WorkflowDefinition.model_validate(json.loads(goal["definition"]))
+            contract = json.loads(row["contract"])
             if definition.execution_digest != goal["plan_digest"] or not isinstance(contract, dict):
-                raise Conflict("approved workflow execution fields are inconsistent")
+                raise ValueError
             node = next((node for node in definition.nodes if node.id == row["node_id"]), None)
             if node is None or run_id + ":" + node.id != task_id:
-                raise Conflict("workflow task identity differs from the approved node")
-            expected = self._contract(definition, node, goal, run)
-            try:
-                actual_fields = canonical({key: value for key, value in contract.items() if key != "status"})
-                expected_fields = canonical({key: value for key, value in expected.items() if key != "status"})
-            except (TypeError, ValueError, RecursionError):
-                raise Conflict("persisted workflow contract fields are invalid") from None
-            if expected["evaluation_digest"] != row["evaluation_digest"] or actual_fields != expected_fields:
-                raise Conflict("persisted workflow contract binding is inconsistent")
-            return expected
+                raise ValueError
+            expected = WorkflowService._contract(definition, node, goal, run)
+            actual_fields = canonical({key: value for key, value in contract.items() if key != "status"})
+            expected_fields = canonical({key: value for key, value in expected.items() if key != "status"})
+            task = db.execute("SELECT intent_id,title,depends,priority,channel FROM tasks WHERE tenant=? AND run_id=? AND id=?",
+                              (tenant, run_id, task_id)).fetchone()
+            if (task is None or expected["evaluation_digest"] != row["evaluation_digest"]
+                    or actual_fields != expected_fields
+                    or task["intent_id"] != expected["intent_id"] or task["title"] != expected["title"]
+                    or task["priority"] != expected["priority"] or task["channel"] != expected["channel"]):
+                raise ValueError
+            if json.loads(task["depends"]) != expected["depends_on"]:
+                raise PlanBindingConflict("hard dependencies differ from the approved workflow")
+        except (ValidationError, TypeError, ValueError, AttributeError, RecursionError):
+            raise PlanBindingConflict("approved workflow and scheduler projection differ") from None
+        return expected
+
+    def get_task_spec(self, tenant, run_id, task_id):
+        with self.store.connect() as db:
+            db.execute("BEGIN")
+            return self._task_spec_in(db, self.store, tenant, run_id, task_id)

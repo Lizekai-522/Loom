@@ -38,6 +38,10 @@ class Conflict(LoomError):
     code = "CONFLICT"
 
 
+class PlanBindingConflict(Conflict):
+    """The persisted scheduler projection no longer matches its approved plan."""
+
+
 class StaleClaim(Conflict):
     code = "STALE_CLAIM"
 
@@ -167,9 +171,26 @@ class Store:
     @staticmethod
     def _workflow_plan(db: sqlite3.Connection, tenant: str, run_id: str):
         """Optional managed-plan projection; legacy runs keep their contract."""
-        if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='workflow_goals'").fetchone():
-            return None
-        return db.execute("SELECT plan_status FROM workflow_goals WHERE tenant=? AND run_id=?", (tenant, run_id)).fetchone()
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='workflow_goals'").fetchone():
+            plan = db.execute("SELECT plan_status FROM workflow_goals WHERE tenant=? AND run_id=?", (tenant, run_id)).fetchone()
+            if plan is not None:
+                return plan
+        # A lost managed projection must never silently enable the legacy task
+        # API. The original event already identifies managed runs without a
+        # migration or a new mutable flag.
+        origin = db.execute("SELECT envelope,hash FROM events WHERE tenant=? AND run_id=? AND seq=1", (tenant, run_id)).fetchone()
+        try:
+            if origin is None:
+                raise ValueError
+            envelope = json.loads(origin["envelope"])
+            if (not isinstance(envelope, dict) or digest(envelope) != origin["hash"]
+                    or not isinstance(envelope.get("payload"), dict)):
+                raise ValueError
+        except (TypeError, ValueError, RecursionError):
+            raise PlanBindingConflict("run origin evidence is missing or invalid") from None
+        if envelope["payload"].get("managed_workflow") is True:
+            raise PlanBindingConflict("managed workflow projection is missing")
+        return None
 
     def _event(self, db: sqlite3.Connection, tenant: str, run_id: str, kind: str,
                payload: dict, actor: str, command_key: str | None = None) -> dict:
@@ -299,6 +320,10 @@ class Store:
                 return None
             rows = db.execute("SELECT * FROM tasks WHERE tenant=? AND run_id=? AND channel=? AND status='pending' ORDER BY priority DESC,rowid ASC",
                               (tenant, run_id, channel)).fetchall()
+            if managed is not None:
+                from .workflow import WorkflowService
+                for row in rows:
+                    WorkflowService._task_spec_in(db, self, tenant, run_id, row["id"])
             done = {r[0] for r in db.execute("SELECT id FROM tasks WHERE tenant=? AND run_id=? AND status='done'", (tenant, run_id))}
             task = next((r for r in rows if set(json.loads(r["depends"])) <= done), None)
             if task is None:
@@ -319,6 +344,9 @@ class Store:
         if (row["status"] != "running" or row["worker"] != claim.worker_id or row["epoch"] != claim.epoch
                 or row["lease_until"] is None or row["lease_until"] <= self.now(db)):
             raise StaleClaim("claim expired, replaced or invalidated")
+        if self._workflow_plan(db, claim.tenant_id, claim.run_id) is not None:
+            from .workflow import WorkflowService
+            WorkflowService._task_spec_in(db, self, claim.tenant_id, claim.run_id, claim.task_id)
         if not allow_paused and self._run(db, claim.tenant_id, claim.run_id)["status"] != "open":
             raise Conflict("run is paused; no new execution or verified completion allowed")
         return row

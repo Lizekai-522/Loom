@@ -1,3 +1,5 @@
+> 本页保留0.17.4历史验收；0.17.5的当前状态与测试结果见 [本轮验证](validation-0.17.5.md)。
+
 # Loom 0.17.4 验证记录
 
 2026-10-27。[源码查看与导出](source-exports.md) · [公网体验](public-preview.md) · [0.17.3 历史](validation-0.17.3.md)
