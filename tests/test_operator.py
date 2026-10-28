@@ -217,6 +217,97 @@ class OperatorTests(unittest.TestCase):
         self.assertEqual(len(queue), 1)
         self.assertEqual(queue[0]["unknown_effects"][0]["state"], "intent")
 
+    def test_expired_unsettled_reservation_with_completed_effect_enters_queue(self):
+        run_id, _ = self.managed()
+        claim = self.store.claim_next("tenant", run_id, "fixture-worker", lease_seconds=300)
+        self.store.reserve(claim, "completed-but-unsettled", max_cost=10, max_tokens=10)
+        effect = self.store.begin_effect(claim, f"model-generation:{claim.epoch}", {"fixture": "no network"})
+        self.store.finish_effect(claim, effect["call_id"], {"fixture": "response retained"})
+        self.assertEqual(self.ops.list_interventions("tenant"), [])
+        with self.store.transaction() as db:
+            db.execute("UPDATE tasks SET lease_until=-1 WHERE tenant=? AND id=?", ("tenant", claim.task_id))
+        queue = self.ops.list_interventions("tenant")
+        self.assertEqual([item["run_id"] for item in queue], [run_id])
+        self.assertEqual(queue[0]["reserved_cost_microusd"], 10)
+        self.assertFalse(queue[0]["counts_as_success"])
+
+    def test_expired_unsettled_reservation_never_auto_reclaims_task(self):
+        for with_result in (False, True):
+            with self.subTest(with_result=with_result):
+                run_id, _ = self.managed()
+                claim = self.store.claim_next("tenant", run_id, "fixture-worker", lease_seconds=300)
+                reservation_id = "stuck:" + run_id
+                self.store.reserve(claim, reservation_id, max_cost=10, max_tokens=10)
+                if with_result:
+                    effect = self.store.begin_effect(claim, f"model-generation:{claim.epoch}", {"fixture": "no network"})
+                    self.store.finish_effect(claim, effect["call_id"], {"fixture": "response retained"})
+                with self.store.transaction() as db:
+                    db.execute("UPDATE tasks SET lease_until=-1 WHERE tenant=? AND id=?", ("tenant", claim.task_id))
+                self.assertIsNone(self.store.claim_next("tenant", run_id, "replacement-worker"))
+                self.assertEqual(self.row("tasks", "tenant", claim.task_id)["status"], "indeterminate")
+                self.assertEqual(self.row("reservations", "tenant", reservation_id)["state"], "reserved")
+                self.assertFalse(self.ops.resume_preview("tenant", run_id)["ready"])
+                self.assertEqual(self.store.replay("tenant", run_id)["tasks"][claim.task_id]["status"], "indeterminate")
+
+    def test_completed_model_call_with_stranded_budget_can_be_reconciled_once(self):
+        run_id, _ = self.managed()
+        claim = self.store.claim_next("tenant", run_id, "fixture-worker", lease_seconds=300)
+        reservation_id = f"python:{claim.task_id}:{claim.epoch}"
+        self.store.reserve(claim, reservation_id, max_cost=100, max_tokens=100)
+        call_id = self.store.begin_effect(claim, f"model-generation:{claim.epoch}", {"fixture": "no network"})["call_id"]
+        result = {"fixture": "completed response"}
+        self.store.finish_effect(claim, call_id, result)
+        with self.assertRaises(Conflict):
+            self.reconcile(claim, call_id, key="active-owner")
+        with self.store.transaction() as db:
+            db.execute("UPDATE tasks SET lease_until=-1 WHERE tenant=? AND id=?", ("tenant", claim.task_id))
+        self.assertIsNone(self.store.claim_next("tenant", run_id, "must-not-retry"))
+        with self.assertRaises(Conflict):
+            self.reconcile(claim, call_id, decision="not_sent", cost=0, tokens=0, key="cannot-deny-completed")
+        resolved = self.reconcile(claim, call_id, key="settle-completed")
+        self.assertEqual(resolved["state"], "done")
+        self.assertFalse(resolved["verified"])
+        self.assertEqual(self.row("effects", "tenant", call_id)["result"], canonical(result))
+        self.assertEqual(self.row("reservations", "tenant", reservation_id)["state"], "settled")
+        self.assertEqual(self.reconcile(claim, call_id, key="settle-completed"), resolved)
+        with self.assertRaises(Conflict):
+            self.reconcile(claim, call_id, key="duplicate-completed")
+        self.assertEqual(len(self.events(run_id, "effect.reconciled")), 1)
+        self.assertEqual(self.store.replay("tenant", run_id)["effects"][call_id], "done")
+        self.assertEqual(self.ops.resume_preview("tenant", run_id)["reason"], None)
+
+    def test_late_settlement_does_not_hide_indeterminate_task(self):
+        run_id, _ = self.managed()
+        claim = self.store.claim_next("tenant", run_id, "fixture-worker", lease_seconds=300)
+        self.store.reserve(claim, "late-settlement", max_cost=100, max_tokens=100)
+        with self.store.transaction() as db:
+            db.execute("UPDATE tasks SET lease_until=-1 WHERE tenant=? AND id=?", ("tenant", claim.task_id))
+        self.assertIsNone(self.store.claim_next("tenant", run_id, "not-automatic"))
+        self.store.settle("tenant", "late-settlement", actual_cost=10, actual_tokens=20)
+        queue = self.ops.list_interventions("tenant")
+        self.assertEqual([entry["run_id"] for entry in queue], [run_id])
+        self.assertEqual(queue[0]["stranded_reservations"], 0)
+        self.assertEqual(queue[0]["task_counts"]["indeterminate"], 1)
+        self.ops.pause("tenant", run_id, "pause-late", ACTOR, "Inspect settled attempt.")
+        self.assertTrue(self.ops.resume_preview("tenant", run_id)["ready"])
+
+    def test_completed_stranded_call_overrun_still_blocks_resume(self):
+        run_id, _ = self.managed(node_cost=100, node_tokens=100, goal_cost=100, goal_tokens=100)
+        claim = self.store.claim_next("tenant", run_id, "fixture-worker", lease_seconds=300)
+        reservation_id = f"python:{claim.task_id}:{claim.epoch}"
+        self.store.reserve(claim, reservation_id, max_cost=100, max_tokens=100)
+        call_id = self.store.begin_effect(claim, f"model-generation:{claim.epoch}", {"fixture": "no network"})["call_id"]
+        self.store.finish_effect(claim, call_id, {"fixture": "completed response"})
+        with self.store.transaction() as db:
+            db.execute("UPDATE tasks SET lease_until=-1 WHERE tenant=? AND id=?", ("tenant", claim.task_id))
+        self.assertIsNone(self.store.claim_next("tenant", run_id, "not-automatic"))
+        result = self.reconcile(claim, call_id, cost=101, tokens=102, key="manual-overrun")
+        self.assertEqual(result["budget_state"], "overrun")
+        self.assertEqual(result["state"], "done")
+        self.assertEqual(self.ops.resume_preview("tenant", run_id)["reason"], "RUN_BUDGET_EXCEEDED")
+        with self.assertRaises(Conflict):
+            self.ops.resume("tenant", run_id, "resume-overrun", ACTOR, "Do not exceed budget.")
+
     def test_completed_reconciliation_settles_once_and_never_approves_task(self):
         claim, call_id, reservation_id = self.attempt()
         result = self.reconcile(claim, call_id)

@@ -1,6 +1,6 @@
 # Loom
 
-基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.17.7**加固未知调用的人工核对并提供中文提示，0.17.6增加恢复条件检查，并已完成批准计划与调度任务一致性加固；工作台可查看并精确导出生成程序及版本记录。此前真实Flash分析→输入批准→代码→Docker已通过，第二模型仍待配置。[本轮验证](docs/validation-0.17.7.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
+基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.17.8**防止未结算预留触发自动重试，提供人工用量核对，0.17.6增加恢复条件检查，并已完成批准计划与调度任务一致性加固；工作台可查看并精确导出生成程序及版本记录。此前真实Flash分析→输入批准→代码→Docker已通过，第二模型仍待配置。[本轮验证](docs/validation-0.17.8.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
 
 0.17.4历史重测967主/382子、Chromium63项，三份源码下载与权威原始字节一致；0.17.5测试与真实基础设施证据单独登记。[历史验证](docs/validation.md)
 

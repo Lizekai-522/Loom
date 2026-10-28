@@ -346,10 +346,18 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
                         item["artifact"]["cases"] = [{key: case.get(key) for key in ("name", "passed", "status")} for case in tests["cases"][:32] if isinstance(case, dict)]
                 tasks.append(item)
             effects = []
+            now = store.now(db)
             for row in db.execute("SELECT id,task_id,epoch,state,result FROM effects WHERE tenant=? AND run_id=? ORDER BY rowid", (tenant, run_id)):
+                model_generation = row["id"] == digest({"tenant_id": tenant, "run_id": run_id, "task_id": row["task_id"], "operation_id": f"model-generation:{row['epoch']}"})
+                needs_manual_accounting = bool(model_generation and row["state"] == "done" and row["result"] is not None
+                    and db.execute("""SELECT 1 FROM reservations b WHERE b.tenant=? AND b.run_id=? AND b.task_id=?
+                        AND b.epoch=? AND b.id=? AND b.state='reserved' AND NOT EXISTS
+                        (SELECT 1 FROM tasks owner WHERE owner.tenant=b.tenant AND owner.run_id=b.run_id
+                         AND owner.id=b.task_id AND owner.epoch=b.epoch AND owner.status='running' AND owner.lease_until>?)""",
+                        (tenant, run_id, row["task_id"], row["epoch"], f"python:{row['task_id']}:{row['epoch']}", now)).fetchone())
                 effects.append({"call_id": row["id"], "task_id": row["task_id"], "epoch": row["epoch"], "state": row["state"],
                     "not_sent_conflicts_with_evidence": row["state"] == "partial" or row["result"] is not None,
-                    "model_generation": row["id"] == digest({"tenant_id": tenant, "run_id": run_id, "task_id": row["task_id"], "operation_id": f"model-generation:{row['epoch']}"})})
+                    "model_generation": model_generation, "needs_manual_accounting": needs_manual_accounting})
             reservations = [{"reservation_id": row["id"], **{key: row[key] for key in ("task_id", "epoch", "state", "cost", "tokens", "actual_cost", "actual_tokens")}} for row in db.execute("SELECT * FROM reservations WHERE tenant=? AND run_id=? ORDER BY rowid", (tenant, run_id))]
             return {"run": run, "tasks": tasks, "effects": effects, "reservations": reservations,
                     "attempts": attempt_summaries(store, tenant, run_id),

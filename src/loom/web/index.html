@@ -140,7 +140,7 @@
         <details class="terminate-section"><summary>终止此运行</summary><p class="field-help">终止会撤销后续执行权。未知调用和未核对预留继续保留，不能视为已退款。</p><label for="terminate-confirm">输入“终止”确认</label><input id="terminate-confirm" type="text" autocomplete="off" maxlength="2"><button id="terminate-button" class="danger" data-cap="control">确认终止</button></details>
       </div>
       <section id="reconcile-section" class="reconcile-section" hidden aria-labelledby="reconcile-title">
-        <h3 id="reconcile-title">核对未知模型调用</h3><p class="field-help">只填写已从提供方核实的结果。核对不会生成签名或把候选直接判为成功。</p>
+        <h3 id="reconcile-title">核对调用与用量</h3><p class="field-help">只填写已从提供方核实的结果和用量。核对不会生成签名或把候选直接判为成功。</p>
         <form id="reconcile-form">
           <label for="effect-select">调用</label><select id="effect-select" required></select>
           <p id="effect-evidence-state" class="field-help" aria-live="polite"></p>

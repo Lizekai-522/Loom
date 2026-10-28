@@ -145,3 +145,42 @@ def test_reconciliation_preserves_partial_evidence_and_publishes_only_valid_deci
             await js.delete_stream(stream)
             await nc.close()
     asyncio.run(relay())
+
+
+@pytest.mark.skipif(not os.environ.get('LOOM_NATS_TEST_URL'),reason='real JetStream required')
+def test_stranded_completed_call_accounting_keeps_exhausted_attempt_limit(dispatch_case):
+    b=dispatch_case();store=b['store'];ops=OperatorService(store)
+    claim=store.claim_next('a',b['run'],'fixture-worker',lease_seconds=300)
+    reservation=f'python:{claim.task_id}:{claim.epoch}'
+    store.reserve(claim,reservation,max_cost=100,max_tokens=100)
+    call=store.begin_effect(claim,f'model-generation:{claim.epoch}',{'fixture':'no live model request'})['call_id']
+    store.finish_effect(claim,call,{'fixture':'completed response'})
+    with store.transaction() as db:
+        db.execute("UPDATE tasks SET lease_until=-1 WHERE tenant='a' AND id=?",(claim.task_id,))
+    assert ops.list_interventions('a')[0]['stranded_reservations']==1
+    assert store.claim_next('a',b['run'],'must-not-automatically-retry') is None
+    evidence={'reference':'fixture:ledger','summary':'synthetic evidence'}
+    resolved=ops.reconcile_effect('a',b['run'],call,'manual-account','subject:operator','completed',evidence,10,20)
+    assert resolved['state']=='done' and resolved['counts_as_success'] is False
+    assert store.snapshot('a',b['run'])['status']=='awaiting_human'
+    assert ops.resume_preview('a',b['run'])['reason']=='ATTEMPTS_EXHAUSTED'
+    with pytest.raises(Conflict):
+        ops.resume('a',b['run'],'explicit-resume','subject:operator','人工核对后仍不能绕过次数限制')
+    events=store.events('a',b['run'])
+    async def relay():
+        stream='LOOM_STRAND_'+uuid4().hex[:16];prefix='strandedtest.'+uuid4().hex[:16]
+        bridge=JetStreamBridge(store,stream=stream,prefix=prefix)
+        nc=await nats.connect(os.environ['LOOM_NATS_TEST_URL'],allow_reconnect=False,connect_timeout=3)
+        js=nc.jetstream();seen=[]
+        try:
+            await bridge.provision(js)
+            sub=await bridge.subscribe(js,tenant='a',run_id=b['run'],durable='stranded-worker',ack_wait=1)
+            await bridge.publish_pending(js,limit=1000)
+            for _ in events:
+                msg=(await sub.fetch(1,timeout=3))[0]
+                await bridge.consume_message(msg,tenant='a',run_id=b['run'],durable='stranded-worker',apply=lambda db,event:seen.append(event['type']))
+            assert seen.count('effect.reconciled')==1 and seen.count('run.resumed')==0
+        finally:
+            await js.delete_stream(stream)
+            await nc.close()
+    asyncio.run(relay())
