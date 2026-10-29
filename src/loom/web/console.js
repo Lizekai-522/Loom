@@ -331,6 +331,13 @@
       const detail = [attempt.task_id, attempt.epoch === undefined ? "" : `轮次 ${attempt.epoch}`,
         ...(contextEvent || roleEvent ? [] : [...[attempt.primitive, attempt.family, attempt.code, attempt.reason, attempt.stage].map(label)])].filter(Boolean).join(" · ");
       article.append(node("p", "muted", detail));
+      if (attempt.event_type === "execution.evaluated") {
+        const keys = ["host_cases_total", "host_cases_passed", "host_cases_mismatch", "host_cases_timeout", "host_cases_runtime_error", "host_cases_other_failure"];
+        const values = keys.map((key) => attempt[key]);
+        if (values.every((value) => integer(value) && value <= 32) && values[0] > 0 && values[0] === values.slice(1).reduce((sum, value) => sum + value, 0)) {
+          article.append(node("p", "field-help", `宿主用例 ${count(values[0])} 项：通过 ${count(values[1])}，结果不匹配 ${count(values[2])}，超时 ${count(values[3])}，运行错误 ${count(values[4])}，其他失败 ${count(values[5])}。`));
+        }
+      }
       if (roleEvent) {
         article.append(roleSourceDisplay(roleSource, "unavailable"));
         const currentTask = (review.tasks || []).find((task) => task.id === attempt.task_id);

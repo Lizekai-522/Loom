@@ -9,6 +9,7 @@ import nats
 import pytest
 
 from loom.dispatch import DispatchService
+from loom.attempts import attempt_summaries
 from loom.executor_config import LocalExecutorConfig
 from loom.jetstream import JetStreamBridge
 from loom.operator import OperatorService
@@ -36,8 +37,26 @@ def test_queued_developer_real_docker_execution_or_human_stop(dispatch_case,pass
     sandbox.run_python=observe
     result,requests=drain(b,sandbox=sandbox)
     assert result['state']==('submitted' if passes else 'awaiting_human') and len(requests)==1, observed
+    evaluation=next(e['payload'] for e in b['store'].events('a',b['run']) if e['type']=='execution.evaluated')
+    assert evaluation['host_cases_total']==len(observed)
+    assert evaluation['host_cases_passed']==sum(status=='passed' for status,_ in observed)
+    summary=next(e for e in attempt_summaries(b['store'],'a',b['run']) if e['event_type']=='execution.evaluated')
+    assert summary['host_cases_total']==len(observed) and 'cases' not in summary
     assert result['result']['reserved_cost']==result['result']['reserved_tokens']==0
     assert not b['dispatch'].preview(*b['params'])['ready']
+
+
+@pytest.mark.skipif(not os.environ.get('LOOM_SANDBOX_TEST_IMAGE'),reason='explicit immutable Docker image required')
+def test_real_docker_timeout_has_bounded_safe_diagnostic_summary(dispatch_case):
+    b=dispatch_case('developer');enqueue(b)
+    b['body']={'source':'while True:\n    pass\n'}
+    sandbox=DockerSandbox(SandboxConfig(os.environ['LOOM_SANDBOX_TEST_IMAGE'],timeout_seconds=2))
+    result,requests=drain(b,sandbox=sandbox)
+    assert result['state']=='awaiting_human' and len(requests)==1
+    summary=next(e for e in attempt_summaries(b['store'],'a',b['run']) if e['event_type']=='execution.evaluated')
+    assert summary['host_cases_total']==1 and summary['host_cases_timeout']==1
+    assert summary['host_cases_passed']==0 and summary['hard_criteria_passed'] is False
+    assert 'private-host' not in json.dumps(summary) and 'stdout' not in summary and 'stderr' not in summary
 
 
 @pytest.mark.skipif(not os.environ.get('LOOM_SANDBOX_TEST_IMAGE'),reason='explicit immutable Docker image required')

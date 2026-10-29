@@ -14,6 +14,8 @@ _KINDS = frozenset({"execution.candidate", "development.evaluated", "execution.e
 _FIELDS = ("task_id", "epoch", "from_epoch", "to_epoch", "primitive", "family", "code", "reason",
            "stage", "source_sha256", "plan_digest", "development_digest", "evaluation_digest",
            "hard_criteria_passed", "passed", "billing_uncertain", "auto_repair_allowed")
+_HOST_COUNTS = ("host_cases_total", "host_cases_passed", "host_cases_mismatch", "host_cases_timeout",
+                "host_cases_runtime_error", "host_cases_other_failure")
 
 
 def attempt_summaries(store: Store, tenant: str, run_id: str) -> list[dict]:
@@ -52,6 +54,13 @@ def attempt_summaries(store: Store, tenant: str, run_id: str) -> list[dict]:
         # structured data under a formerly scalar field name.
         summary.update({key: payload[key] for key in _FIELDS if key in payload
                         and (payload[key] is None or type(payload[key]) in (str, int, bool))})
+        if event["type"] == "execution.evaluated" and event["actor"] == "local-executor":
+            values = [payload.get(key) for key in _HOST_COUNTS]
+            if (all(type(value) is int and 0 <= value <= 32 for value in values)
+                    and 1 <= values[0] <= 32 and values[0] == sum(values[1:])
+                    and type(payload.get("hard_criteria_passed")) is bool
+                    and (values[1] == values[0]) is payload["hard_criteria_passed"]):
+                summary.update(dict(zip(_HOST_COUNTS, values)))
         if event["type"] == "execution.context_bound":
             value = payload.get("context_digest")
             if type(value) is str and re.fullmatch(r"[0-9a-f]{64}", value):

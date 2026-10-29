@@ -13,6 +13,7 @@ from unittest.mock import patch
 import httpx
 
 from loom.execution import FLASH_CONTEXT_LIMIT, LocalTaskRunner, cost_upper_microusd, freeze_tests
+from loom.attempts import attempt_summaries
 from loom.model_gateway import ModelGateway, ModelRoute
 from loom.operator import OperatorService
 from loom.policy import ArtifactSubmission
@@ -178,6 +179,7 @@ class ExecutionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.events(claim, "execution.awaiting_verification")), 1)
         evaluated = self.events(claim, "execution.evaluated")[0]["payload"]
         self.assertFalse(evaluated["billed_currency_verified"])
+        self.assertEqual((evaluated["host_cases_total"], evaluated["host_cases_passed"]), (1, 1))
         self.assertEqual(result["usage_cost_upper_microusd"], cost_upper_microusd(25, 10))
         self.assertTrue(self.store.verify_events(self.store.events("tenant", claim.run_id)))
 
@@ -192,6 +194,28 @@ class ExecutionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.events(claim, "gate.failed")), 1)
         self.assertEqual(self.events(claim, "artifact.verified"), [])
         self.assertTrue(all(row["status"] == "pending" for row in self.rows("tasks", claim.run_id)))
+
+    async def test_failed_host_evaluation_exposes_only_bounded_diagnostic_counts(self):
+        class TimedOutSandbox(FakeSandbox):
+            def run_python(self, files, tests):
+                _, suite_digest = freeze_tests(tests)
+                case = CaseResult("hidden-case-name", False, "timeout", None,
+                                  "private-stdout-marker", "private-stderr-marker", digest("fixture"), 5.0)
+                return SandboxResult(False, "fixture-image", digest(files), suite_digest, RUNNER_SHA256, (case,))
+        self.runner.sandbox = TimedOutSandbox()
+        claim, _ = self.make_claim()
+        result = await self.runner.run_python(claim, self.suite, max_output_tokens=128)
+        self.assertFalse(result["verified"])
+        event = self.events(claim, "execution.evaluated")[0]["payload"]
+        expected = {"host_cases_total": 1, "host_cases_passed": 0, "host_cases_mismatch": 0,
+                    "host_cases_timeout": 1, "host_cases_runtime_error": 0, "host_cases_other_failure": 0}
+        self.assertEqual({k: event[k] for k in expected}, expected)
+        summaries = attempt_summaries(self.store, "tenant", claim.run_id)
+        evaluated = next(item for item in summaries if item["event_type"] == "execution.evaluated")
+        self.assertEqual({k: evaluated[k] for k in expected}, expected)
+        text = json.dumps(evaluated)
+        for marker in ("hidden-case-name", "private-stdout-marker", "private-stderr-marker", "held-out-marker"):
+            self.assertNotIn(marker, text)
 
     async def test_wrong_or_unbound_suite_is_rejected_before_dispatch(self):
         for expected in (None, "0" * 64):

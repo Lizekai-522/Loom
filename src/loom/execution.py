@@ -59,6 +59,26 @@ def freeze_tests(tests: Sequence[FrozenTest]) -> tuple[tuple[FrozenTest, ...], s
     return tuple(frozen), digest([asdict(case) for case in frozen])
 
 
+def _host_case_counts(result):
+    """Keep aggregate host diagnostics without case names, inputs or outputs."""
+    counts = {"host_cases_total": len(result.cases), "host_cases_passed": 0,
+              "host_cases_mismatch": 0, "host_cases_timeout": 0,
+              "host_cases_runtime_error": 0, "host_cases_other_failure": 0}
+    for case in result.cases:
+        if case.passed:
+            key = "host_cases_passed"
+        elif case.status in {"failed", "mismatch"}:
+            key = "host_cases_mismatch"
+        elif case.status == "timeout":
+            key = "host_cases_timeout"
+        elif case.status == "runtime_error":
+            key = "host_cases_runtime_error"
+        else:
+            key = "host_cases_other_failure"
+        counts[key] += 1
+    return counts
+
+
 def _source(content: str) -> str:
     def pairs(items):
         result = {}
@@ -348,6 +368,7 @@ class LocalTaskRunner:
             self.store._event(db, claim.tenant_id, claim.run_id, "execution.evaluated",
                 {"task_id": claim.task_id, "epoch": claim.epoch, "content_hash": digest(output),
                  "evaluation_digest": evaluation_digest, "hard_criteria_passed": evaluated.passed,
+                  **_host_case_counts(evaluated),
                  "usage": asdict(model.usage), "usage_cost_upper_microusd": charged_upper,
                  "tariff_revision": TARIFF_REVISION, "billed_currency_verified": False,
                  **self._context_fields(snapshot)}, "local-executor")
@@ -615,6 +636,7 @@ class LocalTaskRunner:
                 self.store._event(db, claim.tenant_id, claim.run_id, "execution.evaluated",
                     {"task_id": claim.task_id, "epoch": claim.epoch, "content_hash": digest(output),
                      "evaluation_digest": acceptance_digest, "hard_criteria_passed": evaluated.passed,
+                     **_host_case_counts(evaluated),
                      "candidate_event_hash": candidate["hash"], "acceptance_report": evaluated.to_dict(),
                      "usage": asdict(model.usage), "usage_cost_upper_microusd": cost,
                      "tariff_revision": TARIFF_REVISION, "billed_currency_verified": False,

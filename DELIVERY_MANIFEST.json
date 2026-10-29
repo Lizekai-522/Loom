@@ -1,10 +1,10 @@
 {
-  "version": "0.17.9",
-  "stage": "invited-public-control-alpha",
+  "version": "0.18.0",
+  "stage": "host-diagnostics-alpha",
   "production_ready": false,
-  "generated_at": "2026-10-29T11:00:32.711500+08:00",
+  "generated_at": "2026-10-29T11:31:31.274882+08:00",
   "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
-  "source_file_count_excluding_manifest": 277,
+  "source_file_count_excluding_manifest": 279,
   "files": [
     {
       "path": ".gitignore",
@@ -18,8 +18,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 18330,
-      "sha256": "ed97f9352c542aba76c92791654935bcaecb61148c5f8a8ce7a94f8fce19b326"
+      "bytes": 18372,
+      "sha256": "993adcd4065321c2e4ecee648b912b6e09efed187abf024682d17706d0a4c759"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -84,7 +84,7 @@
     {
       "path": "docs/api/openapi.json",
       "bytes": 86264,
-      "sha256": "b1ac38dda8d884298914d0f8963d494f8cf9b70277af13f1544a1b05fc5ee065"
+      "sha256": "e8515fe738e7e8d632b37b8da306327eee4a59d81022c48a6ea50eba574d452d"
     },
     {
       "path": "docs/approved-execution.md",
@@ -133,8 +133,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 46050,
-      "sha256": "6ea46e09d89a4c40062318cb2aa28f4a5843850998204abb0b5d6e8ef439b2e2"
+      "bytes": 46536,
+      "sha256": "98692ef235392a0de28a0c112fedc854f9ade86f92aa6e98bded8f10e326852a"
     },
     {
       "path": "docs/local-auth.md",
@@ -183,8 +183,8 @@
     },
     {
       "path": "docs/project-plan-2026-10-28.md",
-      "bytes": 13689,
-      "sha256": "f52b7328fcb46e1bb1d3751f2b3b24d50085f0fe046c873c3bc1002b344c744a"
+      "bytes": 14117,
+      "sha256": "36fc3a1071d76557fd7bc2f5507c9e460c456de7f35250a15a6b7d5c9f01974e"
     },
     {
       "path": "docs/public-checks.md",
@@ -194,7 +194,7 @@
     {
       "path": "docs/public-preview.md",
       "bytes": 5929,
-      "sha256": "53bf8e1f30be9e1f4f040a854a7a09421439bc809d948fe115291588648667d0"
+      "sha256": "41e723e0cb8bbc7805cd395f0e0b3419a3151980e4a2f1b0c6fb329c35f80231"
     },
     {
       "path": "docs/release-roadmap.md",
@@ -235,6 +235,11 @@
       "path": "docs/review-0.17.9.md",
       "bytes": 1990,
       "sha256": "99eb3bf54943c4fe4e80e21642c636a52e644ce04c87c7f4ab3d65e874efaa52"
+    },
+    {
+      "path": "docs/review-0.18.0.md",
+      "bytes": 1241,
+      "sha256": "f9429a9ca114fe922e9cfbce2d663af68be52dd3965d47c9408fe92e1641ec14"
     },
     {
       "path": "docs/review-decisions.md",
@@ -357,6 +362,11 @@
       "sha256": "23184628ad5779fce0f68305a43f0e4019e413149b81e20cf2bf784690ed3b70"
     },
     {
+      "path": "docs/validation-0.18.0.md",
+      "bytes": 1969,
+      "sha256": "3eced7bf805a0d826f6d0845c2e41ac0cf441fd033e418709383a810179155e9"
+    },
+    {
       "path": "docs/validation-0.3.md",
       "bytes": 4056,
       "sha256": "95b8e50c114e15ebe4405559a3bb84cb64bab6c958e75f7332f37a688554e023"
@@ -419,7 +429,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 771,
-      "sha256": "61fb3ad3a8368d0f06f8b9c0f0c368b89950244aab5b7eaf61deca0ac090e410"
+      "sha256": "9bb147adcb71a2a9c05f9c059cbafc528ddb4f4b3522ebce1e14b18ae9c98b7f"
     },
     {
       "path": "requirements.lock",
@@ -624,7 +634,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "f82d6ef9be7dd397e4cc12045fd08facd646f5fc58fbf26c16bc8b27ad0c84a9"
+      "sha256": "cd93c7f181170da876188abdf7e089f9347359d7fdc900334a30aaaae716788c"
     },
     {
       "path": "src/loom/__main__.py",
@@ -653,8 +663,8 @@
     },
     {
       "path": "src/loom/attempts.py",
-      "bytes": 3499,
-      "sha256": "27cf3a5cbd66a0b877282e172e4c42814e624f6ae54ce2561919e6bba550c4d3"
+      "bytes": 4210,
+      "sha256": "41a621c9a4360852d6751a7f0ffffeedeae578b9772f78019a420505cf1e7971"
     },
     {
       "path": "src/loom/auth.py",
@@ -688,8 +698,8 @@
     },
     {
       "path": "src/loom/execution.py",
-      "bytes": 38936,
-      "sha256": "9409f1f2b7421b9032760f61dd5a67183d88ec7df3ad55b88b5d980fc031b01a"
+      "bytes": 39825,
+      "sha256": "7068f4b91737d59b544df02c33d5951c8fd9b02288e9e0327b46856e333511ca"
     },
     {
       "path": "src/loom/executor_config.py",
@@ -828,8 +838,8 @@
     },
     {
       "path": "src/loom/web/console.js",
-      "bytes": 66984,
-      "sha256": "d053d9ef92782b6ec806359cb913dc037efe34a0c029bb80e301896daf739de1"
+      "bytes": 67700,
+      "sha256": "fff7ddcfb9473e52d85b71edfdb44aecd8b2393e214d78278ab735e031a86478"
     },
     {
       "path": "src/loom/web/index.html",
@@ -873,8 +883,8 @@
     },
     {
       "path": "tests/integration/test_dispatch_live.py",
-      "bytes": 12506,
-      "sha256": "27fb07bf5ee1b5d53863e6a0e784e13db44b6b3d836948939df5e4c8759f039a"
+      "bytes": 13898,
+      "sha256": "f603e6f10bbe717e06b7a3bda02c4aface8a582a37d67f0b379680cf8a838018"
     },
     {
       "path": "tests/integration/test_nats_live.py",
@@ -958,8 +968,8 @@
     },
     {
       "path": "tests/test_attempt_api.py",
-      "bytes": 4660,
-      "sha256": "3d4265708a2cfa8000d0ef4cbab7822ae4d156fc102a2616992a97d1d42b5417"
+      "bytes": 6093,
+      "sha256": "c32fc17f9c415fc4a8d9e35a81fd3f35e5e89ece564a1ab8c4e5faa4dea22bc7"
     },
     {
       "path": "tests/test_auth.py",
@@ -1013,8 +1023,8 @@
     },
     {
       "path": "tests/test_execution.py",
-      "bytes": 31077,
-      "sha256": "bd5761fb3ccc73aa8389ffb54bf8421d4b64ba2b90fd2459de8674d3b1d854b8"
+      "bytes": 32751,
+      "sha256": "7e1efb726c0bec6e26666aafd079179b94401c08758253f2be60fda2a719de8f"
     },
     {
       "path": "tests/test_execution_context.py",
@@ -1393,16 +1403,16 @@
     }
   ],
   "validation": {
-    "full_local_main_tests": 987,
+    "full_local_main_tests": 989,
     "full_local_subtests": 387,
     "failures": 0,
     "skipped": 0,
     "version_metadata_change_after_full_suite": true,
-    "final_targeted_main_tests": 122,
-    "final_targeted_subtests": 23,
-    "real_docker_jetstream_tests": 12,
-    "model_transport": "mock in current infrastructure suite",
-    "new_paid_model_requests": 0,
+    "final_targeted_main_tests": 194,
+    "final_targeted_subtests": 9,
+    "real_docker_jetstream_tests": 13,
+    "model_transport": "mock in infrastructure; two actual responses in isolated 0.17.9 smoke",
+    "new_paid_model_requests": 2,
     "post_upgrade_main_http_and_data_checks": 64,
     "post_upgrade_public_and_export_checks": 27,
     "post_upgrade_public_control_checks": 12
