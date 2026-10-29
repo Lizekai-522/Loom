@@ -9,6 +9,7 @@ dist/
 *.db
 *.db-shm
 *.db-wal
+*.executor-heartbeats/
 artifacts/
 .playwright-cli/
 output/

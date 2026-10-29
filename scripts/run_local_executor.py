@@ -12,11 +12,12 @@ from loom.store import Store,LoomError
 async def run(args):
     if not Path(args.db).is_file():raise ValueError('existing database required')
     executor=LocalExecutor(Store(args.db),load_executor_config(args.config))
-    while True:
-        result=await executor.drain_one()
-        if result:print(json.dumps(dict(request_id=result['request_id'],state=result['state'],counts_as_success=False)),flush=True)
-        if not args.watch:return
-        await asyncio.sleep(0.5)
+    async with executor.status.monitor():
+        while True:
+            result=await executor.drain_one()
+            if result:print(json.dumps(dict(request_id=result['request_id'],state=result['state'],counts_as_success=False)),flush=True)
+            if not args.watch:return
+            await asyncio.sleep(0.5)
 
 
 def main():

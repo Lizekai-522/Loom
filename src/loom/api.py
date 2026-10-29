@@ -22,6 +22,7 @@ from .review_inputs import ReviewFindingsBody, ReviewInputService
 from .review_decisions import Decision, ReviewDecisionService
 from .progression import ProgressionService
 from .dispatch import DispatchService
+from .executor_status import ExecutorStatus
 from .operator import OperatorService
 from .local_console import allows_local_console, console_principal
 from .store import Claim, Conflict, InvalidInput, LoomError, NotFound, Store, canonical, digest
@@ -154,6 +155,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     review_decisions = ReviewDecisionService(store)
     progression = ProgressionService(store)
     dispatch = DispatchService(store,config=executor_config,identities=identities)
+    executor_status = ExecutorStatus(store,executor_config,identities)
     security = HTTPBearer(auto_error=False)
 
     def principal(request: Request, credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)]) -> Principal:
@@ -239,6 +241,10 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     @app.get("/v1/goals")
     def list_goals(tenant: Tenant):
         return {"goals": workflows.list_goals(tenant)}
+
+    @app.get("/v1/executor-status")
+    def read_executor_status(tenant: Tenant):
+        return executor_status.read(tenant)
 
     @app.get("/v1/goals/{run_id}")
     def get_goal(run_id: str, tenant: Tenant):
