@@ -32,6 +32,8 @@ window.LoomExecutionPanel=function({state,node,has,request,publicError,runChecke
      :latest?`${names[latest.state]||'状态待核对'}${queueWarning}${retry?' · 上次回执未确认，字段已锁定；可读取核对或用同一编号重试':''}`
      :data?.ready?'预览已核对。勾选并显式提交后，本机执行器才会开始处理。':reasons[data?.reason]||'先读取本机执行条件。');
    refs.budget.textContent=data?.approved_preview?`开始执行时费用预留上界 ${data.approved_preview.initial_cost_reservation_upper.toLocaleString('zh-CN')} µUSD，词元预留上界 ${data.approved_preview.initial_token_reservation.toLocaleString('zh-CN')}。实际按已知用量结算；未知结果保留预留。`:'';
+   const contextLimit=data?.approved_preview?.task_limits?.context_limit_bytes;
+   if(data?.approved_preview)refs.budget.textContent+=Number.isSafeInteger(contextLimit)?` 本任务完整模型请求体上限 ${contextLimit.toLocaleString('zh-CN')} UTF-8 字节，超限先停止，不静默裁剪。`:' 本任务未另设请求体字节上限，仍受网关限制。';
    refs.history.replaceChildren();
    if(latest){refs.history.append(node('p','mono break-word',`请求 ${latest.request_id}`),node('p','field-help',latest.reason),node('p','mono break-word',`最近事件 ${latest.last_event_hash||latest.event_hash}`));
      if(latest.result)refs.history.append(node('p','field-help',`已登记 ${latest.result.model_calls} 次模型发起，已知响应 ${latest.result.settled_calls} 次；此任务仍预留 ${latest.result.reserved_cost} µUSD / ${latest.result.reserved_tokens} 词元。`));}

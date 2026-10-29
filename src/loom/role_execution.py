@@ -11,6 +11,7 @@ from dataclasses import asdict
 from .artifact_schemas import ARTIFACT_ROLES, ARTIFACT_SCHEMAS, BODY_MODELS, RoleOutputError
 from .execution import FLASH_CONTEXT_LIMIT, LocalTaskRunner, cost_upper_microusd
 from .model_gateway import GatewayError, ModelGateway
+from .context_budget import check_context_budget
 from .store import BudgetExceeded, Claim, InvalidInput, Store, canonical, digest
 
 
@@ -79,7 +80,8 @@ class RoleTaskRunner:
         if not readiness.ready:
             raise GatewayError(readiness.reason)
         try:
-            self.gateway.prepare_request(route.alias, messages, max_output_tokens, json_mode=True)
+            prepared=self.gateway.prepare_request(route.alias, messages, max_output_tokens, json_mode=True)
+            check_context_budget(spec, prepared)
         except GatewayError as error:
             return self.execution._block(claim, error.code)
         # Keep the stable ledger names: the existing operator reconciler uses

@@ -19,6 +19,7 @@ from .policy import ArtifactSubmission
 from .repair import RebindService, RepairStopped
 from .sandbox import DockerSandbox, FrozenTest, SandboxError
 from .tool_registry import PYTHON_TESTS, run_python_tool
+from .context_budget import check_context_budget
 from .store import BudgetExceeded, Claim, Conflict, InvalidInput, NotFound, StaleClaim, Store, canonical, digest
 from .workflow import WorkflowService
 
@@ -304,7 +305,8 @@ class LocalTaskRunner:
             {"role": "user", "content": canonical(incoming)},
         ]
         try:
-            self.gateway.prepare_request(route.alias, messages, max_output_tokens, json_mode=True)
+            prepared=self.gateway.prepare_request(route.alias, messages, max_output_tokens, json_mode=True)
+            check_context_budget(spec, prepared)
         except GatewayError as error:
             return self._block(claim, error.code)
         await asyncio.to_thread(self.sandbox.preflight)
@@ -544,7 +546,8 @@ class LocalTaskRunner:
                 {"role": "user", "content": canonical(incoming)},
             ]
             try:
-                self.gateway.prepare_request(route.alias, messages, max_output_tokens, json_mode=True)
+                prepared=self.gateway.prepare_request(route.alias, messages, max_output_tokens, json_mode=True)
+                check_context_budget(spec, prepared)
             except GatewayError as error:
                 return self._cycle_stop(claim, error.code, stage="context")
             try:

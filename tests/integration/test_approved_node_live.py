@@ -25,3 +25,15 @@ def test_unified_developer_with_optional_approved_input_in_real_docker(node_case
     assert result['passed'] and result['execution']['hard_criteria_passed'] and result['execution']['status']=='submitted'
     assert len(requests)==1
     assert b['store'].snapshot('a',b['run'])['reserved']==0
+
+
+@pytest.mark.parametrize('cap,passed',[(256,False),(65536,True)])
+def test_context_cap_with_approved_real_docker_runtime(node_case,cap,passed):
+    from loom.sandbox import DockerSandbox,SandboxConfig
+    b=node_case('developer',context_limit=cap)
+    sandbox=DockerSandbox(SandboxConfig(os.environ['LOOM_SANDBOX_TEST_IMAGE']))
+    result,requests=execute(b,{'source':'import json\nprint(json.dumps({"answer":2}))\n'},sandbox=sandbox)
+    assert result['passed'] is passed
+    assert len(requests)==int(passed)
+    if not passed:assert result['execution']['reason']=='TASK_CONTEXT_LIMIT_EXCEEDED'
+    assert not result['counts_as_success'] and b['store'].snapshot('a',b['run'])['reserved']==0

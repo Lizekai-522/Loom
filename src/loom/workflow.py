@@ -63,6 +63,9 @@ class TaskLimits(StrictModel):
     cost_limit_microusd: int = Field(ge=0, le=1_000_000_000_000)
     token_limit: int = Field(ge=1, le=10_000_000)
     max_attempts: int = Field(default=3, ge=1, le=10)
+    context_limit_bytes: int | None = Field(default=None, ge=256, le=262144,
+        exclude_if=lambda value: value is None,
+        description='完整模型 JSON 请求体的 UTF-8 字节上限；不是词元估算，不静默裁剪。')
 
 
 class RebindPolicy(StrictModel):
