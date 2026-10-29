@@ -1,10 +1,10 @@
 # Loom
 
-基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.17.8**防止未结算预留触发自动重试，提供人工用量核对，0.17.6增加恢复条件检查，并已完成批准计划与调度任务一致性加固；工作台可查看并精确导出生成程序及版本记录。此前真实Flash分析→输入批准→代码→Docker已通过，第二模型仍待配置。[本轮验证](docs/validation-0.17.8.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
+基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.17.9**修复受邀公网的浏览器登录和运行控制；0.17.8防止未结算预留触发自动重试，0.17.6增加恢复条件检查，并已完成批准计划与调度任务一致性加固；工作台可查看并精确导出生成程序及版本记录。此前真实Flash分析→输入批准→代码→Docker已通过，第二模型仍待配置。[本轮验证](docs/validation-0.17.9.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
 
 0.17.4历史重测967主/382子、Chromium63项，三份源码下载与权威原始字节一致；0.17.5测试与真实基础设施证据单独登记。[历史验证](docs/validation.md)
 
-10月28日周三必须公网可体验，按用户选择采用本机临时Cloudflare HTTPS隧道；主机须保持在线。原62项及独立验证/生产门槛继续追踪。[交付路线](docs/release-roadmap.md)
+10月29日18:00左右需要公网可体验，按用户选择采用本机临时Cloudflare HTTPS隧道；主机须保持在线。原62项及独立验证/生产门槛继续追踪。[交付路线](docs/release-roadmap.md)
 
 ## 当前可以做什么
 

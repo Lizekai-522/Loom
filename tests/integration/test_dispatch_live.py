@@ -27,8 +27,15 @@ from tests.test_reviewer_handoff import handoff,generate,reviewer_claim
 def test_queued_developer_real_docker_execution_or_human_stop(dispatch_case,passes):
     b=dispatch_case('developer');enqueue(b)
     b['body']={'source':'import json\nprint(json.dumps({"answer":'+('2' if passes else '0')+'}))\n'}
-    result,requests=drain(b,sandbox=DockerSandbox(SandboxConfig(os.environ['LOOM_SANDBOX_TEST_IMAGE'])))
-    assert result['state']==('submitted' if passes else 'awaiting_human') and len(requests)==1
+    sandbox=DockerSandbox(SandboxConfig(os.environ['LOOM_SANDBOX_TEST_IMAGE']))
+    observed=[];run_python=sandbox.run_python
+    def observe(*args,**kwargs):
+        result=run_python(*args,**kwargs)
+        observed.extend((case.status,case.duration_seconds) for case in result.cases)
+        return result
+    sandbox.run_python=observe
+    result,requests=drain(b,sandbox=sandbox)
+    assert result['state']==('submitted' if passes else 'awaiting_human') and len(requests)==1, observed
     assert result['result']['reserved_cost']==result['result']['reserved_tokens']==0
     assert not b['dispatch'].preview(*b['params'])['ready']
 
