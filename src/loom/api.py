@@ -23,6 +23,8 @@ from .review_decisions import Decision, ReviewDecisionService
 from .progression import ProgressionService
 from .dispatch import DispatchService
 from .executor_status import ExecutorStatus
+from .verification_config import load_verification_config
+from .verification_runtime import VerificationRuntime
 from .tool_registry import catalog as tool_catalog
 from .tool_recovery import ToolRecoveryService
 from .quotas import QuotaService
@@ -151,6 +153,10 @@ class ExecutionRequestInput(Input):
     expected_dispatch_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     reason: str = Field(min_length=1,max_length=2000)
 
+class VerificationRequestInput(Input):
+    expected_preview_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    reason: str = Field(min_length=1,max_length=2000)
+
 
 def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[LocalIdentity, ...] = (), local_console: bool = False, executor_config=None) -> FastAPI:
     registry = AuthRegistry(tenant_keys, identities)
@@ -166,6 +172,8 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     progression = ProgressionService(store)
     dispatch = DispatchService(store,config=executor_config,identities=identities)
     executor_status = ExecutorStatus(store,executor_config,identities)
+    verification_path=getattr(executor_config,'verification_config',None)
+    verification = VerificationRuntime(store,load_verification_config(verification_path)) if verification_path is not None else None
     security = HTTPBearer(auto_error=False)
 
     def principal(request: Request, credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)]) -> Principal:
@@ -263,7 +271,25 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     @app.get('/v1/verification-capabilities')
     def read_verification_capabilities(tenant: Tenant):
         from .verification_signatures import capabilities
-        return capabilities(tenant)
+        return verification.capabilities(tenant) if verification is not None else capabilities(tenant)
+
+    def verifier(tenant):
+        if verification is None:raise Conflict('VERIFICATION_NOT_CONFIGURED')
+        verification.check(tenant)
+        return verification
+
+    @app.get('/v1/runs/{run_id}/tasks/{task_id}/verification-preview')
+    def verification_preview(run_id: str,task_id: str,tenant: Tenant):
+        return verifier(tenant).jobs.preview(tenant,run_id,task_id)
+
+    @app.get('/v1/runs/{run_id}/tasks/{task_id}/verification')
+    def verification_history(run_id: str,task_id: str,tenant: Tenant):
+        return verifier(tenant).history(tenant,run_id,task_id)
+
+    @app.post('/v1/runs/{run_id}/tasks/{task_id}/verification-requests')
+    def request_verification(run_id: str,task_id: str,body: VerificationRequestInput,identity: Controller,idempotency_key: Key):
+        return verifier(identity.tenant_id).jobs.request(identity,run_id,task_id,idempotency_key,
+            expected_preview_digest=body.expected_preview_digest,reason=body.reason)
 
     @app.get('/v1/quotas')
     def read_quotas(tenant: Tenant):

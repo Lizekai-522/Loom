@@ -1,10 +1,10 @@
 {
-  "version": "0.19.1",
-  "stage": "verifier-jobs-alpha",
+  "version": "0.19.2",
+  "stage": "verification-ui-alpha",
   "production_ready": false,
-  "generated_at": "2026-10-30T01:12:11.867807+08:00",
+  "generated_at": "2026-10-30T01:29:41.840399+08:00",
   "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
-  "source_file_count_excluding_manifest": 351,
+  "source_file_count_excluding_manifest": 357,
   "files": [
     {
       "path": ".gitignore",
@@ -18,8 +18,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 18260,
-      "sha256": "5d7ce4e89f187833c8f4d82bbcd45b57d14cac45f7f8dd298c6c7aa0290eba56"
+      "bytes": 18266,
+      "sha256": "9cf4b55d4acf3ee25a2ccab1f4af74b6d1759ecfe8b3c233b51d336c50afb404"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -89,12 +89,12 @@
     {
       "path": "docs/api/README.md",
       "bytes": 14061,
-      "sha256": "e94b8b36fdc7f5c331112c123ddb2d134ed686dfe6ee7882836fd9f4233ca15d"
+      "sha256": "a2010e33f13b9b2d060a3afe71bfd3d1c6e87abdef54c354e07e6bc892743305"
     },
     {
       "path": "docs/api/openapi.json",
-      "bytes": 91624,
-      "sha256": "79c384f1019e0131fb8c528ea83c6a983d54dcc4c08bf06197cd25963a4066c9"
+      "bytes": 96892,
+      "sha256": "9a59e9572d0c6942e4a6541de1c52a7b4316e160cb12609ca5fc89d900982311"
     },
     {
       "path": "docs/approved-execution.md",
@@ -163,13 +163,13 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 51479,
-      "sha256": "474ced250f050db92e030ca1e3f67c2df53e548df936ed4ece69bd117552f886"
+      "bytes": 51924,
+      "sha256": "55816a3478ea72f2c67852756977e6d01d0d80c1c0d5fd4247e65a5243869906"
     },
     {
       "path": "docs/launch-four-rounds-2026-10-30.md",
-      "bytes": 1642,
-      "sha256": "fb21f7d3b4dd8e978f982069e45ee8df16fa17e1517ffab5dd8817599769a0bb"
+      "bytes": 1723,
+      "sha256": "5f29ee6e5ab20cf45941a5beb420d5fa4f891b05d0721d813dffb22c852de921"
     },
     {
       "path": "docs/launch-readiness-2026-10-29.md",
@@ -228,8 +228,8 @@
     },
     {
       "path": "docs/project-plan-2026-10-28.md",
-      "bytes": 18660,
-      "sha256": "1b0cecf5c70eea5e546942740d1bd402d5ab87cff1611235b04e3b62f85cbee8"
+      "bytes": 19072,
+      "sha256": "2f0107363b40d3ba32dfb4c1ce47ff76f5252dd38052d5affe9d8b70d32b6f58"
     },
     {
       "path": "docs/public-checks.md",
@@ -355,6 +355,11 @@
       "path": "docs/review-0.19.1.md",
       "bytes": 1497,
       "sha256": "69a81cee8cf7a897a4f7cee6f2f99e7c1a987b5c562ad6ea4720d7ace08b8765"
+    },
+    {
+      "path": "docs/review-0.19.2.md",
+      "bytes": 929,
+      "sha256": "53d27cb69bc901656b42fa0530e083bcfeea282f7c072e0951d776a5a88d6050"
     },
     {
       "path": "docs/review-decisions.md",
@@ -552,6 +557,11 @@
       "sha256": "684affde24397ba3c7428e748a64d27a34da1c4105203127349aae437b239191"
     },
     {
+      "path": "docs/validation-0.19.2.md",
+      "bytes": 1115,
+      "sha256": "ce7f259de75d1f1553de5bc82e0b5567b18954242e526870bd09a5403db63143"
+    },
+    {
       "path": "docs/validation-0.3.md",
       "bytes": 4056,
       "sha256": "95b8e50c114e15ebe4405559a3bb84cb64bab6c958e75f7332f37a688554e023"
@@ -593,8 +603,8 @@
     },
     {
       "path": "docs/verification-jobs.md",
-      "bytes": 2176,
-      "sha256": "56a5778ad8354585662566709b85bcdfb0ea06668bc6cf2cc2380e994cfd8494"
+      "bytes": 3050,
+      "sha256": "a6eb1e0e5a990c8ab4b7f9a4dbd3168f2ba592b2cf76420d8d485ba09ac4c675"
     },
     {
       "path": "docs/verification-signatures.md",
@@ -624,7 +634,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 771,
-      "sha256": "00255ef8c36c384dd8499574aa66297e3783d25bc4c59853035a62bddde09fe3"
+      "sha256": "b5deb93bee97981bfc1ce3926dc9970f7cd0a85cbfee3c7055a77cbef3950bd9"
     },
     {
       "path": "requirements.lock",
@@ -803,8 +813,8 @@
     },
     {
       "path": "scripts/run_verification.py",
-      "bytes": 2893,
-      "sha256": "d0b14bb94c43aa9baa61602456aac5822d977d768bfae23c2426ff2f39cfe006"
+      "bytes": 3123,
+      "sha256": "e84bae7a9dacc16a57b18bc2bdcf4d638151e1a1498a2e5a2c341a29050ed15f"
     },
     {
       "path": "scripts/run_workflow_task.py",
@@ -833,8 +843,8 @@
     },
     {
       "path": "scripts/start_local_dev.ps1",
-      "bytes": 3041,
-      "sha256": "60b5db46f9ed5832ae1c690c665b0efa0ed5dce524401e3c46f4dec27c6602d6"
+      "bytes": 3293,
+      "sha256": "028eac7540b4b22ef5a0ae10d970c03edcc1d50c3b2eee63910cef6c61e92033"
     },
     {
       "path": "scripts/start_local_docker.ps1",
@@ -843,13 +853,18 @@
     },
     {
       "path": "scripts/start_public_preview.ps1",
-      "bytes": 5190,
-      "sha256": "b7d5eb2ba30e73b916a63e3112ea795c14cca6bc3f809088a2c67d8d9f63b894"
+      "bytes": 5763,
+      "sha256": "942c0584ee6688d751a8bd25cd1a09987eb7c448c2d7558f9d6fc0488698193d"
+    },
+    {
+      "path": "scripts/start_verification.ps1",
+      "bytes": 1841,
+      "sha256": "75e3ff9c8ae8f67b7d2beb571c80bfbc9146168b2baf68a065099565a3d85ca8"
     },
     {
       "path": "scripts/stop_public_preview.ps1",
-      "bytes": 1786,
-      "sha256": "684f50b94c22e5f129991440d159f4f3cb0adcc3fde895da2a4dcb9024450668"
+      "bytes": 1834,
+      "sha256": "b576b5d532fc16ef5e11a51545906af80f88852a187c128b28bd00bab64819fe"
     },
     {
       "path": "scripts/update_preview_origin.py",
@@ -859,7 +874,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "ded8c75513efaff5102e34dfeb88509da6b540586043b98e445fd5d2c244ed65"
+      "sha256": "3d60fd86c0a7ae7f80432481306e505e575405fbbc67f98c1ba0ce11ade24450"
     },
     {
       "path": "src/loom/__main__.py",
@@ -868,8 +883,8 @@
     },
     {
       "path": "src/loom/api.py",
-      "bytes": 27751,
-      "sha256": "ddc9afecd7ac81613698a3c28e858b23b7ca043bcb2b7ae80242d561b639972c"
+      "bytes": 29262,
+      "sha256": "f89769d56dd3d6b978b9054d27e30443eeecf355135dd0394b4872758e91da3a"
     },
     {
       "path": "src/loom/approved_execution.py",
@@ -933,8 +948,8 @@
     },
     {
       "path": "src/loom/executor_config.py",
-      "bytes": 3999,
-      "sha256": "72a5020df71791d859e32ef5e3a11ae758b0fc74fd54d22231940b7f3ab817f8"
+      "bytes": 4221,
+      "sha256": "86be3a74c2924a70bcb158fa6aa873efe06ba7005298ef96ed0bf7916d157794"
     },
     {
       "path": "src/loom/executor_status.py",
@@ -993,8 +1008,8 @@
     },
     {
       "path": "src/loom/public_access.py",
-      "bytes": 12314,
-      "sha256": "e6e56d2b1413f2cb1d061ca445115d28849539c28c2802083db2a9f670e180bb"
+      "bytes": 12456,
+      "sha256": "24c1a54b893e2760a8b00f57d07b9fcd18291794aeaf963aea4e77b251b25b23"
     },
     {
       "path": "src/loom/public_checks.py",
@@ -1063,8 +1078,13 @@
     },
     {
       "path": "src/loom/verification_jobs.py",
-      "bytes": 17489,
-      "sha256": "497c5586d2c5a3daa24761f8e40a0c06039aa0b532a6765551faa56a08fe3137"
+      "bytes": 18289,
+      "sha256": "a5a5280856fdc65e5ed42b409eca124165b48dd7c042886716fbe295e952ef72"
+    },
+    {
+      "path": "src/loom/verification_runtime.py",
+      "bytes": 4278,
+      "sha256": "a9d49ddaf789696d84191d045e95cac6eeb3614e9ca344db7abc7703575966b3"
     },
     {
       "path": "src/loom/verification_signatures.py",
@@ -1073,8 +1093,8 @@
     },
     {
       "path": "src/loom/verification_worker.py",
-      "bytes": 8061,
-      "sha256": "91a75e7edcfcf6d4aac1d2caeca233d2fa143e5f95bda7c7cd55e875c2783650"
+      "bytes": 8345,
+      "sha256": "be7cf205d89d9be42bc463e5f0cf40824ab7cc6cc70a38de733e3c212ba869af"
     },
     {
       "path": "src/loom/web/console-execution.js",
@@ -1098,13 +1118,18 @@
     },
     {
       "path": "src/loom/web/console-source.js",
-      "bytes": 8794,
-      "sha256": "64e2cd3adbeb914f0e9f2daf01d3428892309be65cc80bc5da207585aaf1e953"
+      "bytes": 8809,
+      "sha256": "8b47c82be777e724216e56c5a3af324416e1a1d36690961859b59f1b2169fb79"
     },
     {
       "path": "src/loom/web/console-suites.js",
       "bytes": 18525,
       "sha256": "7c15e3b654beb3cdc9ace3d24a95fde4871568b2042169ee458b405aa5b8e884"
+    },
+    {
+      "path": "src/loom/web/console-verification.js",
+      "bytes": 8839,
+      "sha256": "1a15d280681849fb3036ee08b0dde694b719bd4cfb8cef4572a04c009591c492"
     },
     {
       "path": "src/loom/web/console-zh.js",
@@ -1118,13 +1143,13 @@
     },
     {
       "path": "src/loom/web/console.js",
-      "bytes": 70998,
-      "sha256": "fd926ac733e6c21e73f718332f6b590a75ece870f126b21a1d812e7c0fcc417f"
+      "bytes": 71223,
+      "sha256": "5814d49634174b16a5ff53943e10578d76192aaa5d54386cd5bcbd8428e1dd30"
     },
     {
       "path": "src/loom/web/index.html",
-      "bytes": 19259,
-      "sha256": "e070fcc834100a87a95d19f28789ab3fa45ce36adb11d5962a1d72e9df41085d"
+      "bytes": 20818,
+      "sha256": "6c9f87023e294ebcfe35a08c254ed95571d0e13318141666b683d207e3b54207"
     },
     {
       "path": "src/loom/workflow.py",
@@ -1547,14 +1572,19 @@
       "sha256": "a5958b32ea08d83673f5a92a0fb7c8e0734d970d9c43d1566813a8e3c11115e9"
     },
     {
+      "path": "tests/test_verification_api.py",
+      "bytes": 6069,
+      "sha256": "0e9d5a6899a22515c293b078688d963b56316023226bc4564c218e52d6a0dbf1"
+    },
+    {
       "path": "tests/test_verification_config.py",
       "bytes": 1928,
       "sha256": "80ac1310fd59bd5a0cecdd6d1cafd7392b79be2e814bd0e4ae90d3dda6a0fc86"
     },
     {
       "path": "tests/test_verification_jobs.py",
-      "bytes": 10110,
-      "sha256": "aebea3b2277516a40d06720b753956ada8fe2146a65ad422dbf906cc54ec32bd"
+      "bytes": 10182,
+      "sha256": "91b06f8a0e0bf9fbcdecf82b86d9453036528cb0734a007284536c5b7bef40dc"
     },
     {
       "path": "tests/test_verification_signatures.py",
@@ -1764,14 +1794,14 @@
   ],
   "validation": {
     "full": {
-      "main_tests": 1141,
+      "main_tests": 1148,
       "subtests": 387,
       "failures": 0,
       "skipped": 0
     },
     "target": {
-      "main_tests": 136,
-      "subtests": 27,
+      "main_tests": 106,
+      "subtests": 0,
       "failures": 0,
       "skipped": 0
     },
@@ -1782,35 +1812,14 @@
       "skipped": 0
     }
   },
-  "live_http_checks": 53,
-  "browser_checks": 12,
-  "new_paid_model_requests": 2,
-  "real_provider_probe": {
-    "version": "0.19.1",
-    "passed": true,
-    "provider_requests_attempted": 2,
-    "provider_responses": 2,
-    "actual_models": [
-      "deepseek-flash",
-      "deepseek-v4-pro"
-    ],
-    "actual_cost_upper_microusd": 5826,
-    "billing_uncertain": false,
-    "real_ed25519_attestations": 2,
-    "source_task_status": "done",
-    "goal_accepted": false,
-    "source_original_unchanged": true,
-    "source_real_docker_cases": 6,
-    "isolated_database": true,
-    "automatic_retry": false,
-    "provider_bill_verified": false,
-    "reason": null,
-    "audit_chain_valid": true
-  },
+  "live_http_checks": 59,
+  "browser_checks": 9,
+  "new_paid_model_requests": 0,
+  "real_provider_probe": null,
   "notes": [
     "Original 62 requirements retained; partial feature increments do not establish production readiness.",
     "Current infrastructure tests use real Docker and JetStream with simulated provider responses.",
-    "Dual-model signed verification is tested; public workflow integration, full adjudication, general tools, distributed quotas and production hosting remain tracked separately.",
+    "Dual-model signed verification is tested; each release records its UI and workflow scope. Full adjudication, general tools, distributed quotas and production hosting remain tracked separately.",
     "Private configuration, invitations, session cookies, identities and databases are excluded."
   ]
 }

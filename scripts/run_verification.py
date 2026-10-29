@@ -11,6 +11,7 @@ from loom.store import LoomError,Store
 from loom.verification_config import load_verification_config
 from loom.verification_jobs import VerificationJobs
 from loom.verification_worker import VerificationWorker
+from loom.verification_runtime import VerificationRuntime
 
 async def drain(db,config):
     jobs=VerificationJobs(Store(db),pool_limit=config.pool_limit_microusd)
@@ -26,11 +27,14 @@ async def run(args):
     if not Path(args.db).is_file():raise ValueError('existing database required')
     config=load_verification_config(args.config)
     if args.mode=='drain':
-        while True:
-            result=await drain(args.db,config)
-            if result is not None:print(json.dumps(result),flush=True)
-            if not args.watch:return dict(passed=True,result=result,automatic_retry=False)
-            await asyncio.sleep(1)
+        runtime=VerificationRuntime(Store(args.db),config)
+        async with runtime.status.monitor():
+            while True:
+                runtime.check(config.tenant_id)
+                result=await drain(args.db,config)
+                if result is not None:print(json.dumps(result),flush=True)
+                if not args.watch:return dict(passed=True,result=result,automatic_retry=False)
+                await asyncio.sleep(1)
     jobs=VerificationJobs(ReadOnlyStore(args.db),pool_limit=config.pool_limit_microusd,initialize=False) if args.mode=='preview' else VerificationJobs(Store(args.db),pool_limit=config.pool_limit_microusd)
     if args.mode=='preview':return jobs.preview(config.tenant_id,args.run_id,args.task_id)
     if args.mode=='status':return jobs.state(config.tenant_id,args.job_id)

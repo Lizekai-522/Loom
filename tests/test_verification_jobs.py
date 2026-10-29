@@ -104,13 +104,14 @@ def test_parallel_start_only_one_worker_and_budget_admission_is_atomic(verificat
 
 def test_insufficient_project_pool_never_starts_or_calls_models(verification_case):
     b=verification_case;b['jobs'].pool_limit=1
-    with pytest.raises(Conflict,match='PROJECT_BUDGET'):asyncio.run(run_job(b))
-    assert b['jobs'].state('a',b['job'])['state']=='queued'
+    result,requests=asyncio.run(run_job(b))
+    assert result['state']=='blocked' and result['reason']=='VERIFICATION_PROJECT_BUDGET_EXHAUSTED' and not requests
+    assert not b['jobs'].pending('a')
 
 def test_source_replacement_after_request_cannot_consume_old_verification(verification_case):
     b=verification_case;b['store'].invalidate('a',b['run'],b['task'],'来源已改变')
-    with pytest.raises(Conflict):asyncio.run(run_job(b))
-    assert b['jobs'].state('a',b['job'])['state']=='queued'
+    result,requests=asyncio.run(run_job(b))
+    assert result['state']=='blocked' and not requests and not b['jobs'].pending('a')
 
 def test_attestation_and_task_completion_are_rolled_back_if_final_audit_fails(verification_case):
     b=verification_case;original=b['store']._event

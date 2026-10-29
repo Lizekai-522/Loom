@@ -81,7 +81,11 @@ class VerificationWorker:
 
     async def process(self,tenant,job_id):
         if tenant!=self.operator.tenant_id:raise InvalidInput('verification tenant differs from runtime')
-        state,_,requirements=self.jobs.start(tenant,job_id)
+        try:state,_,requirements=self.jobs.start(tenant,job_id)
+        except Conflict as error:
+            if self.jobs.state(tenant,job_id)['state']!='queued':raise
+            reason=str(error) if str(error).startswith('VERIFICATION_') else 'VERIFICATION_PREFLIGHT_BLOCKED'
+            return self.jobs.block_pending(tenant,job_id,reason)
         shadow=None;runs=[];verdicts=[]
         try:
             directory=self.directory/job_id

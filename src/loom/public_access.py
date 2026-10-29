@@ -69,7 +69,7 @@ LOGIN = '''<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <input id="code" name="code" type="password" autocomplete="off" required maxlength="128">
 <button type="submit">进入工作台</button></form>
 <p>单目标预算上限 $1、3,200,000 词元；最多 20 个目标。按模型上下文上限保守预留，实际用量结算。执行前仍须明确确认。
-Flash 已接通，独立双模型验收待配置。</p></main></html>'''
+Flash 已接通；独立复核另用操作员配置的项目额度，最多预留 $1.85，原生成额度保持。进入后可检查复核执行器状态并明确申请。</p></main></html>'''
 STYLE = 'body{font:16px/1.7 system-ui;background:#f6f5f1;color:#24292b;margin:0}main{max-width:620px;margin:10vh auto;padding:32px}input,button{font:inherit;display:block;box-sizing:border-box;padding:12px;margin:12px 0;width:100%}button{background:#255943;color:white;border:0;cursor:pointer}p{color:#48544d}'
 
 
@@ -98,7 +98,7 @@ class PublicPreview:
             return bool(re.fullmatch(r'/v1/goals/[A-Za-z0-9_-]+/plan', path))
         if method == 'POST':
             return (path == '/v1/goals' or bool(re.fullmatch(
-                r'/v1/(?:goals/[A-Za-z0-9_-]+/plan/approve|runs/[A-Za-z0-9_-]+/(?:control/(?:pause|resume|terminate)|pause|resume|terminate|tasks/[A-Za-z0-9:_-]+/(?:auxiliary-inputs|execution-requests)|execution-requests/[A-Za-z0-9_-]+/cancel|artifacts/[A-Za-z0-9_-]+/(?:development-suites|review-decisions)))', path)))
+                r'/v1/(?:goals/[A-Za-z0-9_-]+/plan/approve|runs/[A-Za-z0-9_-]+/(?:control/(?:pause|resume|terminate)|pause|resume|terminate|tasks/[A-Za-z0-9:_-]+/(?:auxiliary-inputs|execution-requests|verification-requests)|execution-requests/[A-Za-z0-9_-]+/cancel|artifacts/[A-Za-z0-9_-]+/(?:development-suites|review-decisions)))', path)))
         return False
 
     async def __call__(self, scope, receive, send):

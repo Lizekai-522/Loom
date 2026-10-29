@@ -5,7 +5,7 @@ $loomRecordPath=Join-Path $loomWork 'loom-public-preview/processes.json'
 if (-not (Test-Path -LiteralPath $loomRecordPath)) { Write-Output '没有已登记的公网体验进程。';exit }
 $loomRecord=Get-Content -LiteralPath $loomRecordPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $loomRepo=(Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$loomAllowed=@((Join-Path $PSScriptRoot 'serve_public_preview.py'),(Join-Path $PSScriptRoot 'run_local_executor.py'),(Join-Path $loomWork 'loom-tunnel/cloudflared.exe'))
+$loomAllowed=@((Join-Path $PSScriptRoot 'serve_public_preview.py'),(Join-Path $PSScriptRoot 'run_local_executor.py'),(Join-Path $PSScriptRoot 'run_verification.py'),(Join-Path $loomWork 'loom-tunnel/cloudflared.exe'))
 foreach ($loomItem in ($loomRecord.processes | Sort-Object @{Expression={if ($_.kind -eq 'tunnel') {0} elseif ($_.kind -eq 'worker') {1} else {2}}})) {
   if ($loomAllowed -notcontains $loomItem.marker) { throw '进程记录不符合此项目允许的帮助程序，停止。' }
   $loomProcess=Get-CimInstance Win32_Process -Filter ('ProcessId={0}' -f $loomItem.id) -ErrorAction SilentlyContinue
