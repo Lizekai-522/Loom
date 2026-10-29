@@ -1,10 +1,10 @@
 {
-  "version": "0.18.1",
-  "stage": "queue-wait-guidance-alpha",
+  "version": "0.18.2",
+  "stage": "public-readiness-alpha",
   "production_ready": false,
-  "generated_at": "2026-10-29T11:42:45.867534+08:00",
+  "generated_at": "2026-10-29T11:48:49.043746+08:00",
   "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
-  "source_file_count_excluding_manifest": 281,
+  "source_file_count_excluding_manifest": 285,
   "files": [
     {
       "path": ".gitignore",
@@ -18,8 +18,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 18405,
-      "sha256": "f3aed6ea9c793a295dfb7cde0b21f3f7629e0631c5f47eef70af50de3395e96b"
+      "bytes": 18306,
+      "sha256": "189d76e17234d566795d16dc2e9340d7cab63f69a8e60accddf64034bcf224af"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -84,7 +84,7 @@
     {
       "path": "docs/api/openapi.json",
       "bytes": 86264,
-      "sha256": "22cefc1bdbabe856ebc41cee984987ede6f174de4a15292a59d3cdf03d0dcbfe"
+      "sha256": "58506e3a56d76be1d3e62e49ec3afd520f024d5205b2deda52eb117ceeb847fe"
     },
     {
       "path": "docs/approved-execution.md",
@@ -133,8 +133,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 46830,
-      "sha256": "8cc035a08cff4bd89394949776b373d0f289bae71e928641a59be12b36e0a1fb"
+      "bytes": 47136,
+      "sha256": "c6c045a402dd04e7d30741dcb9737f968b3be96a5d4cf5e2b70b603eae4237b8"
     },
     {
       "path": "docs/local-auth.md",
@@ -183,8 +183,8 @@
     },
     {
       "path": "docs/project-plan-2026-10-28.md",
-      "bytes": 14356,
-      "sha256": "073938214a956cea0dc9a4532c5aaeafb1a8130f3bd616370819c6148a8691ce"
+      "bytes": 14678,
+      "sha256": "92fcf009a198e3aea5770e9c642a95972e14ab2e9b431ff81161b17b8b243e38"
     },
     {
       "path": "docs/public-checks.md",
@@ -193,8 +193,8 @@
     },
     {
       "path": "docs/public-preview.md",
-      "bytes": 5929,
-      "sha256": "c8451912aad56546c25009b47d959e9b4e9ebc06e7b204207eca5552ed08c5c7"
+      "bytes": 6313,
+      "sha256": "828f17757ad67f283a73e15edd08e41b7141e3798971583426143ec30468b303"
     },
     {
       "path": "docs/release-roadmap.md",
@@ -245,6 +245,11 @@
       "path": "docs/review-0.18.1.md",
       "bytes": 1095,
       "sha256": "6d88c537609b6653f3e7551c54b7a06e61cacab7ec7aa2a25ccff191bf8f1cec"
+    },
+    {
+      "path": "docs/review-0.18.2.md",
+      "bytes": 830,
+      "sha256": "013ba5abee685cdc98bdbe9cfabbe2a9a5c692b070f959435e7e193314f9dd32"
     },
     {
       "path": "docs/review-decisions.md",
@@ -377,6 +382,11 @@
       "sha256": "c456341a79c034901cea5334e63e95203bfb7ea5107543ac60af8a1cd0855c93"
     },
     {
+      "path": "docs/validation-0.18.2.md",
+      "bytes": 1145,
+      "sha256": "ea179bcb9b42ef314d28218938af585b9de7432f9d47650fdc8956d868d7948e"
+    },
+    {
       "path": "docs/validation-0.3.md",
       "bytes": 4056,
       "sha256": "95b8e50c114e15ebe4405559a3bb84cb64bab6c958e75f7332f37a688554e023"
@@ -439,7 +449,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 771,
-      "sha256": "f76a91a3a7e3a93d73a5d2f05612733aacedeec132e3bd66556404e7f08bf34b"
+      "sha256": "150be630e68a90022f276e97f97515a21b6b03a828f3c910c020c65cd4aad86e"
     },
     {
       "path": "requirements.lock",
@@ -500,6 +510,11 @@
       "path": "scripts/check_postgres.py",
       "bytes": 1485,
       "sha256": "57e83cc599bf71cf41b7cf2a76649acbbd11345a1ecfee501811645bbfeaa58b"
+    },
+    {
+      "path": "scripts/check_public_preview.py",
+      "bytes": 3877,
+      "sha256": "8e3c0214428b8f62d5885fb6009efd0f8abe2e2d7aee5503edbf5bc4697b1527"
     },
     {
       "path": "scripts/check_repair.py",
@@ -644,7 +659,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "1a870413d342685fc3fba1f6e71a1092fc267d375fd85c598c22cfaa4d0a94c1"
+      "sha256": "dacde7760824144acd768aa063ecef5eee4f6c70823bfcce093ddd58d69ce597"
     },
     {
       "path": "src/loom/__main__.py",
@@ -1117,6 +1132,11 @@
       "sha256": "4fe232d297227ac5e9278af004c582f2cc0ea8fc8cfb02f205a611d5dd0dfc56"
     },
     {
+      "path": "tests/test_public_readiness.py",
+      "bytes": 2429,
+      "sha256": "d4034912bd68c87c825cdfb40768ae0a6022f9b93eff21fcea101b3ff1a884c4"
+    },
+    {
       "path": "tests/test_repair.py",
       "bytes": 29288,
       "sha256": "ab2603c03246c7caf112ca8a8bb2107021e96a6962b6d8eba5790682cc0502f6"
@@ -1421,7 +1441,8 @@
     "baseline_0180_targeted_main_tests": 194,
     "baseline_0180_targeted_subtests": 9,
     "baseline_0180_real_docker_jetstream_tests": 13,
-    "current_targeted_main_tests": 76,
+    "baseline_0181_targeted_main_tests": 76,
+    "current_targeted_main_tests": 35,
     "model_transport": "mock in infrastructure; two actual responses in isolated 0.17.9 smoke",
     "new_paid_model_requests": 0,
     "previous_0179_paid_model_requests": 2,
