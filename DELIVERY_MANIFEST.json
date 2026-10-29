@@ -2,9 +2,9 @@
   "version": "0.18.2",
   "stage": "public-readiness-alpha",
   "production_ready": false,
-  "generated_at": "2026-10-29T11:48:49.043746+08:00",
+  "generated_at": "2026-10-29T12:53:27.975669+08:00",
   "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
-  "source_file_count_excluding_manifest": 285,
+  "source_file_count_excluding_manifest": 286,
   "files": [
     {
       "path": ".gitignore",
@@ -133,8 +133,13 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 47136,
-      "sha256": "c6c045a402dd04e7d30741dcb9737f968b3be96a5d4cf5e2b70b603eae4237b8"
+      "bytes": 47458,
+      "sha256": "f465a2b73200207937905555073bb80aae91f96c288bfada2f2a85ce93e8b0b1"
+    },
+    {
+      "path": "docs/launch-readiness-2026-10-29.md",
+      "bytes": 2238,
+      "sha256": "ae94b876b55875ae3cddfe8ad0a6e6bc41bb337e92b89f839d92781c87d7cdab"
     },
     {
       "path": "docs/local-auth.md",
@@ -183,8 +188,8 @@
     },
     {
       "path": "docs/project-plan-2026-10-28.md",
-      "bytes": 14678,
-      "sha256": "92fcf009a198e3aea5770e9c642a95972e14ab2e9b431ff81161b17b8b243e38"
+      "bytes": 14985,
+      "sha256": "20a6b5673b2ff6e7e6b54bcb345a92ee7c00a7c8ac9efa7b27c1a5768fc02f4b"
     },
     {
       "path": "docs/public-checks.md",
@@ -193,13 +198,13 @@
     },
     {
       "path": "docs/public-preview.md",
-      "bytes": 6313,
-      "sha256": "828f17757ad67f283a73e15edd08e41b7141e3798971583426143ec30468b303"
+      "bytes": 6585,
+      "sha256": "4885c76a9f31f5caec34b2b4a1329ad2d1415a80fa7ce6734f4f3758eca42f2b"
     },
     {
       "path": "docs/release-roadmap.md",
-      "bytes": 5022,
-      "sha256": "975ade3f76e1aed4db06ab5ee277ec9538d63b08664a03449c4416bc3fcc6c12"
+      "bytes": 5183,
+      "sha256": "5e66edaf5ae482bd310d636d6ba925998c54cc6df9af2c9c82fad682bf13f718"
     },
     {
       "path": "docs/review-0.17.3.md",
@@ -383,8 +388,8 @@
     },
     {
       "path": "docs/validation-0.18.2.md",
-      "bytes": 1145,
-      "sha256": "ea179bcb9b42ef314d28218938af585b9de7432f9d47650fdc8956d868d7948e"
+      "bytes": 1516,
+      "sha256": "9d0bac16fb860f530d383fcdd97c9fc9228a438d03f32d526b7692ba0d95a886"
     },
     {
       "path": "docs/validation-0.3.md",
@@ -1443,6 +1448,9 @@
     "baseline_0180_real_docker_jetstream_tests": 13,
     "baseline_0181_targeted_main_tests": 76,
     "current_targeted_main_tests": 35,
+    "mobile_network_user_reported_access": true,
+    "mobile_full_workflow_tested": false,
+    "documentation_only_update": true,
     "model_transport": "mock in infrastructure; two actual responses in isolated 0.17.9 smoke",
     "new_paid_model_requests": 0,
     "previous_0179_paid_model_requests": 2,
