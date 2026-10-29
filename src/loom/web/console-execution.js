@@ -2,17 +2,21 @@
 window.LoomExecutionPanel=function({state,node,has,request,publicError,runChecked,refresh}){
  const names={queued:'等待本机执行器处理',running:'本机执行中',submitted:'候选已提交，等待独立验证',blocked:'执行前置条件变化，请重新核对',awaiting_human:'执行已停止，需人工处理',indeterminate:'结果未知，先核对调用与预算',cancelled:'排队请求已取消'};
  const reasons={EXECUTOR_NOT_CONFIGURED:'本机执行器尚未配置，请使用项目启动说明配置并启动。',REQUEST_ALREADY_ACTIVE:'已有请求，不会重复发起。',REQUEST_LIMIT_REACHED:'此任务已达到请求记录上限，请查看历史。',HOST_TESTS_NOT_REGISTERED:'此节点尚未登记本机冻结终验。请先配置独立宿主用例，再重新核对。',HOST_TESTS_CHANGED:'本机用例与批准摘要不一致，禁止执行。',INDEPENDENT_MODEL_PENDING:'独立模型仍待配置，不能从普通执行入口验收。',ADMISSION_NOT_READY:'计划、输入、预算或任务状态尚不满足准入条件。'};
- let generation=0,binding='',item=null,refs=null,data=null,pending=false,error='',attempt=null,receipt=null,timer=null;
+ let generation=0,binding='',item=null,refs=null,data=null,pending=false,error='',attempt=null,receipt=null,timer=null,queuedObservation=null;
  const operator=()=>has('control')&&state.principal?.roles?.includes('operator');
  const current=()=>binding&&runChecked()&&state.tab==='progression'&&!state.busy&&refs?.root.isConnected;
  const path=()=>`/v1/runs/${encodeURIComponent(state.runId)}/tasks/${encodeURIComponent(item.task_id)}`;
  const cancelPath=id=>`/v1/runs/${encodeURIComponent(state.runId)}/execution-requests/${encodeURIComponent(id)}/cancel`;
- function reset(){generation++;clearTimeout(timer);timer=null;binding='';item=null;refs=null;data=null;pending=false;error='';attempt=receipt=null;}
+ function reset(){generation++;clearTimeout(timer);timer=null;binding='';item=null;refs=null;data=null;pending=false;error='';attempt=receipt=null;queuedObservation=null;}
  function valid(r){return r?.schema_version==='loom.dispatch-preview/v1'&&r.run_id===state.runId&&r.task_id===item.task_id&&r.tenant_id===state.principal?.tenant_id
    &&r.model_dispatched===false&&r.counts_as_success===false&&typeof r.ready==='boolean'&&/^[0-9a-f]{64}$/.test(r.dispatch_digest);}
  function controls(){
    if(!refs)return;
    const latest=data?.latest_request,ready=current()&&!pending;
+   if(latest?.state==='queued'){
+     if(!queuedObservation||queuedObservation.id!==latest.request_id)queuedObservation={id:latest.request_id,since:performance.now()};
+   }else queuedObservation=null;
+   const queueWarning=queuedObservation&&performance.now()-queuedObservation.since>=10000?' · 本页面观察排队已超过 10 秒；若迟迟未开始，请检查本机执行器或继续等待，避免重复提交。':'';
    const retry=Boolean(attempt);
    const writable=ready&&operator()&&!error&&!receipt&&((data?.ready&&!retry)||(retry&&data));
    refs.form.hidden=!operator()||Boolean(latest&&!data?.ready&&!retry);
@@ -23,7 +27,7 @@ window.LoomExecutionPanel=function({state,node,has,request,publicError,runChecke
    refs.cancel.hidden=!operator()||latest?.state!=='queued';refs.cancel.disabled=!ready||retry||Boolean(receipt);
    refs.refresh.disabled=!ready;
    refs.status.textContent=pending?'正在核对执行账本…':error||(receipt&&!data?'请求回执已收到，后续读取失败；请重新读取确认，勿重复发起。'
-     :latest?`${names[latest.state]||'状态待核对'}${retry?' · 上次回执未确认，字段已锁定；可读取核对或用同一编号重试':''}`
+     :latest?`${names[latest.state]||'状态待核对'}${queueWarning}${retry?' · 上次回执未确认，字段已锁定；可读取核对或用同一编号重试':''}`
      :data?.ready?'预览已核对。勾选并显式提交后，本机执行器才会开始处理。':reasons[data?.reason]||'先读取本机执行条件。');
    refs.budget.textContent=data?.approved_preview?`开始执行时费用预留上界 ${data.approved_preview.initial_cost_reservation_upper.toLocaleString('zh-CN')} µUSD，词元预留上界 ${data.approved_preview.initial_token_reservation.toLocaleString('zh-CN')}。实际按已知用量结算；未知结果保留预留。`:'';
    refs.history.replaceChildren();
@@ -82,6 +86,6 @@ window.LoomExecutionPanel=function({state,node,has,request,publicError,runChecke
    form.addEventListener('submit',e=>{e.preventDefault();controls();if(!submit.disabled)void send('queue');});cancel.addEventListener('click',()=>send('cancel'));
    refreshButton.addEventListener('click',()=>{if(!refreshButton.disabled)refresh();});void load();
  }
- function sync(){if(!refs)return;if(binding!==JSON.stringify([state.session,state.selection,state.runId,item?.task_id])||!refs.root.isConnected){reset();return;}controls();if(!current())clearTimeout(timer);else if(!pending)poll();}
+ function sync(){if(!refs)return;if(binding!==JSON.stringify([state.session,state.selection,state.runId,item?.task_id])||!refs.root.isConnected){reset();return;}controls();if(!current()){clearTimeout(timer);queuedObservation=null;}else if(!pending)poll();}
  return {open,reset,sync};
 };
