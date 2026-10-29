@@ -80,3 +80,23 @@ def test_nested_future_payload_cannot_escape_scalar_allowlist(attempts):
     response = client.get(f"/v1/runs/{run_id}/attempts", headers=headers["viewer"])
     assert response.status_code == 200 and "NESTED_PRIVATE" not in response.text
     assert "reason" not in response.json()["items"][-1]
+
+
+def test_host_diagnostics_are_trusted_bounded_and_do_not_leak_case_contents(attempts):
+    client, store, run_id, headers = attempts
+    valid = {"task_id": "work", "epoch": 1, "hard_criteria_passed": False,
+             "host_cases_total": 3, "host_cases_passed": 1, "host_cases_mismatch": 0,
+             "host_cases_timeout": 1, "host_cases_runtime_error": 1, "host_cases_other_failure": 0,
+             "cases": [{"name": "HIDDEN_CASE", "stdout": "HIDDEN_OUTPUT"}]}
+    with store.transaction() as db:
+        store._event(db, "a", run_id, "execution.evaluated", valid, "local-executor")
+        store._event(db, "a", run_id, "execution.evaluated", valid, "untrusted-worker")
+        store._event(db, "a", run_id, "execution.evaluated", {**valid, "host_cases_timeout": True}, "local-executor")
+        store._event(db, "a", run_id, "execution.evaluated", {**valid, "host_cases_total": 4}, "local-executor")
+        store._event(db, "a", run_id, "execution.evaluated", {**valid, "hard_criteria_passed": True}, "local-executor")
+    response = client.get(f"/v1/runs/{run_id}/attempts", headers=headers["viewer"])
+    assert response.status_code == 200
+    rows = response.json()["items"][-5:]
+    assert rows[0]["host_cases_total"] == 3 and rows[0]["host_cases_timeout"] == 1
+    assert all("host_cases_total" not in row for row in rows[1:])
+    assert "HIDDEN_CASE" not in response.text and "HIDDEN_OUTPUT" not in response.text
