@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 from uuid import uuid4
+from unittest.mock import patch
 
 import nats
 import pytest
@@ -16,11 +17,35 @@ from loom.operator import OperatorService
 from loom.store import Conflict, canonical
 from loom.sandbox import DockerSandbox,SandboxConfig
 from loom.review_decisions import ReviewDecisionService
-from tests.test_dispatch import dispatch_case,enqueue,drain
-from tests.test_approved_node import node_case,ROOT
+from tests.test_dispatch import dispatch_case,enqueue,drain,worker_for
+from tests.test_approved_node import node_case,ROOT,gateway_for
+from loom.model_gateway import ModelRoute
 from tests.test_approved_execution import OP,WORKER
 from tests.test_review_inputs import review_case
 from tests.test_reviewer_handoff import handoff,generate,reviewer_claim
+
+
+@pytest.mark.skipif(not os.environ.get('LOOM_SANDBOX_TEST_IMAGE'),reason='explicit immutable Docker image required')
+def test_executor_heartbeat_continues_during_real_docker_without_repeat(dispatch_case):
+    b=dispatch_case('developer');enqueue(b)
+    b['body']={'source':'import time,json\ntime.sleep(.2)\nprint(json.dumps({"answer":2}))\n'}
+    executor=worker_for(b);requests=[]
+    sandbox=DockerSandbox(SandboxConfig(os.environ['LOOM_SANDBOX_TEST_IMAGE']))
+    gateway=gateway_for(b['body'],requests)
+    async def work():
+        async with executor.status.monitor(interval=.05):
+            path=executor.status.directory/(executor.status._scope('a')+'.json')
+            before=json.loads(path.read_bytes())['observed_at']
+            result=await executor.drain_one()
+            assert result['state']=='submitted' and result['result']['reserved_cost']==0
+            assert executor.status.read('a')['state']=='recent'
+            assert json.loads(path.read_bytes())['observed_at']>before
+            assert await executor.drain_one() is None
+    with patch('loom.local_executor.load_project_secrets',return_value={'DEEPSEEK_API_KEY':'heartbeat-model-mock-only'}),\
+         patch('loom.local_executor.load_model_config',return_value=([ModelRoute('deepseek-flash')],{})),\
+         patch('loom.local_executor.ModelGateway',return_value=gateway),patch('loom.local_executor.DockerSandbox',return_value=sandbox):
+        asyncio.run(work())
+    assert len(requests)==1
 
 
 @pytest.mark.skipif(not os.environ.get('LOOM_SANDBOX_TEST_IMAGE'),reason='explicit immutable Docker image required')

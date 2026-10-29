@@ -4,6 +4,7 @@ import asyncio
 from .auth import load_identities
 from .dispatch import DispatchService
 from .execution import LocalTaskRunner
+from .executor_status import ExecutorStatus
 from .local_config import load_project_secrets
 from .model_gateway import ModelGateway,load_model_config
 from .role_execution import RoleTaskRunner
@@ -16,6 +17,7 @@ class LocalExecutor:
         self.store,self.config=store,config
         self.identities=load_identities(config.identities_file)
         self.requests=DispatchService(store,config=config,identities=self.identities)
+        self.status=ExecutorStatus(store,config,self.identities)
 
     async def drain_one(self):
         states=self.requests.pending()
