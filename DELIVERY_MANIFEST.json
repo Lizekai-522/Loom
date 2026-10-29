@@ -1,10 +1,10 @@
 {
-  "version": "0.18.9",
-  "stage": "tool-recovery-alpha",
+  "version": "0.18.10",
+  "stage": "deepseek-pro-alpha",
   "production_ready": false,
-  "generated_at": "2026-10-29T21:51:28.460489+08:00",
+  "generated_at": "2026-10-30T00:08:28.173557+08:00",
   "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
-  "source_file_count_excluding_manifest": 326,
+  "source_file_count_excluding_manifest": 334,
   "files": [
     {
       "path": ".gitignore",
@@ -18,13 +18,18 @@
     },
     {
       "path": "README.md",
-      "bytes": 18282,
-      "sha256": "146fdeb4da94b9c357371c7e9b9011215c08a4a2496f8de61c4c19b3ffdc194d"
+      "bytes": 18274,
+      "sha256": "07e78e38fa90153bd0bda01d96bde971dcca7086ad1d2516a1f6fa7dcfd7ee58"
     },
     {
       "path": "configs/host-tests.example.json",
       "bytes": 302,
       "sha256": "0d14dd760e326b41afb31bd5f4951561b6c77e40909d1d74bcdc213dc71be2ba"
+    },
+    {
+      "path": "configs/models.dual.example.json",
+      "bytes": 1158,
+      "sha256": "42cfeb189422801e1290de487bda07ca750f493c019025280cb5baa8b9727d1c"
     },
     {
       "path": "configs/models.example.json",
@@ -83,13 +88,13 @@
     },
     {
       "path": "docs/api/README.md",
-      "bytes": 13908,
-      "sha256": "a675dfa72fa888de675498d0d0ff23e8538ccfce12f2802f4b75a41d5d852a70"
+      "bytes": 13909,
+      "sha256": "4aafb934adb5ec54c74763561d550a4199f6ce0ef916f6290b1e6bb3c1b53ec5"
     },
     {
       "path": "docs/api/openapi.json",
-      "bytes": 91071,
-      "sha256": "8673468972b18c7accc37470480b356e77ffb90864ae0ca46607fdd2f3807152"
+      "bytes": 91072,
+      "sha256": "0ba85a20658b42bc12598890bd8cf9f656451c331d988cf24046171048beee7b"
     },
     {
       "path": "docs/approved-execution.md",
@@ -132,6 +137,16 @@
       "sha256": "e193e4d801da5e28a9bb28b88bf0fe8f10cdc063d30f091c2bd8c8748406238e"
     },
     {
+      "path": "docs/deepseek-pro-real-2026-10-29.json",
+      "bytes": 757,
+      "sha256": "7d8cc659ae8dba186507646c4051a425f42c8d3392efc2608c0211da9b8ac827"
+    },
+    {
+      "path": "docs/deepseek-pro.md",
+      "bytes": 1908,
+      "sha256": "a225ab9df1280f7391c4f245d8dcc7584f4093f38b663f6cdca39794d9717783"
+    },
+    {
       "path": "docs/executor-status.md",
       "bytes": 1799,
       "sha256": "b91885737dcd99e627040d13667b3cef7a5166072fe41203db9a3ebf4be7714b"
@@ -148,13 +163,13 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 50099,
-      "sha256": "dec7d1ecd9abceadd8ef950587beaad3c621dc2bc55e3074247b83875dee081e"
+      "bytes": 50535,
+      "sha256": "2d8ba74707ab0599eb1171218ada505046c7af99b65e283fe8a800fcabfda740"
     },
     {
       "path": "docs/launch-readiness-2026-10-29.md",
-      "bytes": 3105,
-      "sha256": "d3256fe7a9bc7f9dde4f506a8ae617422bf75821d42c7c2b190fc0adcfdf5d99"
+      "bytes": 3940,
+      "sha256": "b6f2b9c3edca68c5549e16cc37719a6d4db862d3317303681c654e0fe34151d1"
     },
     {
       "path": "docs/local-auth.md",
@@ -188,8 +203,8 @@
     },
     {
       "path": "docs/next-steps-2026-10-29.md",
-      "bytes": 2394,
-      "sha256": "63202518fd8ee5ad8c4614a2e352f6630d55083c936825a450eb0d9069f0011a"
+      "bytes": 2438,
+      "sha256": "57f8b395c135d3d08dffe318b2017c2c862787f95ef1348592f28e3936d3e4cb"
     },
     {
       "path": "docs/operator-controls.md",
@@ -208,8 +223,8 @@
     },
     {
       "path": "docs/project-plan-2026-10-28.md",
-      "bytes": 17501,
-      "sha256": "00ba70a9d5be4096e5bf6e4e517591bf9ce1d2b45a38621a44f604e868baaf3e"
+      "bytes": 17787,
+      "sha256": "23fe1794469decf6df4f3d0462e18d801e60fcd9b2a1c51d3b6f088b72d4a421"
     },
     {
       "path": "docs/public-checks.md",
@@ -233,8 +248,8 @@
     },
     {
       "path": "docs/release-roadmap.md",
-      "bytes": 5270,
-      "sha256": "1c806ebfcbb8ede97b0b431826eb9dea1cfa9e72c991220ac84dbd99e513f59f"
+      "bytes": 5263,
+      "sha256": "3bd577d0843f8564014c764a24167f31893bed1fb9031ae1cf767180bde07e71"
     },
     {
       "path": "docs/review-0.17.3.md",
@@ -280,6 +295,11 @@
       "path": "docs/review-0.18.1.md",
       "bytes": 1095,
       "sha256": "6d88c537609b6653f3e7551c54b7a06e61cacab7ec7aa2a25ccff191bf8f1cec"
+    },
+    {
+      "path": "docs/review-0.18.10.md",
+      "bytes": 2426,
+      "sha256": "8dda6571cdd83084a5b64b6a4d2a632f6ede97aa7a0168ab60f5bc6b3be6e059"
     },
     {
       "path": "docs/review-0.18.2.md",
@@ -462,6 +482,11 @@
       "sha256": "c456341a79c034901cea5334e63e95203bfb7ea5107543ac60af8a1cd0855c93"
     },
     {
+      "path": "docs/validation-0.18.10.md",
+      "bytes": 1624,
+      "sha256": "516c84bf9c366c1892a48d6f68ade7d4ac42f2c5253d1872774f93f44174b492"
+    },
+    {
       "path": "docs/validation-0.18.2.md",
       "bytes": 1516,
       "sha256": "9d0bac16fb860f530d383fcdd97c9fc9228a438d03f32d526b7692ba0d95a886"
@@ -563,8 +588,8 @@
     },
     {
       "path": "pyproject.toml",
-      "bytes": 771,
-      "sha256": "7103efb2900b6dfd9bc6dacb680f4de6e1551fc7e71274c1e934486b7e83f66c"
+      "bytes": 772,
+      "sha256": "6923a1de341f1a0e9f9e5c0cb30b89038a16b975d71ce01ac7ce10358879a05a"
     },
     {
       "path": "requirements.lock",
@@ -788,8 +813,8 @@
     },
     {
       "path": "src/loom/__init__.py",
-      "bytes": 73,
-      "sha256": "00dd5975ef77fbec872b688d676b8acf4bff36a5e9cc2fa0b03aebd2c8555a3a"
+      "bytes": 74,
+      "sha256": "1e7b0c1234e07dd43592ef95cb2b88fc62975389a2eb202e6ff4c31df3fddce0"
     },
     {
       "path": "src/loom/__main__.py",
@@ -803,18 +828,18 @@
     },
     {
       "path": "src/loom/approved_execution.py",
-      "bytes": 10763,
-      "sha256": "3204a95838433c1cfe9c946931b6fd9dd088d50dcfc1d8ec38b9938b3d758f33"
+      "bytes": 10787,
+      "sha256": "44244afe17691edad87b30e1312df1de1e23dd6aee05ab5400726e78cfd5141e"
     },
     {
       "path": "src/loom/artifact_schemas.py",
-      "bytes": 11559,
-      "sha256": "c914a1cf103e69be86a0522a9b64a17c7de887bec964aa907cc6ccc62274fc32"
+      "bytes": 11921,
+      "sha256": "4c585adb5ebb3e41d361e6b88b12df59846ad283ebe695fea3922d6773c5b561"
     },
     {
       "path": "src/loom/artifacts.py",
-      "bytes": 46814,
-      "sha256": "9014630205a45756141c445421f1edb08795465671e8f0dbff836b270eb9cd24"
+      "bytes": 47181,
+      "sha256": "59ad8085cb0569e0535a04f5e08ca982f781f73f8df9f0789bdc7a760d2aec94"
     },
     {
       "path": "src/loom/attempts.py",
@@ -898,8 +923,13 @@
     },
     {
       "path": "src/loom/model_gateway.py",
-      "bytes": 16315,
-      "sha256": "10e9a4b23eecff851dac7d1fa412a1706b5f20a5d733dbf8eabd06557f500724"
+      "bytes": 16348,
+      "sha256": "087de4097dffb68aa9ea70e3224d2152e36366270fbb4c8d3a2d60a92db76016"
+    },
+    {
+      "path": "src/loom/model_pricing.py",
+      "bytes": 1159,
+      "sha256": "88095bf48d7bf00f2cb5acf5095c9dfb116d2e2d763195d3439bac6e05d9ab44"
     },
     {
       "path": "src/loom/operator.py",
@@ -953,13 +983,13 @@
     },
     {
       "path": "src/loom/role_execution.py",
-      "bytes": 7891,
-      "sha256": "0537d89f3fd53e6fe0704e0f32b84778d1b00e84235ad8d3651cfb01a6dbaccd"
+      "bytes": 7823,
+      "sha256": "8b4152b8dae49611f623f0e199fbcb9126b5b2e6f49840a602b6216eb2f2d0b3"
     },
     {
       "path": "src/loom/role_summary.py",
-      "bytes": 4498,
-      "sha256": "aa9e5f03c5d7ec4ccb454d6cbd584e9e040f58014d16ea7055104754121e0255"
+      "bytes": 4653,
+      "sha256": "0b4b76ca48cb8e9eb1f845e3bc173a4e9fd964260d69c6212da6c3786dc8e9ed"
     },
     {
       "path": "src/loom/sandbox.py",
@@ -1023,8 +1053,8 @@
     },
     {
       "path": "src/loom/web/console.js",
-      "bytes": 70854,
-      "sha256": "81873813aec7cebfc844bcb006885dda18ece1172476e816b5cb74b81a04ad51"
+      "bytes": 70998,
+      "sha256": "fd926ac733e6c21e73f718332f6b590a75ece870f126b21a1d812e7c0fcc417f"
     },
     {
       "path": "src/loom/web/index.html",
@@ -1085,6 +1115,11 @@
       "path": "tests/integration/test_postgres_live.py",
       "bytes": 23941,
       "sha256": "63bd7b0ff4e8f7947461b791443c6324aa51fb80abc165c5d31eadd0e3c8fd5d"
+    },
+    {
+      "path": "tests/integration/test_pro_review_live.py",
+      "bytes": 2478,
+      "sha256": "53e301afbde662cb4c3e0d5f6522a9dc0dcf89577d0aca8312bdfc788f017dd0"
     },
     {
       "path": "tests/integration/test_repair_live.py",
@@ -1200,6 +1235,11 @@
       "path": "tests/test_control_api.py",
       "bytes": 24124,
       "sha256": "5784e0cb709aced4bcbe416ff4d4d025e06315f85e1fdc822aefa722f11de135"
+    },
+    {
+      "path": "tests/test_deepseek_pro.py",
+      "bytes": 6872,
+      "sha256": "083b60710f4c3f3a9158a1edf2d5541be57105d49b44c79705356961193eaf07"
     },
     {
       "path": "tests/test_demo.py",
@@ -1639,27 +1679,56 @@
   ],
   "validation": {
     "full": {
-      "main_tests": 1095,
+      "main_tests": 1102,
       "subtests": 387,
       "failures": 0,
       "skipped": 0
     },
     "target": {
-      "main_tests": 107,
-      "subtests": 23,
+      "main_tests": 116,
+      "subtests": 67,
       "failures": 0,
       "skipped": 0
     },
     "infra": {
-      "main_tests": 24,
+      "main_tests": 27,
       "subtests": 0,
       "failures": 0,
       "skipped": 0
     }
   },
-  "live_http_checks": 47,
-  "browser_checks": 9,
-  "new_paid_model_requests": 0,
+  "live_http_checks": 51,
+  "browser_checks": 7,
+  "new_paid_model_requests": 1,
+  "real_provider_probe": {
+    "version": "0.18.10",
+    "passed": true,
+    "actual_model": "deepseek-v4-pro",
+    "provider_requests_attempted": 1,
+    "provider_responses": 1,
+    "source_real_flash_and_docker_cases": 6,
+    "source_unchanged": true,
+    "isolated_database": true,
+    "usage": {
+      "prompt_tokens": 1731,
+      "completion_tokens": 459,
+      "total_tokens": 2190,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 1731,
+      "reasoning_tokens": null
+    },
+    "accounted_cost_upper_microusd": 4103,
+    "reservation": 0,
+    "status": "submitted",
+    "reason": null,
+    "verdict": "no_findings",
+    "model_source_recorded": true,
+    "verified": false,
+    "counts_as_success": false,
+    "dual_sign_completed": false,
+    "provider_bill_verified": false,
+    "automatic_retry": false
+  },
   "notes": [
     "Original 62 requirements retained; partial feature increments do not establish production readiness.",
     "Current infrastructure tests use real Docker and JetStream with simulated provider responses.",

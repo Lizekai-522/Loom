@@ -17,7 +17,8 @@ def model_source_summary(candidate):
     kind, schema = candidate.get("kind"), candidate.get("schema_version")
     if (type(provenance) is not dict or type(kind) is not str or kind not in ARTIFACT_SCHEMAS
             or schema != ARTIFACT_SCHEMAS[kind] or provenance.get("role") != ARTIFACT_ROLES[kind]
-            or provenance.get("provider") != "deepseek" or provenance.get("model") != "deepseek-flash"):
+            or provenance.get("provider") != "deepseek" or provenance.get("model") not in {'deepseek-flash','deepseek-v4-pro'}
+            or (provenance.get('model')=='deepseek-v4-pro' and (kind!='review-findings' or provenance.get('role')!='reviewer'))):
         return None
     route, usage = provenance.get("route"), provenance.get("usage")
     if (type(route) is not str or re.fullmatch(r"[a-z][a-z0-9_-]{0,47}", route) is None
@@ -40,7 +41,7 @@ def model_source_summary(candidate):
     if any(type(value) is not str or re.fullmatch(r"[0-9a-f]{64}", value) is None for value in values.values()):
         return None
     result = {**values, "artifact_id": artifact, "role": provenance["role"], "kind": kind,
-            "schema_version": schema, "source_epoch": epoch, "provider": "deepseek", "model": "deepseek-flash",
+            "schema_version": schema, "source_epoch": epoch, "provider": "deepseek", "model": provenance['model'],
             "route": route, "prompt_tokens": usage["prompt_tokens"], "completion_tokens": usage["completion_tokens"],
             "total_tokens": usage["total_tokens"], "usage_cost_upper_microusd": cost,
             "model_response_recorded": True, "producer_verified": False, "counts_as_success": False}

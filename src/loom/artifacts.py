@@ -670,6 +670,11 @@ class ArtifactService:
             raise Conflict("role model usage or route differs from the known ledger")
         if model.finish_reason != "stop":
             raise RoleOutputError()
+        if model.model_id=='deepseek-v4-pro':
+            from .model_pricing import role_tariff
+            tariff=role_tariff(spec)
+            if tariff.model!=model.model_id or reservation['actual_cost']!=tariff.cost(model.usage.prompt_tokens,model.usage.completion_tokens):
+                raise Conflict('Pro usage accounting differs from the approved tariff')
         body = decode_role_output(output["kind"], model.content)
         if output["kind"] == "review-findings" and body["subject"] != spec.get("review_subject"):
             raise RoleOutputError()

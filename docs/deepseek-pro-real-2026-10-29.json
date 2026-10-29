@@ -1,0 +1,29 @@
+{
+  "version": "0.18.10",
+  "passed": true,
+  "actual_model": "deepseek-v4-pro",
+  "provider_requests_attempted": 1,
+  "provider_responses": 1,
+  "source_real_flash_and_docker_cases": 6,
+  "source_unchanged": true,
+  "isolated_database": true,
+  "usage": {
+    "prompt_tokens": 1731,
+    "completion_tokens": 459,
+    "total_tokens": 2190,
+    "prompt_cache_hit_tokens": 0,
+    "prompt_cache_miss_tokens": 1731,
+    "reasoning_tokens": null
+  },
+  "accounted_cost_upper_microusd": 4103,
+  "reservation": 0,
+  "status": "submitted",
+  "reason": null,
+  "verdict": "no_findings",
+  "model_source_recorded": true,
+  "verified": false,
+  "counts_as_success": false,
+  "dual_sign_completed": false,
+  "provider_bill_verified": false,
+  "automatic_retry": false
+}

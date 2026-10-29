@@ -9,9 +9,10 @@ from __future__ import annotations
 from dataclasses import asdict
 
 from .artifact_schemas import ARTIFACT_ROLES, ARTIFACT_SCHEMAS, BODY_MODELS, RoleOutputError
-from .execution import FLASH_CONTEXT_LIMIT, LocalTaskRunner, cost_upper_microusd
+from .execution import LocalTaskRunner
 from .model_gateway import GatewayError, ModelGateway
 from .context_budget import check_context_budget
+from .model_pricing import role_tariff
 from .store import BudgetExceeded, Claim, InvalidInput, Store, canonical, digest
 
 
@@ -52,8 +53,8 @@ class RoleTaskRunner:
         if claim.epoch > spec["limits"]["max_attempts"]:
             return self.execution._block(claim, "TASK_ATTEMPTS_EXHAUSTED")
         route = self.gateway.routes.get(spec["model_alias"])
-        if route is None or (route.provider, route.model) != ("deepseek", "deepseek-flash"):
-            raise InvalidInput("no approved Flash generation route for the task")
+        if route is None:raise InvalidInput('approved generation route unavailable')
+        tariff=role_tariff(spec,route)
         if type(max_output_tokens) is not int or not 1 <= max_output_tokens <= min(route.max_output_tokens, 8192):
             raise InvalidInput("invalid generation output limit")
         snapshot = self.artifacts.capture_execution_context(claim)
@@ -93,8 +94,8 @@ class RoleTaskRunner:
                    "response_contract": "role-artifact/v1"}
         try:
             grant = self.execution._admit_effect(claim, snapshot, reservation_id,
-                max_cost=cost_upper_microusd(FLASH_CONTEXT_LIMIT, max_output_tokens),
-                max_tokens=FLASH_CONTEXT_LIMIT + max_output_tokens,
+                max_cost=tariff.cost(tariff.context_limit, max_output_tokens),
+                max_tokens=tariff.context_limit + max_output_tokens,
                 operation_id=f"model-generation:{claim.epoch}", request=request)
         except BudgetExceeded:
             return self.execution._block(claim, "BUDGET_EXHAUSTED")
@@ -107,7 +108,7 @@ class RoleTaskRunner:
         except GatewayError as error:
             return self.execution._block(claim, error.code)
         self.store.finish_effect(claim, grant["call_id"], asdict(model))
-        charged = cost_upper_microusd(model.usage.prompt_tokens, model.usage.completion_tokens)
+        charged = tariff.cost(model.usage.prompt_tokens, model.usage.completion_tokens)
         settlement = self.store.settle(claim.tenant_id, reservation_id, actual_cost=charged,
                                        actual_tokens=model.usage.total_tokens)
         totals.update(attempts_completed=1, usage=asdict(model.usage), usage_cost_upper_microusd=charged)

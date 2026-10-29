@@ -7,7 +7,8 @@ from .artifacts import ArtifactService, _hash
 from .artifact_schemas import ARTIFACT_ROLES
 from .auth import LocalIdentity
 from .development_suites import DevelopmentSuiteService
-from .execution import freeze_tests, FLASH_CONTEXT_LIMIT, cost_upper_microusd
+from .execution import freeze_tests
+from .model_pricing import role_tariff
 from .store import Claim, Conflict, InvalidInput, Store, _Connection, digest
 
 
@@ -95,8 +96,9 @@ class ApprovedExecutionService:
                 input_grants=[{key:item[key] for key in ('artifact_id','grant_id','source_epoch','revision','content_hash','approval_event_hash')}
                               for item in context['items']])
             if spec.get('review_subject') is not None:review_fields['review_subject']=spec['review_subject']
-        cost=cost_upper_microusd(FLASH_CONTEXT_LIMIT,max_output_tokens)
-        tokens=FLASH_CONTEXT_LIMIT+max_output_tokens
+        tariff=role_tariff(spec)
+        cost=tariff.cost(tariff.context_limit,max_output_tokens)
+        tokens=tariff.context_limit+max_output_tokens
         limits=spec['limits']
         if (limits['cost_limit_microusd']<cost or limits['token_limit']<tokens
                 or run['cost_limit']-run['spent']-run['reserved']<cost
