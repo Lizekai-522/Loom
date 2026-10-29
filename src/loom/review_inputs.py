@@ -77,18 +77,24 @@ class ReviewInputService:
                 raise ValueError
             content_hash = digest(output)
             events = self._events_in(db, tenant, run_id)
+            owner=row['worker']
+            if row['status']=='done' and owner is None:
+                owners=[e['payload'].get('worker') for e in events if e['type']=='task.claimed'
+                    and e['payload'].get('task_id')==task_id and type(e['payload'].get('epoch')) is int and e['payload']['epoch']==row['epoch']]
+                if len(owners)!=1 or not isinstance(owners[0],str) or not owners[0]:raise ValueError
+                owner=owners[0]
             evaluations = [e for e in events if e["type"] == "execution.evaluated"
                 and e["actor"] == "local-executor" and e["payload"].get("task_id") == task_id
                 and type(e["payload"].get("epoch")) is int and e["payload"]["epoch"] == row["epoch"]
                 and e["payload"].get("content_hash") == content_hash]
             submissions = [e for e in events if e["type"] == "task.output_submitted"
-                and e["actor"] == "worker:" + row["worker"] and e["payload"].get("task_id") == task_id
+                and e["actor"] == "worker:" + owner and e["payload"].get("task_id") == task_id
                 and e["payload"].get("content_hash") == content_hash
                 and canonical(e["payload"].get("output")) == canonical(output)]
             claims = [e for e in events if e["type"] == "task.claimed"
                 and e["payload"].get("task_id") == task_id
                 and type(e["payload"].get("epoch")) is int and e["payload"]["epoch"] == row["epoch"]
-                and e["payload"].get("worker") == row["worker"]]
+                and e["payload"].get("worker") == owner]
             if len(evaluations) != 1 or len(submissions) != 1 or len(claims) != 1:
                 raise ValueError
             evaluated, submitted, claimed = evaluations[0], submissions[0], claims[0]

@@ -396,38 +396,35 @@ class Store:
         args = {"run_id": claim.run_id, "task_id": claim.task_id, "epoch": claim.epoch,
                 "worker": claim.worker_id, "output": output, "verification": asdict(verification)}
         def apply(db):
-            row = db.execute("SELECT * FROM tasks WHERE tenant=? AND run_id=? AND id=?", (claim.tenant_id, claim.run_id, claim.task_id)).fetchone()
-            if row is not None and row["status"] == "submitted":
-                if row["epoch"] != claim.epoch or row["worker"] != claim.worker_id or row["output"] != canonical(output):
-                    raise StaleClaim("submitted artifact has different epoch, owner or content")
-            else:
-                self._assert_claim(db, claim)
-            run = self._run(db, claim.tenant_id, claim.run_id)
-            if run["status"] != "open":
-                raise Conflict("run is paused")
-            if verification.content_hash != digest(output) or verification.evidence_revision != f"{claim.task_id}:{claim.epoch}":
-                raise Conflict("verification is not bound to task content and attempt")
-            gate = gate_v(verification, rules=GateRules(version=run["ruleset"]))
-            if not gate.passed:
-                result = {"task_id": claim.task_id, "status": "pending", "verification": "rejected", "reason": gate.reason}
-                db.execute("UPDATE tasks SET status='pending',worker=NULL,lease_until=NULL,output=NULL WHERE tenant=? AND id=?", (claim.tenant_id, claim.task_id))
-                self._event(db, claim.tenant_id, claim.run_id, "gate.failed", {"gate": "V", "task_id": claim.task_id, "reason": gate.reason,
-                            "content_hash": verification.content_hash}, "verification-engine", key)
-                self._event(db, claim.tenant_id, claim.run_id, "task.verification_failed", result, "verification-engine")
-                return result
-            unknown = db.execute("SELECT 1 FROM effects WHERE tenant=? AND task_id=? AND state IN ('intent','indeterminate','partial')",
-                                 (claim.tenant_id, claim.task_id)).fetchone()
-            if unknown:
-                raise Conflict("unresolved external effect prevents completion")
-            db.execute("UPDATE tasks SET status='done',output=?,worker=NULL,lease_until=NULL WHERE tenant=? AND id=?",
-                       (canonical(output), claim.tenant_id, claim.task_id))
-            result = {"task_id": claim.task_id, "status": "done", "output": output}
-            self._event(db, claim.tenant_id, claim.run_id, "artifact.verified", {"task_id": claim.task_id, "content_hash": verification.content_hash,
-                        "ruleset": verification.ruleset_version, "evidence_revision": verification.evidence_revision, "dual_sign": verification.dual_sign,
-                        "verification": asdict(verification)}, "verification-engine")
-            self._event(db, claim.tenant_id, claim.run_id, "task.completed", result, "worker:" + claim.worker_id, key)
-            return result
+            return self._complete_in(db,claim,key,output,verification)
         return self._command(claim.tenant_id, key, "complete_task", args, apply)
+
+    def _complete_in(self,db,claim,key,output,verification):
+        """Same trusted completion gate, reusable inside an attestation transaction."""
+        row=db.execute('SELECT * FROM tasks WHERE tenant=? AND run_id=? AND id=?',(claim.tenant_id,claim.run_id,claim.task_id)).fetchone()
+        if row is not None and row['status']=='submitted':
+            if row['epoch']!=claim.epoch or row['worker']!=claim.worker_id or row['output']!=canonical(output):
+                raise StaleClaim('submitted artifact has different epoch, owner or content')
+        else:self._assert_claim(db,claim)
+        run=self._run(db,claim.tenant_id,claim.run_id)
+        if run['status']!='open':raise Conflict('run is paused')
+        if verification.content_hash!=digest(output) or verification.evidence_revision!=f'{claim.task_id}:{claim.epoch}':
+            raise Conflict('verification is not bound to task content and attempt')
+        gate=gate_v(verification,rules=GateRules(version=run['ruleset']))
+        if not gate.passed:
+            result=dict(task_id=claim.task_id,status='pending',verification='rejected',reason=gate.reason)
+            db.execute("UPDATE tasks SET status='pending',worker=NULL,lease_until=NULL,output=NULL WHERE tenant=? AND id=?",(claim.tenant_id,claim.task_id))
+            self._event(db,claim.tenant_id,claim.run_id,'gate.failed',dict(gate='V',task_id=claim.task_id,reason=gate.reason,content_hash=verification.content_hash),'verification-engine',key)
+            self._event(db,claim.tenant_id,claim.run_id,'task.verification_failed',result,'verification-engine')
+            return result
+        if db.execute("SELECT 1 FROM effects WHERE tenant=? AND task_id=? AND state IN ('intent','indeterminate','partial')",(claim.tenant_id,claim.task_id)).fetchone():
+            raise Conflict('unresolved external effect prevents completion')
+        db.execute("UPDATE tasks SET status='done',output=?,worker=NULL,lease_until=NULL WHERE tenant=? AND id=?",(canonical(output),claim.tenant_id,claim.task_id))
+        result=dict(task_id=claim.task_id,status='done',output=output)
+        self._event(db,claim.tenant_id,claim.run_id,'artifact.verified',dict(task_id=claim.task_id,content_hash=verification.content_hash,ruleset=verification.ruleset_version,
+            evidence_revision=verification.evidence_revision,dual_sign=verification.dual_sign,verification=asdict(verification)),'verification-engine')
+        self._event(db,claim.tenant_id,claim.run_id,'task.completed',result,'worker:'+claim.worker_id,key)
+        return result
 
     def reserve(self, claim: Claim, reservation_id: str, *, max_cost: int, max_tokens: int) -> dict:
         with self.transaction() as db:
