@@ -260,6 +260,11 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     def read_tools(tenant: Tenant):
         return tool_catalog(tenant, executor_config)
 
+    @app.get('/v1/verification-capabilities')
+    def read_verification_capabilities(tenant: Tenant):
+        from .verification_signatures import capabilities
+        return capabilities(tenant)
+
     @app.get('/v1/quotas')
     def read_quotas(tenant: Tenant):
         return QuotaService(store).read(tenant)
