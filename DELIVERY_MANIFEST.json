@@ -1,10 +1,10 @@
 {
-  "version": "0.18.3",
-  "stage": "executor-observation-alpha",
+  "version": "0.18.4",
+  "stage": "isolated-recovery-alpha",
   "production_ready": false,
-  "generated_at": "2026-10-29T16:16:57.156155+08:00",
+  "generated_at": "2026-10-29T17:03:51.880699+08:00",
   "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
-  "source_file_count_excluding_manifest": 292,
+  "source_file_count_excluding_manifest": 298,
   "files": [
     {
       "path": ".gitignore",
@@ -18,8 +18,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 18222,
-      "sha256": "a36c87bae99ea14353701928d0c91c3f25e35863704d46521bfb2d66dc7c0df9"
+      "bytes": 18264,
+      "sha256": "048fec75c20573385ae72a27624d80ceff267bac3575cec8cdd6dfae8f9d801f"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -84,7 +84,7 @@
     {
       "path": "docs/api/openapi.json",
       "bytes": 86777,
-      "sha256": "19a0409e39b15788be0883cd7f8175674e9f0f02126f1e74a63e4dacbd6edf84"
+      "sha256": "465901e13b647ba96f66ecaa6f437db7e7a56bbed9b5efab9aa81d2e15f29c76"
     },
     {
       "path": "docs/approved-execution.md",
@@ -138,13 +138,13 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 47790,
-      "sha256": "33513b9170351e1bdedb06145ef6f5f52200c50a78700a102cec62cbec851b17"
+      "bytes": 48095,
+      "sha256": "b80988f7984e035057d470592c18b232aead1ef5c5eba8e2fc640f453c843ba7"
     },
     {
       "path": "docs/launch-readiness-2026-10-29.md",
-      "bytes": 2552,
-      "sha256": "fe2f3cae034bd7d106b35934acfb7e964b723722b3a292cb0eb53244e08dedd5"
+      "bytes": 2941,
+      "sha256": "543eef7c7ec86147efd551b0fb053b7c8cdfca3347e5200fff86d9b83819e27a"
     },
     {
       "path": "docs/local-auth.md",
@@ -178,8 +178,8 @@
     },
     {
       "path": "docs/next-steps-2026-10-29.md",
-      "bytes": 1323,
-      "sha256": "364d0bcd8b99e174f5da04b2820db1d34d4521c2a41b630e01f7b356346ac362"
+      "bytes": 1474,
+      "sha256": "b43367f057c33fb50f71a348da3e6720511cba55568ec2f35f5e126a8e77d8a0"
     },
     {
       "path": "docs/operator-controls.md",
@@ -198,8 +198,8 @@
     },
     {
       "path": "docs/project-plan-2026-10-28.md",
-      "bytes": 15380,
-      "sha256": "302a86255fce2c56aa2b8ad327f48e37d38ac0b22d559975680b0eed17d8a9bb"
+      "bytes": 15743,
+      "sha256": "903cfaa3a1be360b4239b34e00450973ae3ad58ad86a6832b9a2d08ef2cd510c"
     },
     {
       "path": "docs/public-checks.md",
@@ -208,13 +208,18 @@
     },
     {
       "path": "docs/public-preview.md",
-      "bytes": 6811,
-      "sha256": "c4ec44da3e6b098c02a5cecd34d0d131a5eaf4e09ce0da65e0f60b65c687d3e2"
+      "bytes": 6996,
+      "sha256": "35f45158f5759d4e287267ae5638283787dddd52ca83bb6443b2732003f7ae64"
+    },
+    {
+      "path": "docs/recovery-check.md",
+      "bytes": 2086,
+      "sha256": "628060db2c216736dac7b2f3a2fac413f549b0d79cbf1ce8129f5e898522884f"
     },
     {
       "path": "docs/release-roadmap.md",
-      "bytes": 5245,
-      "sha256": "10d93f3fa7048c60e2bb5574638661ef9421884e9e05b2a7ac777e66a5545c80"
+      "bytes": 5271,
+      "sha256": "3f21f671d4c91010b3ef544e137746a853bcdd34fca329be57d2d3a75a3f6aa8"
     },
     {
       "path": "docs/review-0.17.3.md",
@@ -270,6 +275,11 @@
       "path": "docs/review-0.18.3.md",
       "bytes": 1748,
       "sha256": "b8832de377b04a50afa59e817b43b09e46796850bba6829a2b20b9e51d40cb80"
+    },
+    {
+      "path": "docs/review-0.18.4.md",
+      "bytes": 1855,
+      "sha256": "b4eaa899a27f307fc377c9e1d963f87ccf1bb6bf229672db5d72c8a93f6bab6f"
     },
     {
       "path": "docs/review-decisions.md",
@@ -412,6 +422,11 @@
       "sha256": "b8276db73455a9762d3f9dc85f9863ddeb400125a1adcba7f8c4547e3f3bd131"
     },
     {
+      "path": "docs/validation-0.18.4.md",
+      "bytes": 2564,
+      "sha256": "3e7fc4981f54eb4cc93f534254fd6b67dde4546667a636b803de9ab2c54d59be"
+    },
+    {
       "path": "docs/validation-0.3.md",
       "bytes": 4056,
       "sha256": "95b8e50c114e15ebe4405559a3bb84cb64bab6c958e75f7332f37a688554e023"
@@ -449,7 +464,7 @@
     {
       "path": "docs/validation.md",
       "bytes": 3237,
-      "sha256": "6ac7ba09d505c74fea6e74f84acc4e190ec6200dd23dc77d1d28528cf5b480d3"
+      "sha256": "d53741dd4feb0cede92728b8abbd9cdd3eb60a87e75012bb95e74357b8c35304"
     },
     {
       "path": "docs/workflow.md",
@@ -474,7 +489,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 771,
-      "sha256": "e8b19266497f61f88257794fe8aa2cb915c7610d79cee22291ede45434c79c87"
+      "sha256": "2f0279f236f7b9ef84cc7478f1289c517349dc1fc21d5f2f8028d75cc40b5e50"
     },
     {
       "path": "requirements.lock",
@@ -540,6 +555,11 @@
       "path": "scripts/check_public_preview.py",
       "bytes": 3877,
       "sha256": "8e3c0214428b8f62d5885fb6009efd0f8abe2e2d7aee5503edbf5bc4697b1527"
+    },
+    {
+      "path": "scripts/check_recovery.py",
+      "bytes": 3590,
+      "sha256": "4cce1f14d416dfab0b2393b613e95a7424fab1fd5f116975b6bc3d7bca47aa87"
     },
     {
       "path": "scripts/check_repair.py",
@@ -684,7 +704,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "d18d477a2eb25f3b519bed8c1c4c57196a2d43541e814f86bd49dc57f759aa73"
+      "sha256": "bd2741345588c7abc129b00b8d0408b0e3e522a5f6814e63741b8da3cdfeab52"
     },
     {
       "path": "src/loom/__main__.py",
@@ -815,6 +835,11 @@
       "path": "src/loom/public_checks.py",
       "bytes": 3903,
       "sha256": "82e305bda663075fbe7805de2149f65a99cdda291ab7262ed91780a38a9b82a1"
+    },
+    {
+      "path": "src/loom/recovery_check.py",
+      "bytes": 6511,
+      "sha256": "6e7e3f32708db784c4399dcb5df3d8dc36630d3ad6ccf925cb6e5c247a906caa"
     },
     {
       "path": "src/loom/repair.py",
@@ -1172,6 +1197,11 @@
       "sha256": "d4034912bd68c87c825cdfb40768ae0a6022f9b93eff21fcea101b3ff1a884c4"
     },
     {
+      "path": "tests/test_recovery_check.py",
+      "bytes": 7477,
+      "sha256": "e6c248bb84f3d49284a2b10c005b40ae5115c713aa62e89432fe63caaeb20361"
+    },
+    {
       "path": "tests/test_repair.py",
       "bytes": 29288,
       "sha256": "ab2603c03246c7caf112ca8a8bb2107021e96a6962b6d8eba5790682cc0502f6"
@@ -1468,22 +1498,24 @@
     }
   ],
   "validation": {
-    "full_local_main_tests": 1005,
+    "full_local_main_tests": 1016,
     "full_local_subtests": 387,
     "failures": 0,
     "skipped": 0,
-    "final_targeted_main_tests": 97,
+    "final_targeted_main_tests": 34,
     "real_docker_jetstream_tests": 12,
     "model_transport": "mock in current infrastructure suite",
     "new_paid_model_requests": 0,
     "live_heartbeat_and_database_checks": 18,
     "mobile_network_user_reported_access": true,
     "mobile_full_workflow_tested": false,
-    "browser_process_stop_and_failed_status_queue_cancel_verified": true
+    "baseline_0183_browser_process_stop_and_failed_status_queue_cancel_verified": true,
+    "cold_recovery_actual_sources": 2,
+    "isolated_cold_api_checks": 18
   },
   "notes": [
-    "All original 62 requirements remain. FR-048 observability is only partially implemented.",
-    "Heartbeat metadata is outside the business database and never authorizes or retries execution.",
+    "All original 62 requirements remain. FR-043 recovery and FR-048 observability are only partially implemented.",
+    "Recovery copies remain private; no source database is overwritten, no event projection is rebuilt, and no independent checkpoint is claimed.",
     "Independent second model, full human adjudication, general tools and quotas, and production hosting remain pending.",
     "Invited temporary HTTPS experience depends on this machine and tunnel.",
     "Model secrets, invitation, session cookies, identities, databases and heartbeat files are excluded."

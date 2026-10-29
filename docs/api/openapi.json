@@ -3,7 +3,7 @@
   "info": {
     "title": "Loom local kernel",
     "description": "Single-host audited API. A separately configured private worker processes explicit model execution requests; independent verification remains pending.",
-    "version": "0.18.3"
+    "version": "0.18.4"
   },
   "paths": {
     "/v1/me": {
