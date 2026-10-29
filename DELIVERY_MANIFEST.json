@@ -1,10 +1,10 @@
 {
-  "version": "0.18.4",
-  "stage": "isolated-recovery-alpha",
+  "version": "0.18.5",
+  "stage": "tools-alpha",
   "production_ready": false,
-  "generated_at": "2026-10-29T17:03:51.880699+08:00",
+  "generated_at": "2026-10-29T19:48:13.813686+08:00",
   "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
-  "source_file_count_excluding_manifest": 298,
+  "source_file_count_excluding_manifest": 303,
   "files": [
     {
       "path": ".gitignore",
@@ -18,8 +18,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 18264,
-      "sha256": "048fec75c20573385ae72a27624d80ceff267bac3575cec8cdd6dfae8f9d801f"
+      "bytes": 18289,
+      "sha256": "d5c27a9cd4d5101d55209184d118d5e1fb1647deb56dd2cb981ff2615ec595a9"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -83,8 +83,8 @@
     },
     {
       "path": "docs/api/openapi.json",
-      "bytes": 86777,
-      "sha256": "465901e13b647ba96f66ecaa6f437db7e7a56bbed9b5efab9aa81d2e15f29c76"
+      "bytes": 87250,
+      "sha256": "51c9ec40eddcf91208d52cbcbf19d69db927a212cb8e3f471c5f5c5953a25ac9"
     },
     {
       "path": "docs/approved-execution.md",
@@ -138,8 +138,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 48095,
-      "sha256": "b80988f7984e035057d470592c18b232aead1ef5c5eba8e2fc640f453c843ba7"
+      "bytes": 48464,
+      "sha256": "ab6b85e1be6ff8ea7e5c917881869cbb73ac6cc839a8b33eeb95f663e7f0db2e"
     },
     {
       "path": "docs/launch-readiness-2026-10-29.md",
@@ -178,8 +178,8 @@
     },
     {
       "path": "docs/next-steps-2026-10-29.md",
-      "bytes": 1474,
-      "sha256": "b43367f057c33fb50f71a348da3e6720511cba55568ec2f35f5e126a8e77d8a0"
+      "bytes": 1714,
+      "sha256": "bd696faf2c6a22cb3079e247a52a92af07b3baaa3ae732a4bb99c3ddea0f1947"
     },
     {
       "path": "docs/operator-controls.md",
@@ -198,8 +198,8 @@
     },
     {
       "path": "docs/project-plan-2026-10-28.md",
-      "bytes": 15743,
-      "sha256": "903cfaa3a1be360b4239b34e00450973ae3ad58ad86a6832b9a2d08ef2cd510c"
+      "bytes": 16100,
+      "sha256": "8e08a1d0a7f84b18b48669b0be944dcc05eeef7db5eff3993f4ff6bbf077d32b"
     },
     {
       "path": "docs/public-checks.md",
@@ -282,6 +282,11 @@
       "sha256": "b4eaa899a27f307fc377c9e1d963f87ccf1bb6bf229672db5d72c8a93f6bab6f"
     },
     {
+      "path": "docs/review-0.18.5.md",
+      "bytes": 1418,
+      "sha256": "11a047935c3e80e68a17490067c4b4bc39b11c922e1b536b385bf6e889a76a31"
+    },
+    {
       "path": "docs/review-decisions.md",
       "bytes": 4051,
       "sha256": "a304c1d1a3e7ffbb4b2622733b03ff9861504fb85d0642753d503d909721c30e"
@@ -315,6 +320,11 @@
       "path": "docs/third-party-notices.md",
       "bytes": 9095,
       "sha256": "9ef1faf05c944f794f9b18c9de7dcaa9356ace5446ea174483dcd694ffd92223"
+    },
+    {
+      "path": "docs/tool-registry.md",
+      "bytes": 1620,
+      "sha256": "7a247e18c6ebb97235aae8182ccbff81f553b0c72059621ae53836ec0eaee1fb"
     },
     {
       "path": "docs/unified-nodes.md",
@@ -427,6 +437,11 @@
       "sha256": "3e7fc4981f54eb4cc93f534254fd6b67dde4546667a636b803de9ab2c54d59be"
     },
     {
+      "path": "docs/validation-0.18.5.md",
+      "bytes": 1449,
+      "sha256": "f264065a0c8060b89d2f47567507d85801c573a29a809fc122522f174f2c7ecf"
+    },
+    {
       "path": "docs/validation-0.3.md",
       "bytes": 4056,
       "sha256": "95b8e50c114e15ebe4405559a3bb84cb64bab6c958e75f7332f37a688554e023"
@@ -489,7 +504,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 771,
-      "sha256": "2f0279f236f7b9ef84cc7478f1289c517349dc1fc21d5f2f8028d75cc40b5e50"
+      "sha256": "4aef6e84d904ffd1dbb6dd9163e2cb1373c696bad7ed8c6366e30dfcfcd63ac0"
     },
     {
       "path": "requirements.lock",
@@ -704,7 +719,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "bd2741345588c7abc129b00b8d0408b0e3e522a5f6814e63741b8da3cdfeab52"
+      "sha256": "7a19947073567e02e831c87f37986a8cf42130b5e5f57ddc591812728fb5636e"
     },
     {
       "path": "src/loom/__main__.py",
@@ -713,8 +728,8 @@
     },
     {
       "path": "src/loom/api.py",
-      "bytes": 26495,
-      "sha256": "63de01d95b7ec5a712a10d2a1e972860ec31f7389d9034e2cffd3a976719214f"
+      "bytes": 26662,
+      "sha256": "41be6af9dfb08b3276e4584d8d6ecb7f75f566ae3c08974aede179d03620265d"
     },
     {
       "path": "src/loom/approved_execution.py",
@@ -768,8 +783,8 @@
     },
     {
       "path": "src/loom/execution.py",
-      "bytes": 39825,
-      "sha256": "7068f4b91737d59b544df02c33d5951c8fd9b02288e9e0327b46856e333511ca"
+      "bytes": 40086,
+      "sha256": "7cec3c6b2efce1fd064aac74174134ac8ed4a447bb2878fde1b8134a59eaa39a"
     },
     {
       "path": "src/loom/executor_config.py",
@@ -828,8 +843,8 @@
     },
     {
       "path": "src/loom/public_access.py",
-      "bytes": 12254,
-      "sha256": "cc04809d831c5cf566cb631f344c6e9c3d25e8fb1534ff012b37034bc8a912cf"
+      "bytes": 12267,
+      "sha256": "3fd4c8c72442bb413fc8cf9d220d8da625249283937fcf566dbc29a77e0f232d"
     },
     {
       "path": "src/loom/public_checks.py",
@@ -877,9 +892,14 @@
       "sha256": "a2a75feac56667fd133d6838a3142f9472b92143d68c1822113fa622c58af47a"
     },
     {
+      "path": "src/loom/tool_registry.py",
+      "bytes": 1955,
+      "sha256": "5d8a94f9b3400f62a1631c6693d736c477149f1c8ee26b7c9fa0cb84f367b2e6"
+    },
+    {
       "path": "src/loom/web/console-execution.js",
-      "bytes": 11120,
-      "sha256": "3aca7ef529ae13470c6cbd3bfc2f6b9c1482f21e0e87dfbd623f926d90643fd0"
+      "bytes": 12104,
+      "sha256": "83d118b4c2ac5ae75569830d6a76ad35f243e96d7592b19271986c4a55ba07b3"
     },
     {
       "path": "src/loom/web/console-preview.js",
@@ -1297,6 +1317,11 @@
       "sha256": "148834978c9ea1a18d25f2081d2581f3ef7e6aba9f6e8122af9a3f3963d98287"
     },
     {
+      "path": "tests/test_tool_registry.py",
+      "bytes": 3523,
+      "sha256": "a5958b32ea08d83673f5a92a0fb7c8e0734d970d9c43d1566813a8e3c11115e9"
+    },
+    {
       "path": "tests/test_workflow.py",
       "bytes": 17493,
       "sha256": "5f13027752226698248e5851404e0617398a3f12ebfb3f9b24b761c8309c9339"
@@ -1498,26 +1523,32 @@
     }
   ],
   "validation": {
-    "full_local_main_tests": 1016,
-    "full_local_subtests": 387,
-    "failures": 0,
-    "skipped": 0,
-    "final_targeted_main_tests": 34,
-    "real_docker_jetstream_tests": 12,
-    "model_transport": "mock in current infrastructure suite",
-    "new_paid_model_requests": 0,
-    "live_heartbeat_and_database_checks": 18,
-    "mobile_network_user_reported_access": true,
-    "mobile_full_workflow_tested": false,
-    "baseline_0183_browser_process_stop_and_failed_status_queue_cancel_verified": true,
-    "cold_recovery_actual_sources": 2,
-    "isolated_cold_api_checks": 18
+    "full": {
+      "main_tests": 1028,
+      "subtests": 387,
+      "failures": 0,
+      "skipped": 0
+    },
+    "target": {
+      "main_tests": 132,
+      "subtests": 9,
+      "failures": 0,
+      "skipped": 0
+    },
+    "infra": {
+      "main_tests": 16,
+      "subtests": 0,
+      "failures": 0,
+      "skipped": 0
+    }
   },
+  "live_http_checks": 27,
+  "browser_checks": 5,
+  "new_paid_model_requests": 0,
   "notes": [
-    "All original 62 requirements remain. FR-043 recovery and FR-048 observability are only partially implemented.",
-    "Recovery copies remain private; no source database is overwritten, no event projection is rebuilt, and no independent checkpoint is claimed.",
-    "Independent second model, full human adjudication, general tools and quotas, and production hosting remain pending.",
-    "Invited temporary HTTPS experience depends on this machine and tunnel.",
-    "Model secrets, invitation, session cookies, identities, databases and heartbeat files are excluded."
+    "Original 62 requirements retained; partial feature increments do not establish production readiness.",
+    "Current infrastructure tests use real Docker and JetStream with simulated provider responses.",
+    "Independent second model and full adjudication, general tools, quotas and production hosting remain pending.",
+    "Private configuration, invitations, session cookies, identities and databases are excluded."
   ]
 }

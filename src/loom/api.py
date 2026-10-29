@@ -23,6 +23,7 @@ from .review_decisions import Decision, ReviewDecisionService
 from .progression import ProgressionService
 from .dispatch import DispatchService
 from .executor_status import ExecutorStatus
+from .tool_registry import catalog as tool_catalog
 from .operator import OperatorService
 from .local_console import allows_local_console, console_principal
 from .store import Claim, Conflict, InvalidInput, LoomError, NotFound, Store, canonical, digest
@@ -245,6 +246,10 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     @app.get("/v1/executor-status")
     def read_executor_status(tenant: Tenant):
         return executor_status.read(tenant)
+
+    @app.get("/v1/tools")
+    def read_tools(tenant: Tenant):
+        return tool_catalog(tenant, executor_config)
 
     @app.get("/v1/goals/{run_id}")
     def get_goal(run_id: str, tenant: Tenant):

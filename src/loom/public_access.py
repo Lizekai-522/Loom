@@ -91,7 +91,7 @@ class PublicPreview:
     @staticmethod
     def allowed(method, path):
         if method == 'GET':
-            return (path in {'/', '/console', '/console/', '/health', '/v1/me', '/v1/goals', '/v1/interventions', '/v1/executor-status'}
+            return (path in {'/', '/console', '/console/', '/health', '/v1/me', '/v1/goals', '/v1/interventions', '/v1/executor-status', '/v1/tools'}
                     or re.fullmatch(r'/console/assets/[A-Za-z0-9_-]+\.(?:css|js)', path)
                     or re.fullmatch(r'/v1/(?:goals|runs)/[A-Za-z0-9:_-]+(?:/[A-Za-z0-9:_-]+)*', path))
         if method == 'PUT':

@@ -3,7 +3,7 @@
   "info": {
     "title": "Loom local kernel",
     "description": "Single-host audited API. A separately configured private worker processes explicit model execution requests; independent verification remains pending.",
-    "version": "0.18.4"
+    "version": "0.18.5"
   },
   "paths": {
     "/v1/me": {
@@ -120,6 +120,27 @@
       "get": {
         "summary": "Read Executor Status",
         "operationId": "read_executor_status_v1_executor_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/tools": {
+      "get": {
+        "summary": "Read Tools",
+        "operationId": "read_tools_v1_tools_get",
         "responses": {
           "200": {
             "description": "Successful Response",
