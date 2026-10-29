@@ -20,6 +20,7 @@ from .repair import RebindService, RepairStopped
 from .sandbox import DockerSandbox, FrozenTest, SandboxError
 from .tool_registry import PYTHON_TESTS, run_python_tool
 from .context_budget import check_context_budget
+from .quotas import QuotaExceeded
 from .store import BudgetExceeded, Claim, Conflict, InvalidInput, NotFound, StaleClaim, Store, canonical, digest
 from .workflow import WorkflowService
 
@@ -246,6 +247,8 @@ class LocalTaskRunner:
                 return self._lease_lost(claim)
             except ExecutionContextError as error:
                 return self._context_rejected(claim, error.reason)
+            except QuotaExceeded as error:
+                return self._block(claim,error.code)
             except Conflict:
                 stopped = self._control_conflict(claim)
                 if stopped is None:
@@ -437,6 +440,8 @@ class LocalTaskRunner:
                     result = self._lease_lost(current[0])
                 except ExecutionContextError as error:
                     result = self._context_rejected(current[0], error.reason)
+                except QuotaExceeded as error:
+                    result=self._cycle_stop(current[0],error.code,stage='quota')
                 except Conflict:
                     result = self._control_conflict(current[0])
                     if result is None:
