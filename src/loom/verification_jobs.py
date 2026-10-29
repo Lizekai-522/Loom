@@ -164,6 +164,16 @@ class VerificationJobs:
             self.store._event(db,tenant,row['run_id'],'verification.started',data,'verification-engine')
             return state,view,requirements
 
+    def block_pending(self,tenant,job_id,reason):
+        """A preflight failure is durable and never takes over a started call."""
+        if not isinstance(reason,str) or not reason.startswith('VERIFICATION_') or len(reason)>200:raise InvalidInput('invalid verification reason')
+        with self.store.transaction() as db:
+            row=self._row(db,tenant,job_id);state=self._state(db,row)
+            if state['state']!='queued':raise Conflict('VERIFICATION_NO_AUTOMATIC_RETRY')
+            result=dict(job_id=job_id,binding_digest=digest(state['binding']),state='blocked',actual_cost_microusd=0,billing_uncertain=False,reason=reason,counts_as_success=False)
+            self.store._event(db,tenant,row['run_id'],'verification.blocked',result,'verification-engine')
+            return result
+
     def block(self,tenant,job_id,*,reason,actual_cost,billing_uncertain):
         if type(actual_cost) is not int or actual_cost<0 or type(billing_uncertain) is not bool:raise InvalidInput('invalid verification accounting')
         with self.store.transaction() as db:

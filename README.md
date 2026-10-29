@@ -1,6 +1,6 @@
 # Loom
 
-基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.19.1**接通私有双模型复核、持久请求和真实签名消费；宿主证据、模型回执及来源均匹配后才能完成任务，注册判据全部满足后才能验收目标。[本轮验证](docs/validation-0.19.1.md) · [四轮上线计划](docs/launch-four-rounds-2026-10-30.md) · [配额说明](docs/quotas.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
+基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.19.2**加入中文独立复核页：核对版本与独立项目额度后，明确申请Flash/Pro复核，查看真实签名并导出证据；常驻复核器具备进程观测与启动前阻断。[本轮验证](docs/validation-0.19.2.md) · [四轮上线计划](docs/launch-four-rounds-2026-10-30.md) · [配额说明](docs/quotas.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
 
 0.17.4历史重测967主/382子、Chromium63项，三份源码下载与权威原始字节一致；0.17.5测试与真实基础设施证据单独登记。[历史验证](docs/validation.md)
 

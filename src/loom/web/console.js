@@ -163,6 +163,7 @@
     reviewDecisions.sync();
     progression.sync();
     localExecution.sync();
+    verificationPanel.sync();
     sourcePanel.sync();
     return effects;
   }
@@ -494,6 +495,7 @@
     exactBodyText, sameArtifact, runChecked, label});
   const reviewDecisions = window.LoomReviewDecisions({state, $, node, has, request, publicError, sameArtifact, runChecked});
   const localExecution = window.LoomExecutionPanel({state,node,has,request,publicError,runChecked,refresh:()=>refreshAll()});
+  const verificationPanel = window.LoomVerificationPanel({state,$,node,has,request,publicError,runChecked,refresh:()=>refreshAll()});
   const sourcePanel = window.LoomSourcePanel({state,node,request,publicError,runChecked});
   const progression = window.LoomProgression({state, $, node, request, publicError, runChecked, label, navigate: navigateProgression, executionPanel:localExecution});
 
@@ -507,6 +509,7 @@
   }
 
   function resetArtifacts() {
+    verificationPanel.reset();
     sourcePanel.reset();
     suites.reset();
     reviewDecisions.reset();
@@ -737,6 +740,7 @@
       else button.removeAttribute("aria-current");
     }
     for (const panel of document.querySelectorAll(".tab-panel")) panel.hidden = panel.id !== `tab-${name}`;
+    verificationPanel.sync();
     sourcePanel.sync();
     if (name === "events") loadEvents();
     if (name === "artifacts" && state.artifactStatus === "idle") loadArtifacts();

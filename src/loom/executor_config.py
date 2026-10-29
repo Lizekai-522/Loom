@@ -39,6 +39,7 @@ class LocalExecutorConfig:
     sandbox_image:str|None
     host_tests:dict[str,Path]
     source_path:Path|None=None
+    verification_config:Path|None=None
 
     def binding(self,role,evaluation_digest):
         raw=self.model_config.read_bytes()
@@ -51,7 +52,7 @@ class LocalExecutorConfig:
         registry=self.host_tests
         if self.source_path is not None:
             current=load_executor_config(self.source_path)
-            if any(getattr(current,k)!=getattr(self,k) for k in ('executor_id','identities_file','secrets_file','model_config','sandbox_image')):
+            if any(getattr(current,k)!=getattr(self,k) for k in ('executor_id','identities_file','secrets_file','model_config','sandbox_image','verification_config')):
                 raise InvalidInput('local executor configuration changed; restart required')
             registry=current.host_tests
         path=registry.get(spec['evaluation_digest'])
@@ -67,7 +68,7 @@ def load_executor_config(path):
         if len(raw)>65536:raise ValueError
         data=strict_json(raw)
         expected={'schema_version','executor_id','identities_file','secrets_file','model_config','sandbox_image','host_tests'}
-        if (type(data) is not dict or set(data)!=expected or data['schema_version']!='loom.local-executor/v1'
+        if (type(data) is not dict or set(data) not in (expected,expected|{'verification_config'}) or data['schema_version']!='loom.local-executor/v1'
             or type(data['executor_id']) is not str or not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}',data['executor_id'])
             or data['sandbox_image'] is not None and not re.fullmatch(r'sha256:[0-9a-f]{64}',data['sandbox_image'])
             or type(data['host_tests']) is not dict or len(data['host_tests'])>128):raise ValueError
@@ -78,5 +79,6 @@ def load_executor_config(path):
         for key,value in data['host_tests'].items():
             if not re.fullmatch('[0-9a-f]{64}',key):raise ValueError
             paths[key]=resolve(value)
-        return LocalExecutorConfig(data['executor_id'],resolve(data['identities_file']),resolve(data['secrets_file']),resolve(data['model_config']),data['sandbox_image'],paths,source)
+        verifier=resolve(data['verification_config']) if data.get('verification_config') is not None else None
+        return LocalExecutorConfig(data['executor_id'],resolve(data['identities_file']),resolve(data['secrets_file']),resolve(data['model_config']),data['sandbox_image'],paths,source,verifier)
     except (OSError,TypeError,ValueError,RecursionError):raise InvalidInput('invalid local executor configuration') from None

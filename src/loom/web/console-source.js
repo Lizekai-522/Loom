@@ -54,7 +54,7 @@ window.LoomSourcePanel = function ({state, node, request, publicError, runChecke
     refs.code.textContent = value.files["main.py"];
     refs.details.replaceChildren();
     const summary = value.execution_summary;
-    refs.status.textContent = `精确版本已核对 · 宿主终验 ${summary.cases_passed}/${summary.cases_executed} · 候选仍待独立复核`;
+    refs.status.textContent = `精确版本已核对 · 宿主终验 ${summary.cases_passed}/${summary.cases_executed} · 独立复核结果请在复核页核对`;
     for (const [name, text] of [["任务", value.subject.task_id], ["轮次", value.subject.epoch], ["输入版本摘要", value.input_digest],
       ["源码合同摘要", value.subject.source_sha256], ["main.py 文件 SHA256", fileHash]]) {
       refs.details.append(node("p", "mono break-word", `${name} ${text}`));

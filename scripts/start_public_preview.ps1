@@ -45,6 +45,11 @@ try {
     $loomWorkerArgs='"{0}" --db "{1}" --config "{2}" --watch' -f $loomWorkerScript,(Join-Path $loomPrivate 'preview.db'),(Join-Path $loomPrivate 'executor.json')
     $loomWorker=Start-Process -FilePath $loomPython -ArgumentList $loomWorkerArgs -WorkingDirectory $loomRepo -WindowStyle Hidden -RedirectStandardOutput (Join-Path $loomPrivate 'worker.log') -RedirectStandardError (Join-Path $loomPrivate 'worker-error.log') -PassThru
     $loomRecords+=@{id=$loomWorker.Id;marker=$loomWorkerScript;kind='worker'}
+    & (Join-Path $PSScriptRoot 'start_verification.ps1') -WorkRoot $loomWork -Database (Join-Path $loomPrivate 'preview.db') -ExecutorConfig (Join-Path $loomPrivate 'executor.json') -SessionFile (Join-Path $loomPrivate 'verification-session.json')
+    if(Test-Path -LiteralPath (Join-Path $loomPrivate 'verification-session.json')){
+      $loomVerifier=Get-Content -LiteralPath (Join-Path $loomPrivate 'verification-session.json') -Raw -Encoding UTF8|ConvertFrom-Json
+      $loomRecords+=@{id=$loomVerifier.process_id;marker=$loomVerifier.marker;kind='verification'}
+    }
   }
   @{version=(& $loomPython -c 'from loom import __version__;print(__version__)');origin=$loomOrigin;processes=$loomRecords;worker_started=(-not $WithoutWorker)} | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $loomProcessFile -Encoding UTF8
   Write-Output ('已启动临时公网入口：{0}/console' -f $loomOrigin)

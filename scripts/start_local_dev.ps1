@@ -29,4 +29,5 @@ if (-not $loomWorkerAlive) {
   $loomWorker=Start-Process -FilePath $loomPython -ArgumentList $loomWorkerArgs -WorkingDirectory $loomRepo -WindowStyle Hidden -RedirectStandardOutput (Join-Path $loomWork 'loom-worker.log') -RedirectStandardError (Join-Path $loomWork 'loom-worker-error.log') -PassThru
   @{process_id=$loomWorker.Id;version=$loomVersion} | ConvertTo-Json | Set-Content -LiteralPath $loomWorkerInfo -Encoding UTF8
 }
+& (Join-Path $PSScriptRoot 'start_verification.ps1') -WorkRoot $loomWork -Database $loomSession.database -ExecutorConfig (Join-Path $loomWork 'loom-private/local-executor.json') -SessionFile (Join-Path $loomWork 'loom-local-verification-session.json')
 Write-Output ('工作台：http://127.0.0.1:{0}/console；已启动本机执行器。模型仅在显式请求后调用。' -f $loomSession.port)
