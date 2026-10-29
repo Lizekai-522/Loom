@@ -1,6 +1,6 @@
 # Loom
 
-基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.18.3**增加执行器心跳和中文状态提示；0.18.2增加临时公网只读检查；工作台可查看并精确导出生成程序及版本记录。此前真实Flash分析→输入批准→代码→Docker已通过，第二模型仍待配置。[本轮验证](docs/validation-0.18.3.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
+基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.18.4**增加私有副本恢复检查；0.18.3增加执行器心跳和中文状态提示；工作台可查看并精确导出生成程序及版本记录。此前真实Flash分析→输入批准→代码→Docker已通过，第二模型仍待配置。[本轮验证](docs/validation-0.18.4.md) · [恢复演练](docs/recovery-check.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
 
 0.17.4历史重测967主/382子、Chromium63项，三份源码下载与权威原始字节一致；0.17.5测试与真实基础设施证据单独登记。[历史验证](docs/validation.md)
 
