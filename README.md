@@ -1,6 +1,6 @@
 # Loom
 
-基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.18.7**接入租户与实际模型的持久滑动窗口配额，未知调用保持占额；保留已批准的上下文字节上限、固定工具注册表、私有副本恢复、心跳及源码导出。第二模型仍待配置。[本轮验证](docs/validation-0.18.7.md) · [配额说明](docs/quotas.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
+基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.18.8**将持久工具配额接入 Python 容器测试，未知结果保留名额并阻止自动重跑，模型计费与工具次数分别记录；保留上下文字节上限、私有副本恢复和源码导出。第二模型已选择 DeepSeek V4 Pro，独立验证接入仍在进行。[本轮验证](docs/validation-0.18.8.md) · [配额说明](docs/quotas.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
 
 0.17.4历史重测967主/382子、Chromium63项，三份源码下载与权威原始字节一致；0.17.5测试与真实基础设施证据单独登记。[历史验证](docs/validation.md)
 

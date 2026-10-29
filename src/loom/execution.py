@@ -20,7 +20,7 @@ from .repair import RebindService, RepairStopped
 from .sandbox import DockerSandbox, FrozenTest, SandboxError
 from .tool_registry import PYTHON_TESTS, run_python_tool
 from .context_budget import check_context_budget
-from .quotas import QuotaExceeded
+from .quotas import QuotaExceeded,QuotaService
 from .store import BudgetExceeded, Claim, Conflict, InvalidInput, NotFound, StaleClaim, Store, canonical, digest
 from .workflow import WorkflowService
 
@@ -157,6 +157,26 @@ class LocalTaskRunner:
         with self.store.transaction() as db:
             return self._block_in(db, claim, reason)
 
+    def _execute_tool(self,claim,spec,snapshot,files,tests,*,phase):
+        if phase not in {'development','acceptance'}:raise InvalidInput('invalid tool phase')
+        frozen,tests_hash=freeze_tests(tests)
+        with self.store.transaction() as db:
+            self.store._assert_claim(db,claim)
+            current=self.artifacts._contract(db,claim.tenant_id,claim.run_id,claim.task_id)
+            if digest(current)!=digest(spec):raise Conflict('tool contract changed')
+            if snapshot is not None:self.artifacts.assert_execution_context_in(db,claim,snapshot)
+            grant=QuotaService(self.store).admit_tool_in(db,claim,
+                'python-tests:'+phase+':'+digest(files)+':'+tests_hash,
+                dict(tool_id=PYTHON_TESTS.tool_id,tool_version=PYTHON_TESTS.version,phase=phase,
+                    source_digest=digest(files),tests_digest=tests_hash,plan_digest=spec['plan_digest']))
+        result=run_python_tool(self.sandbox,spec,files,frozen)
+        if grant is not None:
+            self.store.finish_effect(claim,grant['call_id'],dict(kind='python-tool-receipt',
+                tool_id=PYTHON_TESTS.tool_id,tool_version=PYTHON_TESTS.version,
+                source_digest=result.source_sha256,tests_digest=result.tests_sha256,
+                passed=result.passed,result_digest=digest(result.to_dict())))
+        return result
+
     def _block_in(self, db, claim: Claim, reason: str) -> dict:
         """Stop projections and audit together with a caller's evidence txn."""
         self.store._assert_claim(db, claim, allow_paused=True)
@@ -172,7 +192,8 @@ class LocalTaskRunner:
         db.execute("UPDATE tasks SET status='awaiting_human',lease_until=NULL WHERE tenant=? AND id=?", (claim.tenant_id, claim.task_id))
         result = {"run_id": claim.run_id, "task_id": claim.task_id, "status": "awaiting_human",
                   "run_status": self.store._run(db, claim.tenant_id, claim.run_id)["status"],
-                  "reason": reason, "verified": False, "billing_uncertain": bool(unknown)}
+                  "reason": reason, "verified": False,
+                  "billing_uncertain": any(effect['id'] not in self.store._tool_call_ids(db,claim.tenant_id) for effect in unknown)}
         self.store._event(db, claim.tenant_id, claim.run_id, "execution.blocked", result, "local-executor")
         return result
 
@@ -199,7 +220,8 @@ class LocalTaskRunner:
                     {"task_id": claim.task_id, "epoch": claim.epoch, "reason": "EXECUTION_LEASE_LOST",
                      "run_status": self.store._run(db, claim.tenant_id, claim.run_id)["status"]}, "local-executor")
             return {"task_id": claim.task_id, "status": "awaiting_human", "verified": False,
-                    "reason": "EXECUTION_LEASE_LOST", "billing_uncertain": bool(uncertain)}
+                    "reason": "EXECUTION_LEASE_LOST",
+                    "billing_uncertain": any(effect['id'] not in self.store._tool_call_ids(db,claim.tenant_id) for effect in uncertain)}
 
     def _control_conflict(self, claim: Claim) -> dict | None:
         """Resolve only a control race; unrelated open-run conflicts still fail."""
@@ -353,7 +375,7 @@ class LocalTaskRunner:
             # permission to begin execution after a trusted operator paused it.
             self._assert_execution(claim)
             self._assert_context(claim, snapshot)
-            return run_python_tool(self.sandbox, spec, {"main.py": source}, frozen)
+            return self._execute_tool(claim,spec,snapshot,{"main.py":source},frozen,phase='acceptance')
 
         try:
             evaluated = await asyncio.to_thread(execute_candidate)
@@ -520,11 +542,11 @@ class LocalTaskRunner:
         reserved_tokens = FLASH_CONTEXT_LIMIT + max_output_tokens
         reserved_cost = cost_upper_microusd(FLASH_CONTEXT_LIMIT, max_output_tokens)
 
-        async def evaluate(owner, source, tests, snapshot):
+        async def evaluate(owner, source, tests, snapshot,phase):
             def work():
                 self._assert_execution(owner)
                 self._assert_context(owner, snapshot)
-                return run_python_tool(self.sandbox, spec, {"main.py": source}, tests)
+                return self._execute_tool(owner,spec,snapshot,{"main.py":source},tests,phase=phase)
             return await asyncio.to_thread(work)
 
         while True:
@@ -602,7 +624,7 @@ class LocalTaskRunner:
             if service.repeated_source(claim, spec["plan_digest"], candidate["payload"]["source_sha256"], candidate["hash"]):
                 return self._cycle_stop(claim, "REPEATED_SOURCE", stage="public-development")
             try:
-                public = await evaluate(claim, source, development, snapshot)
+                public = await evaluate(claim, source, development, snapshot,'development')
             except SandboxError:
                 return self._cycle_stop(claim, "SANDBOX_UNAVAILABLE_OR_REJECTED", stage="public-development")
             self._assert_execution(claim)
@@ -626,7 +648,7 @@ class LocalTaskRunner:
                 totals["repairs_applied"] += 1
                 continue
             try:
-                evaluated = await evaluate(claim, source, acceptance, snapshot)
+                evaluated = await evaluate(claim, source, acceptance, snapshot,'acceptance')
             except SandboxError:
                 return self._cycle_stop(claim, "SANDBOX_UNAVAILABLE_OR_REJECTED", stage="hidden-acceptance")
             self._assert_execution(claim)

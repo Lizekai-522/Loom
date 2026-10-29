@@ -1,10 +1,10 @@
 {
-  "version": "0.18.7",
-  "stage": "model-quotas-alpha",
+  "version": "0.18.8",
+  "stage": "tool-quotas-alpha",
   "production_ready": false,
-  "generated_at": "2026-10-29T20:38:29.539565+08:00",
+  "generated_at": "2026-10-29T21:36:11.967058+08:00",
   "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
-  "source_file_count_excluding_manifest": 315,
+  "source_file_count_excluding_manifest": 319,
   "files": [
     {
       "path": ".gitignore",
@@ -13,13 +13,13 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 2643,
-      "sha256": "030a6ecdf678bc6ed39ac43d7793cdb876f301654a62e9923260784c26b1e3a6"
+      "bytes": 2701,
+      "sha256": "c0ef58910d530a9d4bdda2f4e981bf4e889b1606bdbb7c810931b084923c8107"
     },
     {
       "path": "README.md",
-      "bytes": 18236,
-      "sha256": "ea92afc75d4a0c7ed47500d5dd116b378b2853e5323da93c1e6a6f7e2699fe60"
+      "bytes": 18293,
+      "sha256": "f93973756169493e352b6525c45cfc2f43b594f5d05df024d0689b7c5e48bdcb"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -83,13 +83,13 @@
     },
     {
       "path": "docs/api/README.md",
-      "bytes": 13700,
-      "sha256": "c2cb8e6ae5d58f5b94aafc474e0484f89f875c5c420cf743f6557c132fc30f78"
+      "bytes": 13753,
+      "sha256": "5b2bcc2a7f1b996f55228c0bc72a19fcfe37d291556b08e83dbe87d31b40667c"
     },
     {
       "path": "docs/api/openapi.json",
       "bytes": 88193,
-      "sha256": "962b048632757680d8e6ced7a7dc5e516ee5236eda0b1681197ba8f3e3688182"
+      "sha256": "8a2a7e5db2757c8eb6ec624fe8dcea627c877bffeb901a8af60e3b0724405ade"
     },
     {
       "path": "docs/approved-execution.md",
@@ -148,13 +148,13 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 49248,
-      "sha256": "3f82b4321d73ebcb831555f49c3ba28894e98c37ec74f42992de1c0f249994d7"
+      "bytes": 49742,
+      "sha256": "ee4e33ab182899c5ab3c0a3cc93bcc1a297974caa7e7b9b2795369adf833bb54"
     },
     {
       "path": "docs/launch-readiness-2026-10-29.md",
-      "bytes": 2941,
-      "sha256": "543eef7c7ec86147efd551b0fb053b7c8cdfca3347e5200fff86d9b83819e27a"
+      "bytes": 3105,
+      "sha256": "58483f5407ea43800b4fd8adfdd97dbd3efc9fa98077b8bb2c9a1f3b6c671cfc"
     },
     {
       "path": "docs/local-auth.md",
@@ -188,8 +188,8 @@
     },
     {
       "path": "docs/next-steps-2026-10-29.md",
-      "bytes": 2145,
-      "sha256": "6f4866c7d7b5ccb2b1c65a5c30317a7cc8f56cb6fb5e60d57fd25b8235d6f7aa"
+      "bytes": 2397,
+      "sha256": "afadf46c24bc7d6e0fb6126a0816a9c92bff299ca9d6847cd8dc69109d9d58b3"
     },
     {
       "path": "docs/operator-controls.md",
@@ -208,8 +208,8 @@
     },
     {
       "path": "docs/project-plan-2026-10-28.md",
-      "bytes": 16742,
-      "sha256": "ea9ba6cbe444b75c2db884a8ba4c78e52a8545e8040aa5584bea114088b52ab6"
+      "bytes": 17207,
+      "sha256": "deb04ed378d50c5506dd248e0bbdcc268b877e4692480162ed19fe47c2d5ebb8"
     },
     {
       "path": "docs/public-checks.md",
@@ -223,8 +223,8 @@
     },
     {
       "path": "docs/quotas.md",
-      "bytes": 2436,
-      "sha256": "11929f524dcebccc1e03129bac3a607e738658c52d6638ec22491c150cdd7642"
+      "bytes": 2934,
+      "sha256": "4486a786c5f0492e0a56d7557e32455afb75bc4a5fda6b2b87970554f8cd8611"
     },
     {
       "path": "docs/recovery-check.md",
@@ -233,8 +233,8 @@
     },
     {
       "path": "docs/release-roadmap.md",
-      "bytes": 5265,
-      "sha256": "7d11976a17fef31cbaa269d4d817d03b2f69a3d470b7fd0e4115be02fa52b7d9"
+      "bytes": 5283,
+      "sha256": "e46d3b09fa1a247e6a54a18a3df34f559c51498c52023fa286311e1c57a52c68"
     },
     {
       "path": "docs/review-0.17.3.md",
@@ -310,6 +310,11 @@
       "path": "docs/review-0.18.7.md",
       "bytes": 936,
       "sha256": "055d2244b42f0032d501c9d1ebdae0457f3a9b2d6141264f1d14e5277ce9d4ce"
+    },
+    {
+      "path": "docs/review-0.18.8.md",
+      "bytes": 1240,
+      "sha256": "cf6974a3998b6c18c91db99f1622fa93954f28f4bc77f1e35e4bc685d901ccdb"
     },
     {
       "path": "docs/review-decisions.md",
@@ -477,6 +482,11 @@
       "sha256": "03d5ced0d15e6bf40efcc971304296d0cd5e4196d2408946d7d18d82eefa7a13"
     },
     {
+      "path": "docs/validation-0.18.8.md",
+      "bytes": 859,
+      "sha256": "558a68deb6adfe0ed8e83e2aa17ca22f4d2b7096314ec970a6e25fd56301da35"
+    },
+    {
       "path": "docs/validation-0.3.md",
       "bytes": 4056,
       "sha256": "95b8e50c114e15ebe4405559a3bb84cb64bab6c958e75f7332f37a688554e023"
@@ -539,7 +549,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 771,
-      "sha256": "370cdb64d8d1ba7a0f8ff4efc9484387a88520b09752a20f67c165b86558d6b5"
+      "sha256": "29c1cb65fafe0bdf6c8e730bdfe1156e20918a6676b1fc3fc1e96513c1fec2ba"
     },
     {
       "path": "requirements.lock",
@@ -759,7 +769,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "7f0e8e12297872dc0c1fc391c70e6bf3d1846050e3f416c41e6d135bc788d2b8"
+      "sha256": "421753d238959668d6a041338c7addd60e75cb947cfc9fd445cd3597c0283e08"
     },
     {
       "path": "src/loom/__main__.py",
@@ -823,13 +833,13 @@
     },
     {
       "path": "src/loom/dispatch.py",
-      "bytes": 18953,
-      "sha256": "0d467376cc9f22cc302bc1f503ee3d610709cdb779f5f067e5235f80e34601ce"
+      "bytes": 19115,
+      "sha256": "d204f3ed7a2c31a78ecd5783885ccb4207b1f75c61bb5061e98e82b1f70124bb"
     },
     {
       "path": "src/loom/execution.py",
-      "bytes": 40513,
-      "sha256": "39604981a197c59f5eaa99bc46d55f9ff3119a520ac08559038306049c9f8ce9"
+      "bytes": 42158,
+      "sha256": "695d6241311e3e99314daa873bf85e72a9df03ecdcd49adb180ce14d0c1867c0"
     },
     {
       "path": "src/loom/executor_config.py",
@@ -898,8 +908,8 @@
     },
     {
       "path": "src/loom/quotas.py",
-      "bytes": 10774,
-      "sha256": "6f02ae9a6e03c9f6cf848196b9a47669aa366553731bf40c542678b5b67f786d"
+      "bytes": 11490,
+      "sha256": "ca0c8a86c4954344d31afb5ae441486bac3fcbe4e1c2a9f26cd0dcbb2e8e0ca7"
     },
     {
       "path": "src/loom/recovery_check.py",
@@ -938,8 +948,8 @@
     },
     {
       "path": "src/loom/store.py",
-      "bytes": 45286,
-      "sha256": "cc7190ddaf29749edf951fc1b041443e1d339ae77dc36d5b4a5e526f1f0a77cd"
+      "bytes": 45686,
+      "sha256": "c1cc76e15664cee230b2e8a9bb3db17fc4080f685c496f6f05d23d86ca24cff5"
     },
     {
       "path": "src/loom/tool_registry.py",
@@ -948,8 +958,8 @@
     },
     {
       "path": "src/loom/web/console-execution.js",
-      "bytes": 13578,
-      "sha256": "ee378adeb6aa5a65192259cfa7fb00deaa7bffc5a8c5d9d4ed12a9672aa49fee"
+      "bytes": 13661,
+      "sha256": "5eced5573e5b3f802b9128f6536fc3b46d0600acf22522475454bfecf9e4b83b"
     },
     {
       "path": "src/loom/web/console-preview.js",
@@ -1033,8 +1043,8 @@
     },
     {
       "path": "tests/integration/test_dispatch_live.py",
-      "bytes": 16484,
-      "sha256": "b7faf823705013ff77fdcae67ea178fc0d50b1e7308c4069b3b4f9d1028bde4e"
+      "bytes": 16589,
+      "sha256": "8abd87d2fe3df4fd6954e8cbb83adc996bd6bfe59daa705af398333c649dd7d5"
     },
     {
       "path": "tests/integration/test_nats_live.py",
@@ -1085,6 +1095,11 @@
       "path": "tests/integration/test_sandbox_live.py",
       "bytes": 5668,
       "sha256": "a6a71c6a761aedfca641beba10c1f8b3b7f7c1a19cf9bde4ef94cd71b1c907c0"
+    },
+    {
+      "path": "tests/integration/test_tool_quotas_live.py",
+      "bytes": 2419,
+      "sha256": "dc716ad457cbe6b51fabc1f82e54991e0f898bf31eab716492a062e819eb0e6a"
     },
     {
       "path": "tests/test_api.py",
@@ -1377,6 +1392,11 @@
       "sha256": "148834978c9ea1a18d25f2081d2581f3ef7e6aba9f6e8122af9a3f3963d98287"
     },
     {
+      "path": "tests/test_tool_quotas.py",
+      "bytes": 5354,
+      "sha256": "44beb48c453ce4ebb7b95e3c294306153d36114f8344c2fd3f5c895f65fac074"
+    },
+    {
       "path": "tests/test_tool_registry.py",
       "bytes": 3523,
       "sha256": "a5958b32ea08d83673f5a92a0fb7c8e0734d970d9c43d1566813a8e3c11115e9"
@@ -1584,31 +1604,31 @@
   ],
   "validation": {
     "full": {
-      "main_tests": 1069,
+      "main_tests": 1076,
       "subtests": 387,
       "failures": 0,
       "skipped": 0
     },
     "target": {
-      "main_tests": 131,
-      "subtests": 14,
+      "main_tests": 124,
+      "subtests": 9,
       "failures": 0,
       "skipped": 0
     },
     "infra": {
-      "main_tests": 20,
+      "main_tests": 23,
       "subtests": 0,
       "failures": 0,
       "skipped": 0
     }
   },
-  "live_http_checks": 44,
-  "browser_checks": 5,
+  "live_http_checks": 46,
+  "browser_checks": 7,
   "new_paid_model_requests": 0,
   "notes": [
     "Original 62 requirements retained; partial feature increments do not establish production readiness.",
     "Current infrastructure tests use real Docker and JetStream with simulated provider responses.",
-    "Independent second model and full adjudication, general tools, quotas and production hosting remain pending.",
+    "Independent second model verification and full adjudication, general tools, distributed quotas and production hosting remain pending.",
     "Private configuration, invitations, session cookies, identities and databases are excluded."
   ]
 }
