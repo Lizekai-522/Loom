@@ -2,7 +2,7 @@
 // The session is HttpOnly; no provider key or API bearer enters the page.
 window.LoomPreview = {
   active: window.location.protocol === "https:",
-  configure(principal, newExample) {
+  configure(principal, newExample,newVerifiedExample) {
     this.active = principal.authentication === "public-session";
     if (!this.active) return;
     document.querySelector(".environment").textContent = "临时公网体验 · 共享测试空间";
@@ -17,6 +17,11 @@ window.LoomPreview = {
       button.type = "button"; button.textContent = "新建词频体验";
       button.addEventListener("click", newExample);
       document.querySelector(".sidebar .section-heading").after(button);
+    }
+    if (!document.getElementById('preview-verified-example')) {
+      const button=document.createElement('button');button.id='preview-verified-example';button.type='button';button.textContent='完整词频体验';
+      button.addEventListener('click',newVerifiedExample);document.querySelector('.sidebar .section-heading').after(button);
+      const help=document.createElement('p');help.className='field-help';help.textContent='先审阅计划，再生成与测试，最后申请双模型复核。每一步均明确确认。';button.after(help);
     }
   },
   async logout() {

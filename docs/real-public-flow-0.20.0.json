@@ -1,0 +1,29 @@
+{
+  "passed": true,
+  "version": "0.20.0",
+  "run_id": "ac37975f-6ce6-4662-8556-359adee57b8a",
+  "goal_status": "succeeded",
+  "task_status": "done",
+  "actual_models": [
+    "deepseek-flash",
+    "deepseek-v4-pro"
+  ],
+  "provider_requests_attempted": 3,
+  "provider_responses": 3,
+  "actual_generation_cost_upper_microusd": 521,
+  "actual_verification_cost_upper_microusd": 5912,
+  "actual_cost_upper_microusd": 6433,
+  "real_docker_cases": 6,
+  "real_ed25519_attestations": 2,
+  "billing_uncertain": false,
+  "reserved_microusd": 0,
+  "verification_pool_reserved_microusd": 0,
+  "public_https_browser": true,
+  "source_effects_done": 2,
+  "audit_chain_valid": true,
+  "source_database_audit_valid": true,
+  "automatic_retry": false,
+  "provider_bill_verified": false,
+  "production_ready": false,
+  "counts_as_original_62_complete": false
+}

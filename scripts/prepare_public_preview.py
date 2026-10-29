@@ -29,6 +29,20 @@ def create_example(store,repo,evaluation,operator,key):
     return goal
 
 
+def create_verified_example(store,repo,evaluation,operator,key):
+    """A complete single-program path; the original multi-role example remains."""
+    workflow=WorkflowService(store)
+    goal=workflow.create_goal('public-preview',key,title='完整体验：词频生成与独立验收',description=DESCRIPTION,
+        acceptance=['schema.valid','tests.pass','report.traceable'],cost_limit=1000000,token_limit=1100000,actor='subject:'+operator.subject_id)
+    plan=workflow.get_plan('public-preview',goal['run_id'])
+    if plan['revision']==0:
+        definition=json.loads((repo/'packs/software-dev/workflow-v1.json').read_bytes())
+        definition['nodes']=[dict(id='implement',title='生成并隔离测试词频程序',instruction=DESCRIPTION,role='developer',evaluation_digest=evaluation,
+            limits=dict(cost_limit_microusd=350000,token_limit=1100000,max_attempts=1,context_limit_bytes=65536))]
+        workflow.save_plan('public-preview',goal['run_id'],key+':plan',definition,0,actor='subject:'+operator.subject_id)
+    return goal
+
+
 def prepare(work_root, port=8799):
     repo=Path(__file__).resolve().parents[1]; work=Path(work_root).resolve()
     if work.is_relative_to(repo.parent) or work==Path(work.anchor):raise ValueError('private root required')

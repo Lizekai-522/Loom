@@ -162,7 +162,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     registry = AuthRegistry(tenant_keys, identities)
     local_identity = console_principal(identities, local_console)
     app = FastAPI(title="Loom local kernel", version=__version__,
-                  description="Single-host audited API. A separately configured private worker processes explicit model execution requests; independent verification remains pending.")
+                  description="Single-host audited API. Explicit generation and dual-model verification requests are handled by separately configured private workers; production identity and hosting remain tracked independently.")
     workflows = WorkflowService(store)
     operators = OperatorService(store)
     artifacts = ArtifactService(store)

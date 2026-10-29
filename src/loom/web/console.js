@@ -868,7 +868,8 @@
       if (session !== state.session) return;
       if (!principal || !Array.isArray(principal.roles) || !Array.isArray(principal.capabilities)) throw Object.assign(new Error(), {code: "BAD_JSON"});
       state.principal = principal;
-      window.LoomPreview?.configure(principal, () => mutate("POST", "/preview/examples", {}, "体验草案已创建，请在“计划”中审阅并批准，再按“推进指引”执行。", async result => { await refreshAll(result.run_id); }));
+      window.LoomPreview?.configure(principal, () => mutate("POST", "/preview/examples", {}, "多角色体验草案已创建，请在“计划”中审阅并批准，再按“推进指引”执行。", async result => { await refreshAll(result.run_id); }),
+        () => mutate('POST','/preview/examples/verified',{},'完整体验草案已创建。先在“计划”批准，再到“推进指引”生成与隔离测试，最后进入“独立复核”。',async result=>{await refreshAll(result.run_id);}));
       $("identity-label").textContent = `${principal.authentication === "public-session" ? "受邀体验 · " : principal.authentication === "local-console" ? "本机开发 · " : ""}${principal.roles.map((role) => roleNames[role] || role).join(" / ")}`;
       $("login-panel").hidden = true;
       $("workspace").hidden = false;

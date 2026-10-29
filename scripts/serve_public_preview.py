@@ -8,7 +8,7 @@ from loom.api import create_app
 from loom.auth import load_identities
 from loom.executor_config import load_executor_config
 from loom.public_access import PreviewAccess, PreviewStore, PublicPreview
-from prepare_public_preview import create_example
+from prepare_public_preview import create_example,create_verified_example
 
 
 def main():
@@ -27,8 +27,10 @@ def main():
     app=create_app(store,{},identities=identities,local_console=False,executor_config=executor)
     def example(key):
         return create_example(store,Path(__file__).resolve().parents[1],next(iter(executor.host_tests)),operator,'preview-example:'+key)
+    def verified_example(key):
+        return create_verified_example(store,Path(__file__).resolve().parents[1],next(iter(executor.host_tests)),operator,'preview-verified:'+key)
     # No access log: login bodies and session cookies never enter request logs.
-    uvicorn.run(PublicPreview(app,access,example=example),host='127.0.0.1',port=port,proxy_headers=False,access_log=False,log_level='warning')
+    uvicorn.run(PublicPreview(app,access,example=example,verified_example=verified_example),host='127.0.0.1',port=port,proxy_headers=False,access_log=False,log_level='warning')
 
 
 if __name__=='__main__':main()
