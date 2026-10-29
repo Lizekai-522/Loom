@@ -239,7 +239,7 @@ class DispatchService:
             if current['state']!='running':return current
             task=self._task(db,tenant,run_id,current['task_id']);run=self.store._run(db,tenant,run_id)
             if recover and task['status']=='running' and task['lease_until'] and task['lease_until']>self.store.now(db):return current
-            effects=db.execute('SELECT state FROM effects WHERE tenant=? AND run_id=? AND task_id=? AND epoch=?',(tenant,run_id,task['id'],current['claim']['epoch'])).fetchall()
+            effects=db.execute('SELECT id,state FROM effects WHERE tenant=? AND run_id=? AND task_id=? AND epoch=?',(tenant,run_id,task['id'],current['claim']['epoch'])).fetchall()
             held=db.execute("SELECT coalesce(sum(cost),0),coalesce(sum(tokens),0) FROM reservations WHERE tenant=? AND run_id=? AND task_id=? AND state='reserved'",(tenant,run_id,task['id'])).fetchone()
             state='indeterminate' if any(e['state'] in {'intent','indeterminate','partial'} for e in effects) or held[0] or held[1] else 'awaiting_human'
             if task['status']=='running' and task['epoch']==current['claim']['epoch']:
@@ -262,7 +262,9 @@ class DispatchService:
                 else:ReviewInputService(self.store)._preview_in(db,tenant,run_id,task['id'],False)
                 state='submitted'
             elif run['status']=='cancelled' and state!='indeterminate':state='cancelled'
-            summary=Summary(task_status=task['status'],epoch=task['epoch'],content_hash=content,model_calls=len(effects),settled_calls=sum(e['state']=='done' for e in effects),
+            tool_ids=self.store._tool_call_ids(db,tenant)
+            model_effects=[effect for effect in effects if effect['id'] not in tool_ids]
+            summary=Summary(task_status=task['status'],epoch=task['epoch'],content_hash=content,model_calls=len(model_effects),settled_calls=sum(e['state']=='done' for e in model_effects),
                 reserved_cost=held[0],reserved_tokens=held[1],run_status=run['status']).model_dump(mode='json')
             return self._transition(db,row,state,current['claim'],summary,'RECOVERED_FROM_LEDGER' if recover else None)
 

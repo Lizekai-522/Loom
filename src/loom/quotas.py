@@ -147,21 +147,34 @@ class QuotaService:
         return total,by_resource,legacy
 
     def admit_model_in(self,db,claim,call_id,request):
+        model=request.get('model');provider=request.get('provider','deepseek')
+        if any(not isinstance(v,str) or re.fullmatch(r'[A-Za-z0-9_.-]{1,64}',v) is None for v in (provider,model)):
+            if self._enabled(db):raise QuotaExceeded('QUOTA_RESOURCE_INVALID')
+            return
+        return self._admit_in(db,claim,call_id,'model',provider+'/'+model)
+
+    def admit_tool_in(self,db,claim,operation_id,request):
+        if not self._enabled(db):return None
+        if self._policy(db,claim.tenant_id) is None:raise QuotaExceeded('QUOTA_POLICY_NOT_CONFIGURED')
+        if request.get('tool_id')!='tests.run':raise QuotaExceeded('QUOTA_RESOURCE_INVALID')
+        grant=self.store._begin_effect(db,claim,operation_id,request)
+        if not grant['dispatch']:raise QuotaExceeded('QUOTA_TOOL_REPLAY_REQUIRES_REVIEW')
+        self._admit_in(db,claim,grant['call_id'],'tool','tests.run')
+        return grant
+
+    def _admit_in(self,db,claim,call_id,kind,resource):
         current=self._policy(db,claim.tenant_id)
         if current is None:
             if self._enabled(db):raise QuotaExceeded('QUOTA_POLICY_NOT_CONFIGURED')
             return
-        model=request.get('model');provider=request.get('provider','deepseek')
-        if any(not isinstance(v,str) or re.fullmatch(r'[A-Za-z0-9_.-]{1,64}',v) is None for v in (provider,model)):
-            raise QuotaExceeded('QUOTA_RESOURCE_INVALID')
-        resource=provider+'/'+model;policy,_,policy_hash=current;now=self.store.now(db)
+        policy,_,policy_hash=current;now=self.store.now(db)
         total,resources,legacy=self._usage(db,claim.tenant_id,policy,now,exclude=call_id)
-        specific=resources.get(('model',resource),dict(calls=0,in_flight=0))
-        for scope,limits,usage in [('TENANT',policy.tenant,total),('MODEL',policy.model,{**specific,'in_flight':specific['in_flight']+legacy})]:
+        specific=resources.get((kind,resource),dict(calls=0,in_flight=0))
+        for scope,limits,usage in [('TENANT',policy.tenant,total),(kind.upper(),getattr(policy,kind),{**specific,'in_flight':specific['in_flight']+legacy})]:
             if usage['calls']>=limits.max_calls:raise QuotaExceeded('QUOTA_'+scope+'_RATE_LIMIT')
             if usage['in_flight']>=limits.max_in_flight:raise QuotaExceeded('QUOTA_'+scope+'_IN_FLIGHT_LIMIT')
         record=dict(tenant_id=claim.tenant_id,run_id=claim.run_id,task_id=claim.task_id,epoch=claim.epoch,
-            call_id=call_id,kind='model',resource=resource,admitted_at=now,policy_hash=policy_hash,counts_as_success=False)
+            call_id=call_id,kind=kind,resource=resource,admitted_at=now,policy_hash=policy_hash,counts_as_success=False)
         event=self.store._event(db,claim.tenant_id,claim.run_id,'quota.admitted',record,'local-executor')
         db.execute('INSERT INTO quota_admissions VALUES(?,?,?,?,?)',(claim.tenant_id,call_id,canonical(record),event['event_id'],event['hash']))
 
@@ -169,7 +182,7 @@ class QuotaService:
         with self.store.connect() as db:
             db.execute('BEGIN');current=self._policy(db,tenant)
             base=dict(schema_version='loom.quota-status/v1',tenant_id=tenant,configured=current is not None,
-                model_dispatched=False,counts_as_success=False,tool_enforcement_connected=False)
+                model_dispatched=False,counts_as_success=False,tool_enforcement_connected=current is not None)
             if current is None:return base
             policy,record,policy_hash=current;total,resources,legacy=self._usage(db,tenant,policy,self.store.now(db))
             return dict(**base,revision=record['revision'],policy_hash=policy_hash,limits=asdict(policy),tenant_usage=total,

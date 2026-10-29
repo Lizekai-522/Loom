@@ -65,7 +65,7 @@ window.LoomExecutionPanel=function({state,node,has,request,publicError,runChecke
      const value=await request('GET','/v1/quotas');
      if(value?.schema_version==='loom.quota-status/v1'&&value.tenant_id===state.principal?.tenant_id&&value.model_dispatched===false&&value.counts_as_success===false){
        if(!value.configured)text='尚未配置持久配额，部署前须由本机操作员登记。';
-       else if(value.limits&&value.tenant_usage)text=`租户配额：最近 ${value.limits.window_seconds} 秒已准入 ${value.tenant_usage.calls}/${value.limits.tenant.max_calls} 次，在途 ${value.tenant_usage.in_flight}/${value.limits.tenant.max_in_flight}。未知调用继续占额；排队不算模型发起。工具配额尚未接通，实际发起前会重新核对。`;
+       else if(value.limits&&value.tenant_usage)text=`租户配额：最近 ${value.limits.window_seconds} 秒已准入 ${value.tenant_usage.calls}/${value.limits.tenant.max_calls} 次，在途 ${value.tenant_usage.in_flight}/${value.limits.tenant.max_in_flight}。未知调用继续占额；排队不算模型发起。${value.tool_enforcement_connected?'工具调用已接通同一配额账本。':'工具配额尚未接通。'}实际发起前会重新核对。`;
      }
    }catch{}
    if(version===generation&&bound===binding&&refs)refs.quotas.textContent=text;

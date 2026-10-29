@@ -538,6 +538,12 @@ class Store:
             QuotaService(self).admit_model_in(db,claim,grant['call_id'],request)
         return grant
 
+    def _tool_call_ids(self,db,tenant):
+        if db.execute("SELECT 1 FROM sqlite_master WHERE name='quota_admissions'").fetchone() is None:return set()
+        from .quotas import QuotaService
+        try:return {record['call_id'] for record in QuotaService(self)._records(db,tenant) if record['kind']=='tool'}
+        except Conflict:return set()  # Uncertain classification stays conservative.
+
     def finish_effect(self, claim: Claim, call_id: str, result: dict) -> dict:
         with self.transaction() as db:
             self._assert_claim(db, claim, allow_paused=True)

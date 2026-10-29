@@ -37,7 +37,8 @@ def test_durable_model_quota_in_actual_worker_and_docker(dispatch_case,max_calls
     result,requests=drain(b,sandbox=sandbox)
     assert len(requests)==max_calls
     assert result['state']==('submitted' if max_calls else 'awaiting_human')
-    assert QuotaService(b['store']).read('a')['tenant_usage']==dict(calls=max_calls,in_flight=0)
+    assert QuotaService(b['store']).read('a')['tenant_usage']==dict(calls=max_calls*2,in_flight=0)
+    assert result['result']['model_calls']==max_calls and result['result']['settled_calls']==max_calls
     assert b['store'].snapshot('a',b['run'])['reserved']==0
 
 
