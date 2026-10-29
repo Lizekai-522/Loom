@@ -3,7 +3,7 @@
   "info": {
     "title": "Loom local kernel",
     "description": "Single-host audited API. A separately configured private worker processes explicit model execution requests; independent verification remains pending.",
-    "version": "0.18.8"
+    "version": "0.18.9"
   },
   "paths": {
     "/v1/me": {
@@ -854,6 +854,78 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ReconciliationInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/runs/{run_id}/tool-effects/{call_id}/reconcile": {
+      "post": {
+        "summary": "Reconcile Tool",
+        "operationId": "reconcile_tool_v1_runs__run_id__tool_effects__call_id__reconcile_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "call_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Call Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolReconciliationInput"
               }
             }
           }
@@ -3258,6 +3330,40 @@
           "limits"
         ],
         "title": "TaskNode"
+      },
+      "ToolReconciliationInput": {
+        "properties": {
+          "expected_epoch": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Epoch"
+          },
+          "expected_request_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Expected Request Hash"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "not_executed"
+            ],
+            "title": "Decision"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/ReconciliationEvidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_epoch",
+          "expected_request_hash",
+          "decision",
+          "evidence"
+        ],
+        "title": "ToolReconciliationInput"
       },
       "ValidationError": {
         "properties": {

@@ -24,6 +24,7 @@ from .progression import ProgressionService
 from .dispatch import DispatchService
 from .executor_status import ExecutorStatus
 from .tool_registry import catalog as tool_catalog
+from .tool_recovery import ToolRecoveryService
 from .quotas import QuotaService
 from .operator import OperatorService
 from .local_console import allows_local_console, console_principal
@@ -93,6 +94,13 @@ class ReconciliationInput(Input):
     evidence: ReconciliationEvidence
     actual_cost_microusd: int = Field(ge=0, le=1_000_000_000_000)
     actual_tokens: int = Field(ge=0, le=1_000_000_000)
+
+
+class ToolReconciliationInput(Input):
+    expected_epoch: int = Field(ge=1)
+    expected_request_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    decision: Literal['completed','not_executed']
+    evidence: ReconciliationEvidence
 
 
 class CompleteInput(Input):
@@ -316,6 +324,10 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
         return operators.reconcile_effect(identity.tenant_id, run_id, call_id, idempotency_key,
             "subject:" + identity.subject_id, body.decision, body.evidence.model_dump(), body.actual_cost_microusd, body.actual_tokens)
 
+    @app.post('/v1/runs/{run_id}/tool-effects/{call_id}/reconcile')
+    def reconcile_tool(run_id: str,call_id: str,body: ToolReconciliationInput,identity: Controller,idempotency_key: Key):
+        return ToolRecoveryService(store).reconcile(identity,run_id,call_id,idempotency_key,**body.model_dump())
+
     @app.post("/v1/runs", status_code=201)
     def create_run(body: RunInput, tenant: WriteTenant, idempotency_key: Key):
         return store.create_run(tenant, idempotency_key, acceptance=body.acceptance,
@@ -363,7 +375,8 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
                 tasks.append(item)
             effects = []
             now = store.now(db)
-            for row in db.execute("SELECT id,task_id,epoch,state,result FROM effects WHERE tenant=? AND run_id=? ORDER BY rowid", (tenant, run_id)):
+            tool_ids=store._tool_call_ids(db,tenant)
+            for row in db.execute("SELECT id,task_id,epoch,request_hash,state,result FROM effects WHERE tenant=? AND run_id=? ORDER BY rowid", (tenant, run_id)):
                 model_generation = row["id"] == digest({"tenant_id": tenant, "run_id": run_id, "task_id": row["task_id"], "operation_id": f"model-generation:{row['epoch']}"})
                 needs_manual_accounting = bool(model_generation and row["state"] == "done" and row["result"] is not None
                     and db.execute("""SELECT 1 FROM reservations b WHERE b.tenant=? AND b.run_id=? AND b.task_id=?
@@ -372,6 +385,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
                          AND owner.id=b.task_id AND owner.epoch=b.epoch AND owner.status='running' AND owner.lease_until>?)""",
                         (tenant, run_id, row["task_id"], row["epoch"], f"python:{row['task_id']}:{row['epoch']}", now)).fetchone())
                 effects.append({"call_id": row["id"], "task_id": row["task_id"], "epoch": row["epoch"], "state": row["state"],
+                    "registered_tool": row['id'] in tool_ids,"request_hash": row['request_hash'],
                     "not_sent_conflicts_with_evidence": row["state"] == "partial" or row["result"] is not None,
                     "model_generation": model_generation, "needs_manual_accounting": needs_manual_accounting})
             reservations = [{"reservation_id": row["id"], **{key: row[key] for key in ("task_id", "epoch", "state", "cost", "tokens", "actual_cost", "actual_tokens")}} for row in db.execute("SELECT * FROM reservations WHERE tenant=? AND run_id=? ORDER BY rowid", (tenant, run_id))]
