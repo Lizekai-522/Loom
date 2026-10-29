@@ -22,9 +22,9 @@ import httpx
 _ALIAS = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\Z")
 _KEY_ENV = re.compile(r"[A-Z_][A-Z0-9_]{0,127}\Z")
 _REQUEST_ID = re.compile(r"[A-Za-z0-9_.:/-]{1,200}\Z")
-# Official documentation verified 2026-10-23; this is a moving API alias,
+# Official documentation verified 2026-10-29; these are moving API aliases,
 # not a cryptographically pinned model snapshot.
-VERIFIED_MODELS = frozenset({("deepseek", "deepseek-flash")})
+VERIFIED_MODELS = frozenset({("deepseek", "deepseek-flash"),("deepseek","deepseek-v4-pro")})
 
 
 class GatewayError(ValueError):

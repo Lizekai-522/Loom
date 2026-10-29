@@ -436,7 +436,8 @@
   function validRoleSource(source) {
     if (!source || typeof source !== "object" || source.model_response_recorded !== true
         || source.producer_verified !== false || source.counts_as_success !== false
-        || source.provider !== "deepseek" || source.model !== "deepseek-flash"
+        || source.provider !== "deepseek" || !["deepseek-flash","deepseek-v4-pro"].includes(source.model)
+        || (source.model === "deepseek-v4-pro" && (source.role !== "reviewer" || source.kind !== "review-findings"))
         || typeof source.route !== "string" || !/^[a-z][a-z0-9_-]{0,47}$/.test(source.route)
         || typeof source.artifact_id !== "string" || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(source.artifact_id)
         || !integer(source.source_epoch) || source.source_epoch < 1) return false;

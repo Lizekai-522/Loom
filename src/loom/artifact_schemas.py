@@ -111,7 +111,7 @@ class RoleOutput(ArtifactModel):
 class RoleGenerationRequest(ArtifactModel):
     route: Name
     provider: Literal["deepseek"]
-    model: Literal["deepseek-flash"]
+    model: Literal["deepseek-flash","deepseek-v4-pro"]
     prompt_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     max_output_tokens: int = Field(ge=1, le=8192)
     plan_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -119,6 +119,12 @@ class RoleGenerationRequest(ArtifactModel):
     response_contract: Literal["role-artifact/v1"]
     context_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$",
                                        exclude_if=lambda value: value is None)
+
+    @model_validator(mode='after')
+    def restricted_pro_request(self):
+        if self.model=='deepseek-v4-pro' and (self.route!='deepseek-v4-pro' or self.role_output.kind!='review-findings'):
+            raise ValueError('Pro requires the canonical reviewer route')
+        return self
 
 
 class RoleModelUsage(ArtifactModel):
@@ -143,13 +149,13 @@ class RoleModelUsage(ArtifactModel):
 
 class RoleModelResult(ArtifactModel):
     content: str = Field(min_length=1, max_length=1048576)
-    model_id: Literal["deepseek-flash"]
+    model_id: Literal["deepseek-flash","deepseek-v4-pro"]
     provider: Literal["deepseek"]
     route_alias: Name
     usage: RoleModelUsage
     request_id: str = Field(min_length=1, max_length=200, pattern=r"^[A-Za-z0-9_.:/-]+$")
     finish_reason: Literal["stop", "length"]
-    response_model: Literal["deepseek-flash"]
+    response_model: Literal["deepseek-flash","deepseek-v4-pro"]
 
 
 class ModelProvenance(ArtifactModel):
@@ -164,7 +170,7 @@ class ModelProvenance(ArtifactModel):
     content_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     route: Name
     provider: Literal["deepseek"]
-    model: Literal["deepseek-flash"]
+    model: Literal["deepseek-flash","deepseek-v4-pro"]
     usage: RoleModelUsage
     usage_cost_upper_microusd: int = Field(ge=0)
     request_hash: str = Field(pattern=r"^[0-9a-f]{64}$")

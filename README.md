@@ -1,6 +1,6 @@
 # Loom
 
-基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.18.9**增加未知工具的本机具名人工核对，保留原始证据、费用和任务状态，核对后不自动重跑或放行；保留上下文字节上限、私有副本恢复和源码导出。第二模型已选择 DeepSeek V4 Pro，独立验证接入仍在进行。[本轮验证](docs/validation-0.18.9.md) · [配额说明](docs/quotas.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
+基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.18.10**接入 DeepSeek V4 Pro 的受限只读代码审查，按实际模型核对预算、配额和来源；保留工具人工核对、上下文字节上限、私有副本恢复和源码导出。Pro 审查意见仍是候选，正式独立双签验证继续建设。[本轮验证](docs/validation-0.18.10.md) · [配额说明](docs/quotas.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
 
 0.17.4历史重测967主/382子、Chromium63项，三份源码下载与权威原始字节一致；0.17.5测试与真实基础设施证据单独登记。[历史验证](docs/validation.md)
 
