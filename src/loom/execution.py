@@ -18,6 +18,7 @@ from .failures import classify_failure
 from .policy import ArtifactSubmission
 from .repair import RebindService, RepairStopped
 from .sandbox import DockerSandbox, FrozenTest, SandboxError
+from .tool_registry import PYTHON_TESTS, run_python_tool
 from .store import BudgetExceeded, Claim, Conflict, InvalidInput, NotFound, StaleClaim, Store, canonical, digest
 from .workflow import WorkflowService
 
@@ -347,7 +348,7 @@ class LocalTaskRunner:
             # permission to begin execution after a trusted operator paused it.
             self._assert_execution(claim)
             self._assert_context(claim, snapshot)
-            return self.sandbox.run_python({"main.py": source}, frozen)
+            return run_python_tool(self.sandbox, spec, {"main.py": source}, frozen)
 
         try:
             evaluated = await asyncio.to_thread(execute_candidate)
@@ -367,6 +368,7 @@ class LocalTaskRunner:
                 self.artifacts.assert_execution_context_in(db, claim, snapshot)
             self.store._event(db, claim.tenant_id, claim.run_id, "execution.evaluated",
                 {"task_id": claim.task_id, "epoch": claim.epoch, "content_hash": digest(output),
+                 "tool_id": PYTHON_TESTS.tool_id, "tool_version": PYTHON_TESTS.version,
                  "evaluation_digest": evaluation_digest, "hard_criteria_passed": evaluated.passed,
                   **_host_case_counts(evaluated),
                  "usage": asdict(model.usage), "usage_cost_upper_microusd": charged_upper,
@@ -378,6 +380,7 @@ class LocalTaskRunner:
                 # the generic legacy rejection path would requeue the task.
                 self.store._event(db, claim.tenant_id, claim.run_id, "execution.acceptance_failed",
                     {"task_id": claim.task_id, "epoch": claim.epoch, "content_hash": digest(output),
+                     "tool_id": PYTHON_TESTS.tool_id, "tool_version": PYTHON_TESTS.version,
                      "evaluation_digest": evaluation_digest, "acceptance_report": evaluated.to_dict()}, "local-executor")
                 return {**self._block_in(db, claim, "ACCEPTANCE_TESTS_FAILED"),
                         "hard_criteria_passed": False, "usage": asdict(model.usage),
@@ -514,7 +517,7 @@ class LocalTaskRunner:
             def work():
                 self._assert_execution(owner)
                 self._assert_context(owner, snapshot)
-                return self.sandbox.run_python({"main.py": source}, tests)
+                return run_python_tool(self.sandbox, spec, {"main.py": source}, tests)
             return await asyncio.to_thread(work)
 
         while True:

@@ -46,9 +46,20 @@ window.LoomExecutionPanel=function({state,node,has,request,publicError,runChecke
    }catch{}
    if(version===generation&&bound===binding){heartbeat=value;controls();}
  }
+ async function readTools(version,bound){
+   let text='工具能力暂时无法读取；实际执行仍按批准合同及容器策略核对。';
+   try{
+     const value=await request('GET','/v1/tools');
+     if(value?.schema_version==='loom.tools/v1'&&value.tenant_id===state.principal?.tenant_id&&value.model_dispatched===false&&value.counts_as_success===false){
+       const tool=value.tools?.find(t=>t.tool_id==='tests.run'&&t.version==='loom.python-tests/v1');
+       if(tool)text=`已登记工具：${tool.label}。仅限开发与修复任务；源码进入无网容器，宿主冻结用例判定。${value.runtime_configured?'已配置执行环境。':'执行环境尚未配置。'} 登记信息不代表健康检查或执行授权。`;
+     }
+   }catch{}
+   if(version===generation&&bound===binding&&refs)refs.tools.textContent=text;
+ }
  async function load(){
    if(!current()||pending)return;
-   const version=++generation,bound=binding,root=path();pending=true;error='';heartbeat=null;controls();void readHeartbeat(version,bound);
+   const version=++generation,bound=binding,root=path();pending=true;error='';heartbeat=null;controls();void readHeartbeat(version,bound);void readTools(version,bound);
    try{const value=await request('GET',root+'/execution-preview');if(version!==generation||bound!==binding)return;
      if(!valid(value))throw Object.assign(new Error(),{code:'BAD_JSON'});
      data=value;
@@ -84,14 +95,15 @@ window.LoomExecutionPanel=function({state,node,has,request,publicError,runChecke
    reset();item=value;binding=JSON.stringify([state.session,state.selection,state.runId,value.task_id]);
    const root=node('section','suite-panel'),heading=node('div','section-heading'),read=node('button','','重新读取执行条件');read.type='button';
    heading.append(node('h3','','工作台执行'),read);root.append(heading,node('p','field-help','页面只登记有版本约束的请求，本机执行器读取私有配置后处理。排队不是已经调用；执行成功仍需独立验证。请勿把密钥写入理由。'));
-   const status=node('p','field-help'),heartbeatStatus=node('p','field-help'),budget=node('p','field-help'),history=node('div');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
+   const status=node('p','field-help'),heartbeatStatus=node('p','field-help'),tools=node('p','field-help','正在读取工具能力…'),budget=node('p','field-help'),history=node('div');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
    const form=node('form'),label=node('label','','执行理由'),reason=node('textarea');reason.rows=3;reason.maxLength=2000;reason.required=true;label.append(reason);
    const check=node('label','check-label'),reviewed=node('input');reviewed.type='checkbox';reviewed.required=true;
    check.append(reviewed,node('span','','我已核对精确计划、输入和预算，允许本机执行器调用模型；结果仍需独立验证'));
    const submit=node('button','primary','提交给本机执行器');submit.type='submit';form.append(label,check,submit);
    const cancel=node('button','','取消尚未开始的请求'),refreshButton=node('button','','刷新任务与证据');cancel.type=refreshButton.type='button';
-   root.append(status,heartbeatStatus,budget,form,history,cancel,refreshButton);container.append(root);
-   refs={root,read,status,heartbeat:heartbeatStatus,budget,history,form,reason,reviewed,submit,cancel,refresh:refreshButton};
+   root.append(status,heartbeatStatus,tools,budget,form,history,cancel,refreshButton);container.append(root);
+   refs={root,read,status,heartbeat:heartbeatStatus,tools,budget,history,form,reason,reviewed,submit,cancel,refresh:refreshButton};
+   tools.dataset.toolCatalog='local';
    heartbeatStatus.dataset.executorHeartbeat='local';
    root.dataset.executionPanel='local';status.dataset.executionState='local';form.dataset.executionForm='local';reason.dataset.executionReason='local';reviewed.dataset.executionReviewed='local';submit.dataset.executionSubmit='local';cancel.dataset.executionCancel='local';
    read.addEventListener('click',load);reason.addEventListener('input',controls);reviewed.addEventListener('change',controls);
