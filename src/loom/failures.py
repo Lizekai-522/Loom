@@ -17,7 +17,7 @@ def classify_failure(code: str, *, stage: str, status_code: int | None = None,
     """Classify platform codes/status only; never parse or retain provider prose."""
     if code == "MODEL_HTTP_ERROR" and status_code in {401, 403}:
         family = "auth"
-    elif code == "MODEL_HTTP_ERROR" and status_code in {402, 429}:
+    elif code == 'TASK_CONTEXT_LIMIT_EXCEEDED' or code == "MODEL_HTTP_ERROR" and status_code in {402, 429}:
         family = "quota"
     elif code in {"MODEL_TIMEOUT", "MODEL_TRANSPORT_ERROR"} or (
             code == "MODEL_HTTP_ERROR" and type(status_code) is int and 500 <= status_code <= 599):

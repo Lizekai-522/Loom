@@ -72,7 +72,7 @@ class RepairTests(unittest.IsolatedAsyncioTestCase):
             "choices": [{"index": 0, "finish_reason": "stop", "message": {"role": "assistant", "content": json.dumps({"source": self.sources.pop(0)})}}],
             "usage": {"prompt_tokens": 25, "completion_tokens": 10, "total_tokens": 35}})
 
-    def make_claim(self, *, repairs=1, attempts=3, cost=1_000_000, tokens=2_000_000, tenant="tenant", child=True, description="Implement the public specification."):
+    def make_claim(self, *, repairs=1, attempts=3, cost=1_000_000, tokens=2_000_000, tenant="tenant", child=True, description="Implement the public specification.", context_limit=None):
         goal = self.workflows.create_goal(tenant, "goal", title="Simulated repair", description=description,
                                          acceptance=["tests.pass"], cost_limit=cost + 100, token_limit=tokens + 100)
         definition = json.loads(PACK.read_text(encoding="utf-8"))
@@ -86,6 +86,7 @@ class RepairTests(unittest.IsolatedAsyncioTestCase):
             definition["nodes"].append({"id": "review", "title": "Independent review still waits", "instruction": "Wait for trusted verification.",
                 "role": "validator", "depends": ["work"], "channel": "verification",
                 "limits": {"cost_limit_microusd": 100, "token_limit": 100, "max_attempts": 1}})
+        if context_limit is not None:definition['nodes'][0]['limits']['context_limit_bytes']=context_limit
         plan = self.workflows.save_plan(tenant, goal["run_id"], "plan", definition, 0)
         self.workflows.approve_plan(tenant, goal["run_id"], "approve", plan["revision"], plan["digest"])
         self.claim = self.store.claim_next(tenant, goal["run_id"], "fixture-worker", lease_seconds=300)
@@ -112,6 +113,19 @@ class RepairTests(unittest.IsolatedAsyncioTestCase):
 
     async def cycle(self, claim=None):
         return await self.runner.run_python_cycle(claim or self.claim, self.acceptance, self.development, max_output_tokens=128)
+
+    async def test_repair_feedback_exceeding_frozen_context_cap_stops_before_second_model_call(self):
+        self.make_claim(context_limit=2048)
+        original=self.sandbox.run_python
+        def noisy(files,tests):
+            result=original(files,tests)
+            return replace(result,cases=tuple(replace(case,stdout='x'*512,stderr='y'*512) for case in result.cases))
+        with patch.object(self.sandbox,'run_python',side_effect=noisy):result=await self.cycle()
+        self.assertEqual(result['reason'],'TASK_CONTEXT_LIMIT_EXCEEDED')
+        self.assertEqual((len(self.requests),self.sandbox.execution_calls),(1,1))
+        self.assertEqual(self.store.snapshot('tenant',self.claim.run_id)['reserved'],0)
+        self.assertEqual(len(self.events('tool.intent')),1)
+        self.assertFalse(result['verified'])
 
     async def test_public_failure_repairs_once_then_hidden_pass_only_submits(self):
         claim = self.make_claim()

@@ -1,6 +1,7 @@
 "use strict";
 window.LoomZH = (() => {
   const words = {
+    TASK_CONTEXT_LIMIT_EXCEEDED: "任务上下文超过批准的字节上限", INVALID_CONTEXT_BUDGET: "任务上下文预算无效",
     analyst: "需求分析", architect: "架构设计", tester: "测试设计", developer: "开发实现", reviewer: "代码审查", fixer: "问题修复", validator: "独立验证",
     business: "业务任务", verification: "独立验证", requirements: "需求说明", design: "设计方案", "public-checks": "公开开发检查", "review-findings": "代码审查意见",
     "role-artifact": "角色候选产物", "python-sandbox": "Python 隔离执行报告", awaiting_independent_models: "等待独立模型复核",

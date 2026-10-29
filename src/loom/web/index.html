@@ -65,7 +65,7 @@
           <form id="plan-form">
             <label for="plan-file">导入工作流 JSON</label><input id="plan-file" type="file" accept="application/json,.json" data-cap="goal.write">
             <label for="plan-definition">计划定义</label><textarea id="plan-definition" class="code-input" rows="15" spellcheck="false" maxlength="262144" aria-describedby="plan-help"></textarea>
-            <p id="plan-help" class="field-help">填写完整的 loom.workflow/v1 定义。任务描述不会授予权限或改变验收标准。</p>
+            <p id="plan-help" class="field-help">填写完整的 loom.workflow/v1 定义。可在节点 limits 中设置 context_limit_bytes（256–262144），限制完整模型请求体的 UTF-8 字节；超限先停止，不静默裁剪，也不当作词元估计。批准后上限随合同冻结。任务描述不会授予权限或改变验收标准。</p>
             <button id="save-plan-button" type="submit" data-cap="goal.write">保存新修订</button>
           </form>
           <form id="approve-plan-form" class="approval-form"><label class="check-label"><input id="plan-reviewed" type="checkbox" required>我已审阅上方修订、摘要及任务定义</label><button id="approve-plan-button" type="submit" class="primary" data-cap="plan.approve">批准当前计划</button></form>
