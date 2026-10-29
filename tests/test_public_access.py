@@ -36,12 +36,13 @@ def login(client):
 
 def test_login_uses_secure_host_cookie_and_hides_server_credentials(public):
     client,app,store=public
+    assert client.get('/preview/login').headers['referrer-policy']=='same-origin'
     assert client.get('/console',follow_redirects=False).headers['location']=='/preview/login'
     assert client.get('/v1/me',headers={'X-Loom-Console':'local','Authorization':'Bearer '+OP.token}).status_code==401
     response=login(client);cookie=response.headers['set-cookie']
     assert all(part in cookie for part in ('__Host-loom-preview=','Secure','HttpOnly','SameSite=strict','Path=/'))
     me=client.get('/v1/me');assert me.json()['authentication']=='public-session' and not me.json()['production_identity']
-    assert client.get('/console').status_code==200
+    console=client.get('/console');assert console.status_code==200 and console.headers['referrer-policy']=='no-referrer'
     assert OP.token not in me.text+cookie and CONFIG.access_code not in me.text+cookie
     assert all(OP.token not in key for key in app.sessions)
     assert client.get('/v1/goals').json()=={'goals':[]}
@@ -72,6 +73,33 @@ def test_host_cannot_be_bypassed_with_forwarding_headers_or_bearer(public):
 def test_public_routes_cannot_mint_worker_results_or_reconcile_bills(public,method,path):
     client,_,_=public;login(client)
     assert getattr(client,method)(path,headers=HEADERS).status_code==403
+
+
+def test_invited_public_operator_can_pause_resume_and_terminate_own_run(public):
+    client,_,store=public
+    workflow=WorkflowService(store)
+    goal=workflow.create_goal('preview','control-goal',title='受邀运行',description='仅测试，无模型请求',
+                              acceptance=['tests.pass'],cost_limit=100000,token_limit=10000)
+    definition=json.loads((Path(__file__).resolve().parents[1]/'packs/software-dev/workflow-v1.json').read_text(encoding='utf-8'))
+    definition['nodes']=[dict(id='work',title='测试节点',instruction='隔离数据',role='developer',
+        limits=dict(cost_limit_microusd=10000,token_limit=1000,max_attempts=2))]
+    run=goal['run_id'];saved=workflow.save_plan('preview',run,'control-plan',definition,0)
+    workflow.approve_plan('preview',run,'control-approve',saved['revision'],saved['digest'])
+    path=f'/v1/runs/{run}/control/'
+    body={'reason':'隔离环境测试'}
+    assert client.post(path+'pause',json=body,headers={**HEADERS,'Idempotency-Key':'pause'}).status_code==401
+    login(client)
+    assert client.post(path+'pause',json=body,headers={'Origin':'https://attacker.example','Idempotency-Key':'pause'}).status_code==403
+    paused=client.post(path+'pause',json=body,headers={**HEADERS,'Idempotency-Key':'pause'})
+    assert paused.status_code==200 and paused.json()['status']=='paused'
+    assert client.post(path+'pause',json=body,headers={**HEADERS,'Idempotency-Key':'pause'}).json()==paused.json()
+    resumed=client.post(path+'resume',json=body,headers={**HEADERS,'Idempotency-Key':'resume'})
+    assert resumed.status_code==200 and resumed.json()['status']=='open'
+    terminated=client.post(path+'terminate',json=body,headers={**HEADERS,'Idempotency-Key':'terminate'})
+    assert terminated.status_code==200 and terminated.json()['status']=='cancelled'
+    assert all(e['actor']=='subject:operator' for e in store.events('preview',run) if e['type'] in {'run.paused','run.resumed','run.cancelled'})
+    assert client.post(path+'unrecognized',json=body,headers={**HEADERS,'Idempotency-Key':'bad'}).status_code==403
+    assert client.post(f'/v1/runs/{run}/effects/{"0"*64}/reconcile',json={},headers=HEADERS).status_code==403
 
 
 def test_durable_caps_preserve_idempotent_receipts(public):

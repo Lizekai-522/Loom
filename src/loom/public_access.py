@@ -98,7 +98,7 @@ class PublicPreview:
             return bool(re.fullmatch(r'/v1/goals/[A-Za-z0-9_-]+/plan', path))
         if method == 'POST':
             return (path == '/v1/goals' or bool(re.fullmatch(
-                r'/v1/(?:goals/[A-Za-z0-9_-]+/plan/approve|runs/[A-Za-z0-9_-]+/(?:pause|resume|terminate|tasks/[A-Za-z0-9:_-]+/(?:auxiliary-inputs|execution-requests)|execution-requests/[A-Za-z0-9_-]+/cancel|artifacts/[A-Za-z0-9_-]+/(?:development-suites|review-decisions)))', path)))
+                r'/v1/(?:goals/[A-Za-z0-9_-]+/plan/approve|runs/[A-Za-z0-9_-]+/(?:control/(?:pause|resume|terminate)|pause|resume|terminate|tasks/[A-Za-z0-9:_-]+/(?:auxiliary-inputs|execution-requests)|execution-requests/[A-Za-z0-9_-]+/cancel|artifacts/[A-Za-z0-9_-]+/(?:development-suites|review-decisions)))', path)))
         return False
 
     async def __call__(self, scope, receive, send):
@@ -124,7 +124,7 @@ class PublicPreview:
             return await respond(denied(421, 'PUBLIC_HOST_REQUIRED'))
         path, method = request.url.path, request.method
         headers = {'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff',
-                   'Referrer-Policy':'no-referrer',
+                   'Referrer-Policy':'same-origin' if path == '/preview/login' else 'no-referrer',
                    'Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
                    'Strict-Transport-Security':'max-age=86400'}
         async def secured_send(message):

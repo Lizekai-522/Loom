@@ -1,10 +1,10 @@
 {
-  "version": "0.17.8",
-  "stage": "stranded-reservation-recovery-alpha",
+  "version": "0.17.9",
+  "stage": "invited-public-control-alpha",
   "production_ready": false,
-  "generated_at": "2026-10-28T18:50:33.039653+08:00",
+  "generated_at": "2026-10-29T11:00:32.711500+08:00",
   "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
-  "source_file_count_excluding_manifest": 275,
+  "source_file_count_excluding_manifest": 277,
   "files": [
     {
       "path": ".gitignore",
@@ -18,8 +18,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 18292,
-      "sha256": "1736073a101233b3a2775a134cd5fd28cb76397dfc58abef8855aaea135a6831"
+      "bytes": 18330,
+      "sha256": "ed97f9352c542aba76c92791654935bcaecb61148c5f8a8ce7a94f8fce19b326"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -84,7 +84,7 @@
     {
       "path": "docs/api/openapi.json",
       "bytes": 86264,
-      "sha256": "c041bd11920d3fbf6322b913cf2619cea9f37b45e4d073a8a60131d54b4674d1"
+      "sha256": "b1ac38dda8d884298914d0f8963d494f8cf9b70277af13f1544a1b05fc5ee065"
     },
     {
       "path": "docs/approved-execution.md",
@@ -133,8 +133,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 45326,
-      "sha256": "ff42ca397822dee5cf1e762ab706a0df42a06a4269d29dbaa9650f1247303970"
+      "bytes": 46050,
+      "sha256": "6ea46e09d89a4c40062318cb2aa28f4a5843850998204abb0b5d6e8ef439b2e2"
     },
     {
       "path": "docs/local-auth.md",
@@ -183,8 +183,8 @@
     },
     {
       "path": "docs/project-plan-2026-10-28.md",
-      "bytes": 13242,
-      "sha256": "72f5be6c0ea9b569c9135825ffa03c87fa316c46e7860c3d148db28c45103856"
+      "bytes": 13689,
+      "sha256": "f52b7328fcb46e1bb1d3751f2b3b24d50085f0fe046c873c3bc1002b344c744a"
     },
     {
       "path": "docs/public-checks.md",
@@ -193,8 +193,8 @@
     },
     {
       "path": "docs/public-preview.md",
-      "bytes": 5802,
-      "sha256": "65056856a5b641f710a4097e2e743a6e0a37663f235b732d262ecae8423b25b5"
+      "bytes": 5929,
+      "sha256": "53bf8e1f30be9e1f4f040a854a7a09421439bc809d948fe115291588648667d0"
     },
     {
       "path": "docs/release-roadmap.md",
@@ -230,6 +230,11 @@
       "path": "docs/review-0.17.8.md",
       "bytes": 1848,
       "sha256": "8959736b9a5d2987a272ebf94d84d0478faf85f75f2ab69faee1217de075355d"
+    },
+    {
+      "path": "docs/review-0.17.9.md",
+      "bytes": 1990,
+      "sha256": "99eb3bf54943c4fe4e80e21642c636a52e644ce04c87c7f4ab3d65e874efaa52"
     },
     {
       "path": "docs/review-decisions.md",
@@ -342,6 +347,11 @@
       "sha256": "4147045c5ae39751534ae32d7d51ce92e3ab293e9a67444f5eb78ca32be421d1"
     },
     {
+      "path": "docs/validation-0.17.9.md",
+      "bytes": 2124,
+      "sha256": "9e483318e6e302f822782bcef855dfb1fa648434bbe6c4909445a5823b5059bc"
+    },
+    {
       "path": "docs/validation-0.17.md",
       "bytes": 3576,
       "sha256": "23184628ad5779fce0f68305a43f0e4019e413149b81e20cf2bf784690ed3b70"
@@ -409,7 +419,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 771,
-      "sha256": "83cc14c90406e526f3896395b94d4a9711dda2e5e1769d943f7e2160b1dab49e"
+      "sha256": "61fb3ad3a8368d0f06f8b9c0f0c368b89950244aab5b7eaf61deca0ac090e410"
     },
     {
       "path": "requirements.lock",
@@ -614,7 +624,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "08df9c54933688896126cb989c82f349a98fedd6c41ef6b4fb2c69c515868793"
+      "sha256": "f82d6ef9be7dd397e4cc12045fd08facd646f5fc58fbf26c16bc8b27ad0c84a9"
     },
     {
       "path": "src/loom/__main__.py",
@@ -733,8 +743,8 @@
     },
     {
       "path": "src/loom/public_access.py",
-      "bytes": 12149,
-      "sha256": "39a22eef41dda83bbe497d1034c135ea63f8686b4717c45e7aba095e084a8fb2"
+      "bytes": 12231,
+      "sha256": "2839cc412eeb9783a2f333cbcddb6e4a0a6a56e46a7034dc285b5c05ac77ce3f"
     },
     {
       "path": "src/loom/public_checks.py",
@@ -863,8 +873,8 @@
     },
     {
       "path": "tests/integration/test_dispatch_live.py",
-      "bytes": 12216,
-      "sha256": "fb01117d184df0848c7b01f0d5487f8c952dbe9dea99bf098161bf1d25a8cfd1"
+      "bytes": 12506,
+      "sha256": "27fb07bf5ee1b5d53863e6a0e784e13db44b6b3d836948939df5e4c8759f039a"
     },
     {
       "path": "tests/integration/test_nats_live.py",
@@ -1073,8 +1083,8 @@
     },
     {
       "path": "tests/test_public_access.py",
-      "bytes": 10186,
-      "sha256": "5c8bed56abb9590740e9a6f119dbc01e72fd959392c946110eeb37fa5ea78180"
+      "bytes": 12547,
+      "sha256": "217c32b3e4f335ca20570ca6de1b2a694da29249203301e1346537da50d0979a"
     },
     {
       "path": "tests/test_public_checks.py",
@@ -1383,20 +1393,19 @@
     }
   ],
   "validation": {
-    "full_local_main_tests": 985,
+    "full_local_main_tests": 987,
     "full_local_subtests": 387,
     "failures": 0,
     "skipped": 0,
     "version_metadata_change_after_full_suite": true,
-    "final_targeted_main_tests": 146,
+    "final_targeted_main_tests": 122,
     "final_targeted_subtests": 23,
-    "extra_overrun_test_after_suite": 1,
     "real_docker_jetstream_tests": 12,
     "model_transport": "mock in current infrastructure suite",
     "new_paid_model_requests": 0,
     "post_upgrade_main_http_and_data_checks": 64,
     "post_upgrade_public_and_export_checks": 27,
-    "post_upgrade_stranded_recovery_checks": 13
+    "post_upgrade_public_control_checks": 12
   },
   "notes": [
     "Original 62 requirements remain; version 3.1 full source remains unavailable.",
