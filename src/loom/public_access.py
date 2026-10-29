@@ -80,9 +80,10 @@ class PublicPreview:
     forwarding headers never reach the API; a server-held operator is injected
     only after an invite login and exact HTTPS origin checks. No worker routes.
     """
-    def __init__(self, app, config, *, example=None):
+    def __init__(self, app, config, *, example=None,verified_example=None):
         self.app, self.config = app, config
         self.example = example
+        self.verified_example=verified_example
         self.sessions = {}
         self.login_attempts = deque()
         self.writes = deque()
@@ -187,7 +188,8 @@ class PublicPreview:
             response = Response(status_code=204)
             response.delete_cookie(COOKIE, secure=True, httponly=True, samesite='strict', path='/')
             return await reply(response)
-        is_example = path == '/preview/examples' and method == 'POST' and self.example is not None
+        example_callback={'/preview/examples':self.example,'/preview/examples/verified':self.verified_example}.get(path)
+        is_example = method == 'POST' and example_callback is not None
         if not is_example and not self.allowed(method, path):
             return await reply(denied(403, 'PUBLIC_ROUTE_NOT_ALLOWED'))
         if method != 'GET':
@@ -201,7 +203,7 @@ class PublicPreview:
             if not re.fullmatch(r'[A-Za-z0-9:_-]{1,160}',key) or body != b'{}':
                 return await reply(denied(422,'PUBLIC_EXAMPLE_INPUT_INVALID'))
             try:
-                result=self.example(key)
+                result=example_callback(key)
             except LoomError:
                 return await reply(denied(409,'PUBLIC_EXAMPLE_NOT_READY'))
             return await reply(JSONResponse(result,status_code=201))
