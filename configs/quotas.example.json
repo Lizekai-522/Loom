@@ -1,0 +1,7 @@
+{
+  "schema_version": "loom.quotas/v1",
+  "window_seconds": 60,
+  "tenant": {"max_calls": 60, "max_in_flight": 2},
+  "model": {"max_calls": 20, "max_in_flight": 1},
+  "tool": {"max_calls": 40, "max_in_flight": 1}
+}

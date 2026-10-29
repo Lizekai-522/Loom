@@ -533,6 +533,9 @@ class Store:
             raise Conflict("existing effect cannot acquire a different reservation")
         if grant["dispatch"] and reserved["state"] != "reserved":
             raise Conflict("settled budget cannot authorize a new effect")
+        if grant['dispatch'] and operation_id.startswith('model-generation:'):
+            from .quotas import QuotaService
+            QuotaService(self).admit_model_in(db,claim,grant['call_id'],request)
         return grant
 
     def finish_effect(self, claim: Claim, call_id: str, result: dict) -> dict:

@@ -17,12 +17,28 @@ from loom.operator import OperatorService
 from loom.store import Conflict, canonical
 from loom.sandbox import DockerSandbox,SandboxConfig
 from loom.review_decisions import ReviewDecisionService
+from loom.quotas import QuotaService,QuotaPolicy,Limit
 from tests.test_dispatch import dispatch_case,enqueue,drain,worker_for
 from tests.test_approved_node import node_case,ROOT,gateway_for
 from loom.model_gateway import ModelRoute
 from tests.test_approved_execution import OP,WORKER
 from tests.test_review_inputs import review_case
 from tests.test_reviewer_handoff import handoff,generate,reviewer_claim
+
+
+@pytest.mark.skipif(not os.environ.get('LOOM_SANDBOX_TEST_IMAGE'),reason='explicit immutable Docker image required')
+@pytest.mark.parametrize('max_calls',[0,1])
+def test_durable_model_quota_in_actual_worker_and_docker(dispatch_case,max_calls):
+    b=dispatch_case('developer')
+    policy=QuotaPolicy(60,Limit(20,2),Limit(max_calls,1),Limit(20,1))
+    QuotaService(b['store']).configure(OP,policy,key='live-quota',expected_revision=0,reason='真实容器配额正反例')
+    enqueue(b);b['body']={'source':'import json\nprint(json.dumps({"answer":2}))\n'}
+    sandbox=DockerSandbox(SandboxConfig(os.environ['LOOM_SANDBOX_TEST_IMAGE']))
+    result,requests=drain(b,sandbox=sandbox)
+    assert len(requests)==max_calls
+    assert result['state']==('submitted' if max_calls else 'awaiting_human')
+    assert QuotaService(b['store']).read('a')['tenant_usage']==dict(calls=max_calls,in_flight=0)
+    assert b['store'].snapshot('a',b['run'])['reserved']==0
 
 
 @pytest.mark.skipif(not os.environ.get('LOOM_SANDBOX_TEST_IMAGE'),reason='explicit immutable Docker image required')
