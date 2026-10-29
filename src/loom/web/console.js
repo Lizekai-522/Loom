@@ -38,7 +38,7 @@
     pending: "等待执行", running: "执行中", submitted: "待独立复核", done: "已验证",
     cancelled: "已终止", succeeded: "已完成", failed: "失败", stale: "已失效",
     indeterminate: "结果未知", intent: "已登记发起", partial: "部分完成", approved: "已批准",
-    settled: "已结算", reserved: "已预留", overrun: "超出预留", not_sent: "确认未发送",
+    settled: "已结算", reserved: "已预留", overrun: "超出预留", not_sent: "确认未发送", reconciled: "已人工核对",
   };
   const roleNames = {operator: "操作员", worker: "执行器", viewer: "只读", developer: "旧开发身份"};
   const unknownStates = new Set(["intent", "indeterminate", "partial"]);
@@ -301,14 +301,15 @@
     if (!review) return;
     summary.append(node("h3", "", "当前运行的调用与预留"));
     const effects = Array.isArray(review.effects) ? review.effects : [];
-    if (!effects.length) summary.append(node("p", "muted", "没有模型外部调用记录。"));
+    if (!effects.length) summary.append(node("p", "muted", "没有模型或工具调用记录。"));
     for (const effect of effects) {
       const article = node("article", "intervention-item");
       const effectBadge = badge(effect.state);
       if (effect.state === "done") effectBadge.textContent = "调用已完成";
-      article.append(node("strong", "mono", effect.call_id), effectBadge, node("p", "muted", `任务 ${str(effect.task_id)} · 轮次 ${str(effect.epoch)}`));
+      article.append(node("strong", "mono", effect.call_id), effectBadge, node("p", "muted", `${effect.registered_tool === true ? 'Python 测试工具' : effect.model_generation === true ? '模型调用' : '待核实调用'} · 任务 ${str(effect.task_id)} · 轮次 ${str(effect.epoch)}`));
       summary.append(article);
     }
+    renderToolRecovery(effects,summary);
     for (const reservation of Array.isArray(review.reservations) ? review.reservations : []) {
       const article = node("article", "intervention-item");
       article.append(node("strong", "mono", reservation.reservation_id), badge(reservation.state), node("p", "muted", `预留 ${amount(reservation.cost)} / ${count(reservation.tokens)} 词元；已核实 ${amount(reservation.actual_cost)} / ${count(reservation.actual_tokens)} 词元`));
@@ -374,6 +375,34 @@
 
   function reconcilableEffect(effect) {
     return effect.model_generation === true && (unknownStates.has(effect.state) || effect.needs_manual_accounting === true);
+  }
+
+  function renderToolRecovery(effects,summary) {
+    const unknown=effects.filter(effect=>effect.registered_tool===true&&unknownStates.has(effect.state));
+    if(!unknown.length)return;
+    summary.append(node('h3','','工具结果人工核对'),node('p','field-help','未知工具继续占用在途名额。须先停止相关进程并核对日志；登记只处理未知态，不修改模型费用、不自动恢复或重跑，也不证明测试通过。'));
+    if(!has('control')||window.LoomPreview?.active){summary.append(node('p','field-help','请由本机具名操作员处理工具核对。'));return;}
+    const runId=state.runId;
+    for(const effect of unknown){
+      if(!integer(effect.epoch)||!hashPattern.test(effect.request_hash||'')||!hashPattern.test(effect.call_id||''))continue;
+      const form=node('form','approval-form');form.dataset.toolRecovery=effect.call_id;
+      form.append(node('p','mono break-word',`调用 ${effect.call_id} · 轮次 ${effect.epoch}`));
+      const decision=node('select');decision.setAttribute('aria-label','工具核对结论');
+      for(const [value,text] of [['completed','确定已执行（不代表测试通过）'],['not_executed','确定未执行']]){const option=node('option','',text);option.value=value;option.disabled=value==='not_executed'&&effect.not_sent_conflicts_with_evidence!==false;decision.append(option);}
+      const reference=node('input');reference.required=true;reference.maxLength=500;reference.setAttribute('aria-label','工具核对依据引用');
+      const evidence=node('textarea');evidence.required=true;evidence.maxLength=2000;evidence.setAttribute('aria-label','工具核对说明');
+      const reviewed=node('input');reviewed.type='checkbox';reviewed.required=true;
+      const label=node('label','check-label');label.append(reviewed,document.createTextNode('我已停止相关工具进程并核对本次调用、轮次及执行日志'));
+      const submit=node('button','','记录工具核对');submit.type='submit';submit.dataset.cap='control';submit.disabled=state.busy||!runChecked();
+      form.append(node('label','','核对结论'),decision,node('label','','日志或依据引用'),reference,node('label','','核对说明'),evidence,label,submit);
+      form.addEventListener('submit',event=>{
+        event.preventDefault();
+        if(!runChecked()||state.runId!==runId||!has('control')||window.LoomPreview?.active||!reviewed.checked)return;
+        const ref=reference.value.trim(),text=evidence.value.trim();if(!ref||!text)return;
+        mutate('POST',`/v1/runs/${encodeURIComponent(runId)}/tool-effects/${effect.call_id}/reconcile`,{expected_epoch:effect.epoch,expected_request_hash:effect.request_hash,decision:decision.value,evidence:{reference:ref,summary:text}},'工具核对已记录。运行未自动恢复，测试及独立验收仍须另行核对。',async()=>{await refreshAll();});
+      });
+      summary.append(form);
+    }
   }
 
   function syncEffectEvidence() {

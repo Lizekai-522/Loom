@@ -1,10 +1,10 @@
 {
-  "version": "0.18.8",
-  "stage": "tool-quotas-alpha",
+  "version": "0.18.9",
+  "stage": "tool-recovery-alpha",
   "production_ready": false,
-  "generated_at": "2026-10-29T21:36:11.967058+08:00",
+  "generated_at": "2026-10-29T21:51:28.460489+08:00",
   "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
-  "source_file_count_excluding_manifest": 319,
+  "source_file_count_excluding_manifest": 326,
   "files": [
     {
       "path": ".gitignore",
@@ -18,8 +18,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 18293,
-      "sha256": "f93973756169493e352b6525c45cfc2f43b594f5d05df024d0689b7c5e48bdcb"
+      "bytes": 18282,
+      "sha256": "146fdeb4da94b9c357371c7e9b9011215c08a4a2496f8de61c4c19b3ffdc194d"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -83,13 +83,13 @@
     },
     {
       "path": "docs/api/README.md",
-      "bytes": 13753,
-      "sha256": "5b2bcc2a7f1b996f55228c0bc72a19fcfe37d291556b08e83dbe87d31b40667c"
+      "bytes": 13908,
+      "sha256": "a675dfa72fa888de675498d0d0ff23e8538ccfce12f2802f4b75a41d5d852a70"
     },
     {
       "path": "docs/api/openapi.json",
-      "bytes": 88193,
-      "sha256": "8a2a7e5db2757c8eb6ec624fe8dcea627c877bffeb901a8af60e3b0724405ade"
+      "bytes": 91071,
+      "sha256": "8673468972b18c7accc37470480b356e77ffb90864ae0ca46607fdd2f3807152"
     },
     {
       "path": "docs/approved-execution.md",
@@ -148,13 +148,13 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 49742,
-      "sha256": "ee4e33ab182899c5ab3c0a3cc93bcc1a297974caa7e7b9b2795369adf833bb54"
+      "bytes": 50099,
+      "sha256": "dec7d1ecd9abceadd8ef950587beaad3c621dc2bc55e3074247b83875dee081e"
     },
     {
       "path": "docs/launch-readiness-2026-10-29.md",
       "bytes": 3105,
-      "sha256": "58483f5407ea43800b4fd8adfdd97dbd3efc9fa98077b8bb2c9a1f3b6c671cfc"
+      "sha256": "d3256fe7a9bc7f9dde4f506a8ae617422bf75821d42c7c2b190fc0adcfdf5d99"
     },
     {
       "path": "docs/local-auth.md",
@@ -188,8 +188,8 @@
     },
     {
       "path": "docs/next-steps-2026-10-29.md",
-      "bytes": 2397,
-      "sha256": "afadf46c24bc7d6e0fb6126a0816a9c92bff299ca9d6847cd8dc69109d9d58b3"
+      "bytes": 2394,
+      "sha256": "63202518fd8ee5ad8c4614a2e352f6630d55083c936825a450eb0d9069f0011a"
     },
     {
       "path": "docs/operator-controls.md",
@@ -208,8 +208,8 @@
     },
     {
       "path": "docs/project-plan-2026-10-28.md",
-      "bytes": 17207,
-      "sha256": "deb04ed378d50c5506dd248e0bbdcc268b877e4692480162ed19fe47c2d5ebb8"
+      "bytes": 17501,
+      "sha256": "00ba70a9d5be4096e5bf6e4e517591bf9ce1d2b45a38621a44f604e868baaf3e"
     },
     {
       "path": "docs/public-checks.md",
@@ -223,8 +223,8 @@
     },
     {
       "path": "docs/quotas.md",
-      "bytes": 2934,
-      "sha256": "4486a786c5f0492e0a56d7557e32455afb75bc4a5fda6b2b87970554f8cd8611"
+      "bytes": 3084,
+      "sha256": "3e6999d9770487207236f228068a572b79afd75bc92e8e995787bfee05864050"
     },
     {
       "path": "docs/recovery-check.md",
@@ -233,8 +233,8 @@
     },
     {
       "path": "docs/release-roadmap.md",
-      "bytes": 5283,
-      "sha256": "e46d3b09fa1a247e6a54a18a3df34f559c51498c52023fa286311e1c57a52c68"
+      "bytes": 5270,
+      "sha256": "1c806ebfcbb8ede97b0b431826eb9dea1cfa9e72c991220ac84dbd99e513f59f"
     },
     {
       "path": "docs/review-0.17.3.md",
@@ -317,6 +317,11 @@
       "sha256": "cf6974a3998b6c18c91db99f1622fa93954f28f4bc77f1e35e4bc685d901ccdb"
     },
     {
+      "path": "docs/review-0.18.9.md",
+      "bytes": 977,
+      "sha256": "929ac963c9f524313be7d9328d9241b795537b0fc137eda50f2cc08fe51639b5"
+    },
+    {
       "path": "docs/review-decisions.md",
       "bytes": 4051,
       "sha256": "a304c1d1a3e7ffbb4b2622733b03ff9861504fb85d0642753d503d909721c30e"
@@ -350,6 +355,11 @@
       "path": "docs/third-party-notices.md",
       "bytes": 9095,
       "sha256": "9ef1faf05c944f794f9b18c9de7dcaa9356ace5446ea174483dcd694ffd92223"
+    },
+    {
+      "path": "docs/tool-recovery.md",
+      "bytes": 1526,
+      "sha256": "0639612eb0f3a3d79f36fb6ecc97903e1155616fa52c6e88741ce466856aca30"
     },
     {
       "path": "docs/tool-registry.md",
@@ -487,6 +497,11 @@
       "sha256": "558a68deb6adfe0ed8e83e2aa17ca22f4d2b7096314ec970a6e25fd56301da35"
     },
     {
+      "path": "docs/validation-0.18.9.md",
+      "bytes": 818,
+      "sha256": "0cf37dacde3f83c896fc6f3fefea28c7f00d8b9c9c2a78e3d56ad97ece4aba29"
+    },
+    {
       "path": "docs/validation-0.3.md",
       "bytes": 4056,
       "sha256": "95b8e50c114e15ebe4405559a3bb84cb64bab6c958e75f7332f37a688554e023"
@@ -549,7 +564,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 771,
-      "sha256": "29c1cb65fafe0bdf6c8e730bdfe1156e20918a6676b1fc3fc1e96513c1fec2ba"
+      "sha256": "7103efb2900b6dfd9bc6dacb680f4de6e1551fc7e71274c1e934486b7e83f66c"
     },
     {
       "path": "requirements.lock",
@@ -677,6 +692,11 @@
       "sha256": "1c0ec83bc1c2958db65e811d9ffab1087845bfadf2e38f086cabbe337daf8c32"
     },
     {
+      "path": "scripts/reconcile_tool.py",
+      "bytes": 2034,
+      "sha256": "fbe468658cd698edde547baa5843afd76b420bb193d088fd13e464dc89ea576d"
+    },
+    {
       "path": "scripts/register_host_tests.py",
       "bytes": 1094,
       "sha256": "75e9f2c00d6de2b3d250370e68c647fc338de187521b7845a17024994aa9e381"
@@ -769,7 +789,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "421753d238959668d6a041338c7addd60e75cb947cfc9fd445cd3597c0283e08"
+      "sha256": "00dd5975ef77fbec872b688d676b8acf4bff36a5e9cc2fa0b03aebd2c8555a3a"
     },
     {
       "path": "src/loom/__main__.py",
@@ -778,8 +798,8 @@
     },
     {
       "path": "src/loom/api.py",
-      "bytes": 26808,
-      "sha256": "3c6b370ae8dbbdb87a2259404ecc97f0c48d6cdab53568011d75e068142f0df9"
+      "bytes": 27554,
+      "sha256": "3a951f79dd585a46aea3f2ee9d56aa816422a4c41bdd9f192bea5fed392c685e"
     },
     {
       "path": "src/loom/approved_execution.py",
@@ -952,6 +972,11 @@
       "sha256": "c1cc76e15664cee230b2e8a9bb3db17fc4080f685c496f6f05d23d86ca24cff5"
     },
     {
+      "path": "src/loom/tool_recovery.py",
+      "bytes": 4404,
+      "sha256": "5ae740580b9d0a40ca61946d562bdf040d90ae793c599d9a063a5b0ebb2a75b7"
+    },
+    {
       "path": "src/loom/tool_registry.py",
       "bytes": 1955,
       "sha256": "5d8a94f9b3400f62a1631c6693d736c477149f1c8ee26b7c9fa0cb84f367b2e6"
@@ -988,8 +1013,8 @@
     },
     {
       "path": "src/loom/web/console-zh.js",
-      "bytes": 3678,
-      "sha256": "ca00a56c5890d93491e4e3dc2a5ada49a9efc18e2152cbfc277e567b69238ae6"
+      "bytes": 3666,
+      "sha256": "0f0769b1294cfcc7e18ad0d17af6babff5175ceabd4872804a73a3cd79ae543a"
     },
     {
       "path": "src/loom/web/console.css",
@@ -998,8 +1023,8 @@
     },
     {
       "path": "src/loom/web/console.js",
-      "bytes": 67700,
-      "sha256": "fff7ddcfb9473e52d85b71edfdb44aecd8b2393e214d78278ab735e031a86478"
+      "bytes": 70854,
+      "sha256": "81873813aec7cebfc844bcb006885dda18ece1172476e816b5cb74b81a04ad51"
     },
     {
       "path": "src/loom/web/index.html",
@@ -1100,6 +1125,11 @@
       "path": "tests/integration/test_tool_quotas_live.py",
       "bytes": 2419,
       "sha256": "dc716ad457cbe6b51fabc1f82e54991e0f898bf31eab716492a062e819eb0e6a"
+    },
+    {
+      "path": "tests/integration/test_tool_recovery_live.py",
+      "bytes": 2391,
+      "sha256": "6d633f5b46072b116d74cf82c4c0cf0e508c8599e3ee4f283f7cc2e8ea3689fa"
     },
     {
       "path": "tests/test_api.py",
@@ -1397,6 +1427,11 @@
       "sha256": "44beb48c453ce4ebb7b95e3c294306153d36114f8344c2fd3f5c895f65fac074"
     },
     {
+      "path": "tests/test_tool_recovery.py",
+      "bytes": 10075,
+      "sha256": "76a8eee157ecefae1d6fe0b5398b256a7c49a55f8fa61f072a040e30179ad43f"
+    },
+    {
       "path": "tests/test_tool_registry.py",
       "bytes": 3523,
       "sha256": "a5958b32ea08d83673f5a92a0fb7c8e0734d970d9c43d1566813a8e3c11115e9"
@@ -1604,26 +1639,26 @@
   ],
   "validation": {
     "full": {
-      "main_tests": 1076,
+      "main_tests": 1095,
       "subtests": 387,
       "failures": 0,
       "skipped": 0
     },
     "target": {
-      "main_tests": 124,
-      "subtests": 9,
+      "main_tests": 107,
+      "subtests": 23,
       "failures": 0,
       "skipped": 0
     },
     "infra": {
-      "main_tests": 23,
+      "main_tests": 24,
       "subtests": 0,
       "failures": 0,
       "skipped": 0
     }
   },
-  "live_http_checks": 46,
-  "browser_checks": 7,
+  "live_http_checks": 47,
+  "browser_checks": 9,
   "new_paid_model_requests": 0,
   "notes": [
     "Original 62 requirements retained; partial feature increments do not establish production readiness.",
