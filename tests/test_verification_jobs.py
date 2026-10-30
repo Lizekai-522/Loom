@@ -36,9 +36,9 @@ async def run_job(b,*,negative=False,timeout=False,callback=None):
         payload=json.loads(request.content);requests.append(payload)
         if callback:callback(len(requests))
         if timeout and payload['model']=='deepseek-v4-pro':raise httpx.ReadTimeout('synthetic verifier timeout',request=request)
-        if negative and payload['model']=='deepseek-v4-pro':
+        if negative and (payload['model']=='deepseek-v4-pro' or negative=='both'):
             body=dict(schema_version='loom.review-findings/v1',subject=b['preview']['subject'],summary='发现问题',verdict='findings',
-                findings=[dict(id='one',severity='minor',path='main.py',start_line=1,end_line=1,description='模拟意见',recommendation='核对原始需求')])
+                findings=[dict(id='one',severity='minor',path='artifact.json' if b['preview']['subject']['schema_version']=='loom.review-subject-ref/v2' else 'main.py',start_line=1,end_line=1,description='模拟意见',recommendation='核对原始需求')])
         else:body=dict(schema_version='loom.review-findings/v1',subject=b['preview']['subject'],summary='未发现明确问题',verdict='no_findings',findings=[])
         return httpx.Response(200,json=dict(id='verified-'+payload['model'],object='chat.completion',created=1792700000,model=payload['model'],
             choices=[dict(index=0,finish_reason='stop',message=dict(role='assistant',content=canonical(body)))],
@@ -65,7 +65,7 @@ def test_negative_pro_verdict_preserves_candidate_and_stops_goal(verification_ca
     b=verification_case
     with b['store'].connect() as db:original=db.execute('SELECT output FROM tasks WHERE tenant=? AND id=?',('a',b['task'])).fetchone()[0]
     result,requests=asyncio.run(run_job(b,negative=True))
-    assert result['state']=='rejected' and not result['task_verified'] and len(requests)==2
+    assert result['state']=='disputed' and not result['task_verified'] and len(requests)==2
     after=b['store'].snapshot('a',b['run'])
     assert after['status']=='awaiting_human' and after['tasks'][0]['status']=='submitted'
     with b['store'].connect() as db:assert db.execute('SELECT output FROM tasks WHERE tenant=? AND id=?',('a',b['task'])).fetchone()[0]==original

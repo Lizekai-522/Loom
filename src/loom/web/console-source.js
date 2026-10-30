@@ -8,6 +8,8 @@ window.LoomSourcePanel = function ({state, node, request, publicError, runChecke
   const stable = value => Array.isArray(value) ? value.map(stable) : value && typeof value === "object"
     ? Object.fromEntries(Object.keys(value).sort().map(key => [key, stable(value[key])])) : value;
   const canonical = value => JSON.stringify(stable(value));
+  const isDocument=value=>value?.subject?.schema_version==='loom.review-subject-ref/v2';
+  const filename=value=>isDocument(value)?'artifact.json':'main.py';
   async function hash(value) {
     const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
     return [...new Uint8Array(bytes)].map(byte => byte.toString(16).padStart(2, "0")).join("");
@@ -29,34 +31,41 @@ window.LoomSourcePanel = function ({state, node, request, publicError, runChecke
   function sync() { if (binding && binding !== selection()) reset(); else controls(); }
   async function validate(value) {
     const subject = value?.subject, summary = value?.execution_summary;
+    const document=isDocument(value),file=filename(value);
+    const keys=["schema_version", "run_id", "task_id", "epoch", "plan_digest", "content_hash", "source_sha256", "evaluation_digest", "evaluation_event_hash", "submission_event_hash"];
+    if(document)keys.push('artifact_id','artifact_kind','artifact_schema_version','artifact_content_hash');
+    const model=task.artifact?.model_provenance;
+    const typed=document&&['requirements','design','public-checks'].includes(subject.artifact_kind)
+      &&subject.artifact_id===model?.artifact_id&&subject.artifact_kind===task.role_output?.kind
+      &&subject.artifact_schema_version===task.role_output?.schema_version&&subject.artifact_content_hash===model?.artifact_content_hash;
     if (value?.schema_version !== "loom.review-input/v1" || value.source_included !== true
         || value.hidden_tests_included !== false || value.untrusted_source !== true
         || value.independently_verified !== false || value.counts_as_success !== false || value.execution_authorized !== false
-        || !exact(subject, ["schema_version", "run_id", "task_id", "epoch", "plan_digest", "content_hash", "source_sha256", "evaluation_digest", "evaluation_event_hash", "submission_event_hash"])
+        || !exact(subject, keys)
         || !exact(summary, ["cases_executed", "cases_passed", "hard_criteria_passed", "report_digest", "evidence_source"])
-        || subject.schema_version !== "loom.review-subject-ref/v1" || subject.run_id !== state.runId || subject.task_id !== task.id
+        || !(document?typed:subject.schema_version === "loom.review-subject-ref/v1") || subject.run_id !== state.runId || subject.task_id !== task.id
         || !Number.isSafeInteger(subject.epoch) || subject.epoch !== task.epoch
         || subject.plan_digest !== state.plan?.digest || subject.content_hash !== task.artifact?.content_hash
-        || subject.evaluation_digest !== task.evaluation_digest || !hashPattern.test(value.input_digest)
+        || (!document&&subject.evaluation_digest !== task.evaluation_digest) || !hashPattern.test(value.input_digest)
         || ["plan_digest", "content_hash", "source_sha256", "evaluation_digest", "evaluation_event_hash", "submission_event_hash"].some(key => !hashPattern.test(subject[key]))
-        || !value.files || Object.keys(value.files).length !== 1 || typeof value.files["main.py"] !== "string"
-        || !value.files["main.py"].trim() || new TextEncoder().encode(value.files["main.py"]).length > 65536
-        || !Number.isSafeInteger(summary?.cases_executed) || summary.cases_executed < 1 || summary.cases_executed > 32
+        || !value.files || Object.keys(value.files).length !== 1 || typeof value.files[file] !== "string"
+        || !value.files[file].trim() || new TextEncoder().encode(value.files[file]).length > 65536
+        || !Number.isSafeInteger(summary?.cases_executed) || summary.cases_executed < (document?0:1) || summary.cases_executed > (document?0:32)
         || !Number.isSafeInteger(summary.cases_passed) || summary.cases_passed < 0 || summary.cases_passed > summary.cases_executed
         || typeof summary.hard_criteria_passed !== "boolean" || !hashPattern.test(summary.report_digest)
-        || summary.evidence_source !== "local-executor-host-frozen-tests") throw Object.assign(new Error(), {code: "BAD_JSON"});
+        || summary.evidence_source !== (document?'local-executor-typed-schema':"local-executor-host-frozen-tests")) throw Object.assign(new Error(), {code: "BAD_JSON"});
     const context = {schema_version: value.schema_version, subject, execution_summary: summary, files: value.files};
     if (await hash(canonical(value.files)) !== subject.source_sha256 || await hash(canonical(context)) !== value.input_digest)
       throw Object.assign(new Error(), {code: "BAD_JSON"});
-    return hash(value.files["main.py"]);
+    return hash(value.files[file]);
   }
   function show(value) {
-    refs.code.textContent = value.files["main.py"];
+    const file=filename(value);refs.code.textContent = value.files[file];refs.source.textContent='下载 '+file;
     refs.details.replaceChildren();
     const summary = value.execution_summary;
-    refs.status.textContent = `精确版本已核对 · 宿主终验 ${summary.cases_passed}/${summary.cases_executed} · 独立复核结果请在复核页核对`;
+    refs.status.textContent = isDocument(value)?'精确版本已核对 · 结构格式有效，未执行测试用例 · 独立复核结果请在复核页核对':`精确版本已核对 · 宿主终验 ${summary.cases_passed}/${summary.cases_executed} · 独立复核结果请在复核页核对`;
     for (const [name, text] of [["任务", value.subject.task_id], ["轮次", value.subject.epoch], ["输入版本摘要", value.input_digest],
-      ["源码合同摘要", value.subject.source_sha256], ["main.py 文件 SHA256", fileHash]]) {
+      ["文件合同摘要", value.subject.source_sha256], [file+" 文件 SHA256", fileHash]]) {
       refs.details.append(node("p", "mono break-word", `${name} ${text}`));
     }
   }
@@ -78,9 +87,9 @@ window.LoomSourcePanel = function ({state, node, request, publicError, runChecke
       if (version !== generation || bound !== binding || !current() || state.tab !== "tasks") return;
       if (kind && prior !== value.input_digest) throw Object.assign(new Error(), {code: "SOURCE_CHANGED"});
       data = value; fileHash = verifiedHash; show(value);
-      if (kind === "source") download(value.files["main.py"], "main.py", "text/plain;charset=utf-8");
-      else if (kind === "record") download(JSON.stringify({schema_version: "loom.source-export/v1", subject: value.subject,
-        input_digest: value.input_digest, execution_summary: value.execution_summary, file: "main.py", file_sha256: verifiedHash,
+      if (kind === "source") download(value.files[filename(value)], filename(value), isDocument(value)?'application/json;charset=utf-8':"text/plain;charset=utf-8");
+      else if (kind === "record") download(JSON.stringify({schema_version: isDocument(value)?'loom.source-export/v2':"loom.source-export/v1", subject: value.subject,
+        input_digest: value.input_digest, execution_summary: value.execution_summary, file: filename(value), file_sha256: verifiedHash,
         independently_verified: false, counts_as_success: false, hidden_tests_included: false}, null, 2) + "\n", "loom-source-record.json", "application/json;charset=utf-8");
     } catch (error) {
       if (version === generation && bound === binding && error.code !== "SESSION_CHANGED") {
@@ -90,16 +99,17 @@ window.LoomSourcePanel = function ({state, node, request, publicError, runChecke
     } finally { if (version === generation && bound === binding) { busy = false; controls(); } }
   }
   function open(value) {
-    if (!runChecked() || state.busy || value.artifact?.kind !== "python-json-program") return;
+    if (!runChecked() || state.busy || !['python-json-program','role-artifact'].includes(value.artifact?.kind)) return;
+    const document=value.artifact.kind==='role-artifact';
     reset(); task = value; binding = selection(); root.hidden = false;
-    const heading = node("div", "section-heading"), close = node("button", "quiet", "关闭源码"); close.type = "button";
-    heading.append(node("h3", "", `源码与导出 · ${value.title || value.id}`), close);
+    const heading = node("div", "section-heading"), close = node("button", "quiet", document?'关闭正文':"关闭源码"); close.type = "button";
+    heading.append(node("h3", "", `${document?'正文':'源码'}与导出 · ${value.title || value.id}`), close);
     const status = node("p", "field-help"), details = node("div"), pre = node("pre", "source-code"), code = node("code");
     status.setAttribute("role", "status"); status.setAttribute("aria-live", "polite"); pre.append(code);
-    const actions = node("div", "source-actions"), read = node("button", "", "重新读取源码"), source = node("button", "", "下载 main.py"), record = node("button", "", "下载版本记录 JSON");
+    const actions = node("div", "source-actions"), read = node("button", "", document?'重新读取正文':"重新读取源码"), source = node("button", "", document?'下载 artifact.json':"下载 main.py"), record = node("button", "", "下载版本记录 JSON");
     for (const button of [read, source, record]) button.type = "button";
     actions.append(read, source, record);
-    root.append(heading, node("p", "field-help", "源码按当前任务、计划和执行证据核对。每次下载都会重新核对版本；文件和版本记录均保留候选未独立验证的状态。"), status, details, actions, pre);
+    root.append(heading, node("p", "field-help", "正文按当前任务、计划和证据核对。每次下载都会重新核对版本；原始文件不含验收授权，最终签名请在独立复核页查看。"), status, details, actions, pre);
     refs = {status, details, code, read, source, record};
     status.id = "source-state"; code.id = "source-code"; source.id = "source-download"; record.id = "source-record-download"; read.id = "source-refresh";
     close.addEventListener("click", reset); read.addEventListener("click", () => load()); source.addEventListener("click", () => load("source")); record.addEventListener("click", () => load("record"));

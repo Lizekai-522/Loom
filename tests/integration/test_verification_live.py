@@ -24,7 +24,7 @@ def test_real_host_evidence_and_crypto_pair_release_or_reject(verification_case,
     request=jobs.request(OP,source['run'],task,'actual-verify',expected_preview_digest=preview['preview_digest'],reason='实际Docker证据后的独立复核')
     b.update(store=source['store'],run=source['run'],jobs=jobs,job=request['job_id'],task=task,preview=preview,directory=root/'private-verify')
     result,requests=asyncio.run(run_job(b,negative=negative))
-    assert len(requests)==2 and result['state']==('rejected' if negative else 'verified')
+    assert len(requests)==2 and result['state']==('disputed' if negative else 'verified')
     snapshot=source['store'].snapshot('a',source['run'])
     assert snapshot['status']==('awaiting_human' if negative else 'succeeded')
     assert snapshot['tasks'][0]['status']==('submitted' if negative else 'done')

@@ -1,0 +1,1432 @@
+{
+  "schema_version": "loom.functional-acceptance/v1",
+  "updated": "2026-10-30",
+  "baseline": "0.20.0",
+  "current_increment": "0.21.0",
+  "authoritative_spec": "docs/Loom.md",
+  "implementation_plan": "docs/project-plan-2026-10-28.md",
+  "rules": [
+    "模块存在不等于原条款验收通过",
+    "模拟模型、真实容器和真实模型分开登记",
+    "保留全部62项，不以测试数计算完成比例",
+    "全面功能测试后再重做桌面开发工作台前端"
+  ],
+  "requirements": [
+    {
+      "id": "FR-001",
+      "requirement": "支持定义多个具有**不同角色、技能、工具集与记忆策略**的 Agent",
+      "priority": "M",
+      "acceptance": "角色定义可声明式表达；≥7 个内置角色；不同角色的工具集有实际差异且被调度器利用",
+      "source_line": 237,
+      "status": "partial",
+      "stage": "roles",
+      "current": "七个固定角色及工具差异已有；完整角色协作继续验收。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/verification_jobs.py",
+        "src/loom/verification_worker.py",
+        "src/loom/review_inputs.py"
+      ],
+      "evidence": [
+        "tests/test_document_verification.py",
+        "tests/test_verification_jobs.py",
+        "tests/test_policy.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-002",
+      "requirement": "Agent 支持**动态注册、发现与版本管理**",
+      "priority": "M",
+      "acceptance": "运行中可热加载新角色定义，无需重启控制面；版本快照写入事件流",
+      "source_line": 238,
+      "status": "not_started",
+      "stage": "runtime",
+      "current": "动态注册/发现/热加载与版本快照未接通。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/store.py",
+        "src/loom/quotas.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_plan_integrity.py",
+        "tests/test_store_admission.py",
+        "tests/test_quotas.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-003",
+      "requirement": "维护运行时**能力画像**（技能标签、历史成功率、P50/P95 延迟、当前负载/容量）",
+      "priority": "M",
+      "acceptance": "画像由运行时自动更新；调度决策实际读取画像；画像更新有事件记录",
+      "source_line": 239,
+      "status": "not_started",
+      "stage": "runtime",
+      "current": "运行时画像、P50/P95和评分调度未接通。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/store.py",
+        "src/loom/quotas.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_plan_integrity.py",
+        "tests/test_store_admission.py",
+        "tests/test_quotas.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-004",
+      "requirement": "**知识库定义与集成**；知识条目写入即隔离，审核后生效",
+      "priority": "M",
+      "acceptance": "条目状态含 `quarantined`；隔离条目不参与召回；审核动作有审计",
+      "source_line": 240,
+      "status": "not_started",
+      "stage": "knowledge",
+      "current": "知识隔离、独立审核和真实召回未接通。",
+      "code": [
+        "src/loom/artifacts.py",
+        "src/loom/context_budget.py"
+      ],
+      "evidence": [
+        "tests/test_execution_context.py",
+        "tests/test_context_budget.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-005",
+      "requirement": "Agent 记忆策略可配置（会话内 / 任务级 / 跨任务）",
+      "priority": "S",
+      "acceptance": "三种粒度均可用；跨任务记忆遵循 FR-004 隔离机制",
+      "source_line": 241,
+      "status": "not_started",
+      "stage": "knowledge",
+      "current": "会话/任务/跨任务记忆未接通。",
+      "code": [
+        "src/loom/artifacts.py",
+        "src/loom/context_budget.py"
+      ],
+      "evidence": [
+        "tests/test_execution_context.py",
+        "tests/test_context_budget.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-006",
+      "requirement": "提供**代码化工作流定义**（YAML/DSL）",
+      "priority": "M",
+      "acceptance": "定义含节点类型、依赖、输入输出契约、预算、重试策略",
+      "source_line": 248,
+      "status": "partial",
+      "stage": "workflow",
+      "current": "现有JSON工作流DSL，完整节点类型待扩展。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/repair.py",
+        "src/loom/execution.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_repair.py",
+        "tests/test_reviewed_execution.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-007",
+      "requirement": "支持**顺序执行、并行分支、条件判断、循环迭代、子工作流嵌套**",
+      "priority": "M",
+      "acceptance": "五种控制结构均有端到端测试；并行分支实际并发执行",
+      "source_line": 249,
+      "status": "partial",
+      "stage": "workflow",
+      "current": "依赖DAG已有，条件/循环/子工作流和真实并发综合验收待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/repair.py",
+        "src/loom/execution.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_repair.py",
+        "tests/test_reviewed_execution.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-008",
+      "requirement": "节点级可配 **重试次数、超时、回退目标、预算上限**",
+      "priority": "M",
+      "acceptance": "配置生效且在事件流中可见",
+      "source_line": 250,
+      "status": "partial",
+      "stage": "workflow",
+      "current": "预算/尝试数/局部超时已有，完整回退配置待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/repair.py",
+        "src/loom/execution.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_repair.py",
+        "tests/test_reviewed_execution.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-009",
+      "requirement": "**派单完整性校验**（Gate-P）：任务书五要素齐备才派发",
+      "priority": "M",
+      "acceptance": "缺任一要素的派单被拒并留痕；要素：任务标识、作用域、唯一子目标、成功标准、依据锚点",
+      "source_line": 251,
+      "status": "partial",
+      "stage": "roles",
+      "current": "五要素Gate-P已有；全部实际入口与拒绝审计综合验收待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/verification_jobs.py",
+        "src/loom/verification_worker.py",
+        "src/loom/review_inputs.py"
+      ],
+      "evidence": [
+        "tests/test_document_verification.py",
+        "tests/test_verification_jobs.py",
+        "tests/test_policy.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-010",
+      "requirement": "工作流定义可**版本化**，运行绑定定义版本",
+      "priority": "M",
+      "acceptance": "历史运行可按原版本语义解释",
+      "source_line": 252,
+      "status": "partial",
+      "stage": "runtime",
+      "current": "现有运行冻结计划；通用资产版本治理待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/store.py",
+        "src/loom/quotas.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_plan_integrity.py",
+        "tests/test_store_admission.py",
+        "tests/test_quotas.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-011",
+      "requirement": "依据**任务特征**（所需技能、复杂度、领域类型）路由",
+      "priority": "M",
+      "acceptance": "路由表由领域包提供；路由决策确定性可复现",
+      "source_line": 259,
+      "status": "partial",
+      "stage": "runtime",
+      "current": "固定角色路由已有，能力/领域复杂度路由待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/store.py",
+        "src/loom/quotas.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_plan_integrity.py",
+        "tests/test_store_admission.py",
+        "tests/test_quotas.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-012",
+      "requirement": "依据 **Agent 负载**动态分配",
+      "priority": "M",
+      "acceptance": "负载超阈值的 Agent 不被选中；候选可读内存缓存，实际容量由数据库原子预占而非异步投影授权（原则P10）",
+      "source_line": 260,
+      "status": "partial",
+      "stage": "runtime",
+      "current": "本机原子容量已有，动态Agent与共享容量待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/store.py",
+        "src/loom/quotas.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_plan_integrity.py",
+        "tests/test_store_admission.py",
+        "tests/test_quotas.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-013",
+      "requirement": "依据**依赖关系**派发（仅派发已满足前置的任务）",
+      "priority": "M",
+      "acceptance": "存在依赖未满足时不发生派发",
+      "source_line": 261,
+      "status": "partial",
+      "stage": "roles",
+      "current": "已批准DAG依赖事务检查已有，完整控制结构接通后复验。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/verification_jobs.py",
+        "src/loom/verification_worker.py",
+        "src/loom/review_inputs.py"
+      ],
+      "evidence": [
+        "tests/test_document_verification.py",
+        "tests/test_verification_jobs.py",
+        "tests/test_policy.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-014",
+      "requirement": "支持**优先级**调度",
+      "priority": "M",
+      "acceptance": "优先级影响派发顺序；优先级变更即时生效",
+      "source_line": 262,
+      "status": "partial",
+      "stage": "runtime",
+      "current": "优先级排序已有，运行中授权变更待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/store.py",
+        "src/loom/quotas.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_plan_integrity.py",
+        "tests/test_store_admission.py",
+        "tests/test_quotas.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-015",
+      "requirement": "**动态预算**：迭代预算随任务复杂度浮动，不写死；**预算含成本维度**",
+      "priority": "M",
+      "acceptance": "同一任务类型在不同复杂度下预算不同；预算耗尽触发熔断；熔断判据为 (轮次, token, 金额) 三元组，任一触顶即止",
+      "source_line": 263,
+      "status": "partial",
+      "stage": "runtime",
+      "current": "金额/token/轮次额度已有，复杂度驱动动态预算待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/store.py",
+        "src/loom/quotas.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_plan_integrity.py",
+        "tests/test_store_admission.py",
+        "tests/test_quotas.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-016",
+      "requirement": "**验证通道容量预留**，不被业务通道挤占",
+      "priority": "M",
+      "acceptance": "业务负载打满时验证通道仍可获得容量；预留量可配置",
+      "source_line": 264,
+      "status": "partial",
+      "stage": "runtime",
+      "current": "业务/验证容量预留已有，完整Worker池验收待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/store.py",
+        "src/loom/quotas.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_plan_integrity.py",
+        "tests/test_store_admission.py",
+        "tests/test_quotas.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-017",
+      "requirement": "调度决策**可解释**：留存每个候选者的分值明细",
+      "priority": "M",
+      "acceptance": "事件流含 `dispatch.scored`；可据此复现选择理由",
+      "source_line": 265,
+      "status": "partial",
+      "stage": "runtime",
+      "current": "现有纯评分规则；真实候选逐项dispatch.scored待接通。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/store.py",
+        "src/loom/quotas.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_plan_integrity.py",
+        "tests/test_store_admission.py",
+        "tests/test_quotas.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-018",
+      "requirement": "至少一种**自我循环 / 迭代优化机制**",
+      "priority": "M",
+      "acceptance": "至少支持执行-验证-修正循环与 Plan-Do-Check-Act 变体",
+      "source_line": 266,
+      "status": "partial",
+      "stage": "workflow",
+      "current": "受限执行/验证/Rebind循环已有，通用PDCA待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/repair.py",
+        "src/loom/execution.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_repair.py",
+        "tests/test_reviewed_execution.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-019",
+      "requirement": "支持**拓扑自适应**（串行 / 并行 / 层次 / 混合）",
+      "priority": "C",
+      "acceptance": "路由器可依据任务特征选择拓扑；与固定拓扑的对比数据可产出",
+      "source_line": 267,
+      "status": "not_started",
+      "stage": "workflow",
+      "current": "拓扑自适应与对比评测未接通。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/repair.py",
+        "src/loom/execution.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_repair.py",
+        "tests/test_reviewed_execution.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-020",
+      "requirement": "运行时**状态监控**（实时事件流推送）",
+      "priority": "M",
+      "acceptance": "已提交事件至 SSE 客户端收到的 P99 ≤ 1 s；与 NFR-002 的任务派发延迟分别测量",
+      "source_line": 274,
+      "status": "partial",
+      "stage": "assurance",
+      "current": "当前HTTP轮询；可续传实时流和P99时延待验收。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-021",
+      "requirement": "**中间结果捕获**（每节点输入输出可查）",
+      "priority": "M",
+      "acceptance": "任一节点的历史输入输出可回查；大产物以引用路径存储",
+      "source_line": 275,
+      "status": "partial",
+      "stage": "assurance",
+      "current": "源码、角色产物和部分输入可查，大对象和全部节点历史待补。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-022",
+      "requirement": "**异常检测**（按失败家族分类）",
+      "priority": "M",
+      "acceptance": "七类失败均可被识别；分类基于结构化指纹而非正则硬编码单一厂商文案",
+      "source_line": 276,
+      "status": "partial",
+      "stage": "tools",
+      "current": "结构化失败分类已有，全部工具/模型适配器覆盖待补。",
+      "code": [
+        "src/loom/failures.py",
+        "src/loom/tool_registry.py",
+        "src/loom/tool_recovery.py",
+        "src/loom/sandbox.py"
+      ],
+      "evidence": [
+        "tests/test_tool_registry.py",
+        "tests/test_tool_recovery.py",
+        "tests/test_sandbox.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-023",
+      "requirement": "**自动验证节点**（Gate-D1 / Gate-V / Gate-R）",
+      "priority": "M",
+      "acceptance": "三道门的**判定逻辑在内核**，领域包只提供参数化实例；判定落 gate-log；模型输出不能替代门禁判定",
+      "source_line": 277,
+      "status": "partial",
+      "stage": "roles",
+      "current": "内核门禁已有，完整门禁表达式与全入口gate-log待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/verification_jobs.py",
+        "src/loom/verification_worker.py",
+        "src/loom/review_inputs.py"
+      ],
+      "evidence": [
+        "tests/test_document_verification.py",
+        "tests/test_verification_jobs.py",
+        "tests/test_policy.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-024",
+      "requirement": "**人工介入节点**：熔断时挂起，等待人工裁决",
+      "priority": "M",
+      "acceptance": "挂起态可被人工处理并继续；人工动作有审计与责任人；挂起不占用执行租约；超 SLA 未处理自动降级并告警",
+      "source_line": 278,
+      "status": "partial",
+      "stage": "assurance",
+      "current": "暂停/恢复/部分人工核对已有，独立裁决和SLA降级告警待补。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-025",
+      "requirement": "**交叉验证**：关键结论由独立第二模型复核",
+      "priority": "M",
+      "acceptance": "复核者仅接收原始材料，不接收首签结论；不一致置 `disputed` 进入人工仲裁",
+      "source_line": 279,
+      "status": "partial",
+      "stage": "roles",
+      "current": "程序双模型真实闭环已有；本轮增加三类文档与disputed，真实文档复核等新密钥后验收。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/verification_jobs.py",
+        "src/loom/verification_worker.py",
+        "src/loom/review_inputs.py"
+      ],
+      "evidence": [
+        "tests/test_document_verification.py",
+        "tests/test_verification_jobs.py",
+        "tests/test_policy.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-026",
+      "requirement": "**基准比对**：与黄金答案/黄金用例集比对",
+      "priority": "M",
+      "acceptance": "基准集可版本化；比对结果可追溯到具体用例",
+      "source_line": 280,
+      "status": "partial",
+      "stage": "assurance",
+      "current": "有限冻结宿主用例与内容摘要已有，通用黄金集版本/标注待补。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-027",
+      "requirement": "**置信度评估**（多次采样一致性度量）",
+      "priority": "M",
+      "acceptance": "输出一致性指标；低置信结果触发不同处置路径",
+      "source_line": 281,
+      "status": "not_started",
+      "stage": "assurance",
+      "current": "多次采样一致性和低置信处置未接通。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-028",
+      "requirement": "验证结果可**回滚**到已知良好状态",
+      "priority": "M",
+      "acceptance": "投影回退可回放；执行回退须传播下游失效、撤销在途权限并独立处理外部补偿（§4.6.2）",
+      "source_line": 282,
+      "status": "partial",
+      "stage": "workflow",
+      "current": "下游失效传播和只读回放已有；现场图回退/权限撤销/外部补偿待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/repair.py",
+        "src/loom/execution.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_repair.py",
+        "tests/test_reviewed_execution.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-029",
+      "requirement": "基于验证结果的**反馈闭环**（失败→分类→修复→重跑）",
+      "priority": "M",
+      "acceptance": "闭环自动运转，轮次与结果全部留痕",
+      "source_line": 292,
+      "status": "partial",
+      "stage": "workflow",
+      "current": "受限Python自动修复已有，通用失败闭环待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/repair.py",
+        "src/loom/execution.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_repair.py",
+        "tests/test_reviewed_execution.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-030",
+      "requirement": "支持 **Prompt 自适应**",
+      "priority": "M",
+      "acceptance": "失败类型到 Prompt 策略的映射可配置；自适应动作留痕",
+      "source_line": 293,
+      "status": "partial",
+      "stage": "workflow",
+      "current": "已有Rebind反馈，版本化Prompt策略选择待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/repair.py",
+        "src/loom/execution.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_repair.py",
+        "tests/test_reviewed_execution.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-031",
+      "requirement": "支持**工具选择自适应**",
+      "priority": "M",
+      "acceptance": "同一任务在不同轮次可选不同工具；选择依据留痕",
+      "source_line": 294,
+      "status": "not_started",
+      "stage": "workflow",
+      "current": "动态工具选择未接通。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/repair.py",
+        "src/loom/execution.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_repair.py",
+        "tests/test_reviewed_execution.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-032",
+      "requirement": "支持**工作流路径自适应**（局部改边）",
+      "priority": "S",
+      "acceptance": "支持 Rewire / Bypass / InsertPrereq 等路径级调整",
+      "source_line": 295,
+      "status": "not_started",
+      "stage": "workflow",
+      "current": "通用Rewire/Bypass/InsertPrereq未接通。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/repair.py",
+        "src/loom/execution.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_repair.py",
+        "tests/test_reviewed_execution.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-033",
+      "requirement": "**收敛判定**公式化（新增产出阈值 + 空闲轮数）",
+      "priority": "M",
+      "acceptance": "收敛条件可配置；达到条件时停止派发并给出判定依据",
+      "source_line": 296,
+      "status": "partial",
+      "stage": "workflow",
+      "current": "纯收敛判定已有，真实去重窗口和派发停止待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/repair.py",
+        "src/loom/execution.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_repair.py",
+        "tests/test_reviewed_execution.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-034",
+      "requirement": "**不可自改约束**：优化节点不得修改自身目标函数",
+      "priority": "M",
+      "acceptance": "尝试修改在途验收/规则快照被拒绝并留痕；代码底线与授权规则发布权限分离（P6）",
+      "source_line": 297,
+      "status": "partial",
+      "stage": "workflow",
+      "current": "冻结合同/验收不可自改已有，生产授权规则发布职责分离待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/repair.py",
+        "src/loom/execution.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_repair.py",
+        "tests/test_reviewed_execution.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-035",
+      "requirement": "六种**修复原语**定向修复",
+      "priority": "M",
+      "acceptance": "Rebind/InsertPrereq/Substitute/Rewire/Bypass/Escalate 均可用且有各自用例",
+      "source_line": 298,
+      "status": "partial",
+      "stage": "workflow",
+      "current": "Rebind/Escalate已有，六原语通用图事务待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/repair.py",
+        "src/loom/execution.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_repair.py",
+        "tests/test_reviewed_execution.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-036",
+      "requirement": "**MCP** 客户端与 Server 实现",
+      "priority": "M",
+      "acceptance": "按当前 MCP 规范实现（无状态核心）；≥3 个 Server；Server 与客户端均可在无 LLM 情况下单测",
+      "source_line": 304,
+      "status": "not_started",
+      "stage": "tools",
+      "current": "MCP客户端、Server及三Server验收未接通。",
+      "code": [
+        "src/loom/failures.py",
+        "src/loom/tool_registry.py",
+        "src/loom/tool_recovery.py",
+        "src/loom/sandbox.py"
+      ],
+      "evidence": [
+        "tests/test_tool_registry.py",
+        "tests/test_tool_recovery.py",
+        "tests/test_sandbox.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-037",
+      "requirement": "**Function Calling** 工具调用",
+      "priority": "M",
+      "acceptance": "工具 schema 类型化；参数校验在调用前完成",
+      "source_line": 305,
+      "status": "not_started",
+      "stage": "tools",
+      "current": "通用Function Calling和调用前schema校验未接通。",
+      "code": [
+        "src/loom/failures.py",
+        "src/loom/tool_registry.py",
+        "src/loom/tool_recovery.py",
+        "src/loom/sandbox.py"
+      ],
+      "evidence": [
+        "tests/test_tool_registry.py",
+        "tests/test_tool_recovery.py",
+        "tests/test_sandbox.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-038",
+      "requirement": "**API 插件**通用接入",
+      "priority": "S",
+      "acceptance": "任意 HTTP API 可声明式接入",
+      "source_line": 306,
+      "status": "not_started",
+      "stage": "tools",
+      "current": "声明式HTTP API插件未接通。",
+      "code": [
+        "src/loom/failures.py",
+        "src/loom/tool_registry.py",
+        "src/loom/tool_recovery.py",
+        "src/loom/sandbox.py"
+      ],
+      "evidence": [
+        "tests/test_tool_registry.py",
+        "tests/test_tool_recovery.py",
+        "tests/test_sandbox.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-039",
+      "requirement": "工具**注册中心**：统一 schema、版本、健康状态",
+      "priority": "M",
+      "acceptance": "工具不可用时调用方获得明确错误而非超时",
+      "source_line": 307,
+      "status": "partial",
+      "stage": "tools",
+      "current": "固定tests.run注册已有，动态schema/版本/健康待补。",
+      "code": [
+        "src/loom/failures.py",
+        "src/loom/tool_registry.py",
+        "src/loom/tool_recovery.py",
+        "src/loom/sandbox.py"
+      ],
+      "evidence": [
+        "tests/test_tool_registry.py",
+        "tests/test_tool_recovery.py",
+        "tests/test_sandbox.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-040",
+      "requirement": "工具调用经**统一出口**，可施加策略、限流与审批",
+      "priority": "M",
+      "acceptance": "出口可拦截；紧急拒绝/撤销即时收紧，放宽只经新run或新显式授权生效，不修改在途冻结底线",
+      "source_line": 308,
+      "status": "partial",
+      "stage": "tools",
+      "current": "Docker无网/固定工具授权已有，通用出口与紧急撤销待补。",
+      "code": [
+        "src/loom/failures.py",
+        "src/loom/tool_registry.py",
+        "src/loom/tool_recovery.py",
+        "src/loom/sandbox.py"
+      ],
+      "evidence": [
+        "tests/test_tool_registry.py",
+        "tests/test_tool_recovery.py",
+        "tests/test_sandbox.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-041",
+      "requirement": "敏感数据**脱敏**",
+      "priority": "M",
+      "acceptance": "脱敏规则可配置；密钥/令牌类模式默认脱敏",
+      "source_line": 309,
+      "status": "partial",
+      "stage": "tools",
+      "current": "错误/结果摘要不回显敏感值已有，可配置脱敏待补。",
+      "code": [
+        "src/loom/failures.py",
+        "src/loom/tool_registry.py",
+        "src/loom/tool_recovery.py",
+        "src/loom/sandbox.py"
+      ],
+      "evidence": [
+        "tests/test_tool_registry.py",
+        "tests/test_tool_recovery.py",
+        "tests/test_sandbox.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-042",
+      "requirement": "**事件日志**：append-only，含提交幂等键与事务回执",
+      "priority": "M",
+      "acceptance": "同键同参重试取回回执不重复写入；同键异参拒绝",
+      "source_line": 317,
+      "status": "partial",
+      "stage": "assurance",
+      "current": "本机事件/回执/outbox已有，生产存储适配与全链路综合验收待补。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-043",
+      "requirement": "**状态快照**与断点恢复",
+      "priority": "M",
+      "acceptance": "可从任意快照恢复运行；恢复后可继续",
+      "source_line": 318,
+      "status": "partial",
+      "stage": "assurance",
+      "current": "一致副本冷开已有，任意快照恢复并安全继续待补。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-044",
+      "requirement": "**多租户隔离**（命名空间、凭据、配额、队列）",
+      "priority": "M",
+      "acceptance": "跨租户不可见；数据库、对象下载、证据解析、claim 和队列逐层验证归属，越权访问被拒并审计",
+      "source_line": 319,
+      "status": "partial",
+      "stage": "assurance",
+      "current": "本机API/任务/账本租户键已有，生产对象/队列/身份隔离待补。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-045",
+      "requirement": "**认证与授权**（OIDC + RBAC + 节点级细粒度）",
+      "priority": "M",
+      "acceptance": "节点级授权生效；权限变更可审计",
+      "source_line": 320,
+      "status": "partial",
+      "stage": "assurance",
+      "current": "本机RBAC已有，OIDC与节点细粒度权限待补。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-046",
+      "requirement": "**Worker 沙箱执行**（可插拔隔离级别）",
+      "priority": "M",
+      "acceptance": "默认配置下 Worker 无法访问宿主敏感路径",
+      "source_line": 321,
+      "status": "partial",
+      "stage": "assurance",
+      "current": "真实Docker程序隔离已有，可插拔完整Worker沙箱待补。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-047",
+      "requirement": "**配额与限流**（租户级、模型级、工具级）",
+      "priority": "M",
+      "acceptance": "超限行为明确（拒绝或降级），不静默",
+      "source_line": 322,
+      "status": "partial",
+      "stage": "runtime",
+      "current": "源库模型/工具/租户配额已有，私有复核共享配额与多主机待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/store.py",
+        "src/loom/quotas.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_plan_integrity.py",
+        "tests/test_store_admission.py",
+        "tests/test_quotas.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-048",
+      "requirement": "观测接口：指标、追踪、审计三类出口",
+      "priority": "M",
+      "acceptance": "三类出口均可用；完整事件信封及已签检查点的篡改、重排与截断可检测",
+      "source_line": 323,
+      "status": "partial",
+      "stage": "assurance",
+      "current": "完整本地哈希链和心跳已有，指标/追踪/独立检查点待补。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-049",
+      "requirement": "**灰度发布与快速回滚**（平台版本 + 领域包版本独立）",
+      "priority": "M",
+      "acceptance": "领域包可单独回滚；回滚不影响在途运行",
+      "source_line": 324,
+      "status": "not_started",
+      "stage": "assurance",
+      "current": "平台/领域包独立灰度与回滚未接通。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-050",
+      "requirement": "领域包**加载与版本兼容**",
+      "priority": "M",
+      "acceptance": "加载新包零内核代码变更；不兼容包被明确拒绝并给出原因",
+      "source_line": 325,
+      "status": "partial",
+      "stage": "runtime",
+      "current": "当前固定software-dev包，通用包加载/兼容待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/store.py",
+        "src/loom/quotas.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_plan_integrity.py",
+        "tests/test_store_admission.py",
+        "tests/test_quotas.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-051",
+      "requirement": "**上下文组装与分层裁剪**：按依赖可达性、语义相关性、token 预算逐级裁剪",
+      "priority": "M",
+      "acceptance": "裁剪规则可配置；被丢弃内容记入 `context.trimmed` 事件可审计；相对全图注入基线的 token 占用满足 NFR-012",
+      "source_line": 268,
+      "status": "partial",
+      "stage": "knowledge",
+      "current": "字节上限和精确辅助输入已有，分层可达性/语义/token裁剪未接通。",
+      "code": [
+        "src/loom/artifacts.py",
+        "src/loom/context_budget.py"
+      ],
+      "evidence": [
+        "tests/test_execution_context.py",
+        "tests/test_context_budget.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-052",
+      "requirement": "**Agent 间协作契约**：交接物类型化、上下文隔离、输出 schema 强校验",
+      "priority": "M",
+      "acceptance": "交接物仅含结构化产物/证据引用/决策摘要；自由文本指令不跨 Agent 传递；子 Agent 上下文独立，父仅收摘要；输出不合 schema 即拒绝",
+      "source_line": 242,
+      "status": "partial",
+      "stage": "roles",
+      "current": "结构化候选及隔离复核已有，全部角色/子工作流契约继续接通。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/verification_jobs.py",
+        "src/loom/verification_worker.py",
+        "src/loom/review_inputs.py"
+      ],
+      "evidence": [
+        "tests/test_document_verification.py",
+        "tests/test_verification_jobs.py",
+        "tests/test_policy.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-053",
+      "requirement": "**判定规则声明化**：领域包提供的是规则表达式，不是可执行代码",
+      "priority": "M",
+      "acceptance": "规则由内核表达式求值器执行；装载时静态分析拦截非白名单函数与外部引用；表达式无副作用",
+      "source_line": 283,
+      "status": "partial",
+      "stage": "assurance",
+      "current": "已有代码内门禁参数，通用安全表达式静态分析待补。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-054",
+      "requirement": "**验证抽样复核**：内核选样，使用独立授权的评测适配器复核",
+      "priority": "M",
+      "acceptance": "风险分层抽样；被抽中产物复核完成前不可交付；报告样本量与置信区间；高风险错误立即阻断（§4.5.5）",
+      "source_line": 284,
+      "status": "not_started",
+      "stage": "assurance",
+      "current": "风险抽样/置信区间/独立评测适配器未接通。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-055",
+      "requirement": "**强制双签判定由内核决定**，领域包只能加严不能放宽",
+      "priority": "M",
+      "acceptance": "领域包可将更多结论纳入双签，不能把内核要求双签的结论降为单签",
+      "source_line": 285,
+      "status": "partial",
+      "stage": "roles",
+      "current": "内核强制双签已有，通用包接口只能加严规则待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/policy.py",
+        "src/loom/verification_jobs.py",
+        "src/loom/verification_worker.py",
+        "src/loom/review_inputs.py"
+      ],
+      "evidence": [
+        "tests/test_document_verification.py",
+        "tests/test_verification_jobs.py",
+        "tests/test_policy.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-056",
+      "requirement": "**外部副作用语义**：非幂等工具处于不确定态时**不自动重放**",
+      "priority": "M",
+      "acceptance": "崩溃恢复对\"已发起未确认\"的外部写操作转人工；不产生重复外部写；不确定态可查询与处置",
+      "source_line": 311,
+      "status": "partial",
+      "stage": "tools",
+      "current": "模型/测试未知态不重放已有，通用非幂等外部写与处置待补。",
+      "code": [
+        "src/loom/failures.py",
+        "src/loom/tool_registry.py",
+        "src/loom/tool_recovery.py",
+        "src/loom/sandbox.py"
+      ],
+      "evidence": [
+        "tests/test_tool_registry.py",
+        "tests/test_tool_recovery.py",
+        "tests/test_sandbox.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-057",
+      "requirement": "**工作流模板与调度策略资产化**：可导出、导入、版本化，带适用域签名",
+      "priority": "M",
+      "acceptance": "模板可独立分发；适用域签名（kind 覆盖/输入输出契约/成功判据）可判断能否复用；调度策略（权重/路由/预算）可单独导出",
+      "source_line": 253,
+      "status": "partial",
+      "stage": "runtime",
+      "current": "工作流JSON导入导出已有，领域签名及独立调度策略资产待补。",
+      "code": [
+        "src/loom/workflow.py",
+        "src/loom/store.py",
+        "src/loom/quotas.py"
+      ],
+      "evidence": [
+        "tests/test_workflow.py",
+        "tests/test_plan_integrity.py",
+        "tests/test_store_admission.py",
+        "tests/test_quotas.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-058",
+      "requirement": "**人工控制台**：待裁决队列、证据摘要视图、一键裁决、操作审计",
+      "priority": "M",
+      "acceptance": "裁决视图含累积证据、已试原语、置信度、建议动作；裁决动作全程审计；不可由发起者自批",
+      "source_line": 286,
+      "status": "partial",
+      "stage": "assurance",
+      "current": "中文证据/控制/核对已有，独立责任人裁决/禁止自批/完整证据面板待补。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-059",
+      "requirement": "工具注册时**标注幂等性**（`idempotent` / `non_idempotent`）",
+      "priority": "M",
+      "acceptance": "注册 schema 必含该字段；非幂等工具的调用前置/后置事件可查",
+      "source_line": 310,
+      "status": "partial",
+      "stage": "tools",
+      "current": "固定测试工具声明已有，通用注册必填幂等分类与双事件待补。",
+      "code": [
+        "src/loom/failures.py",
+        "src/loom/tool_registry.py",
+        "src/loom/tool_recovery.py",
+        "src/loom/sandbox.py"
+      ],
+      "evidence": [
+        "tests/test_tool_registry.py",
+        "tests/test_tool_recovery.py",
+        "tests/test_sandbox.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-060",
+      "requirement": "**场景集与 ground truth 管理**：分层、标注规程、防泄漏",
+      "priority": "M",
+      "acceptance": "场景分难度层；ground truth 来源与标注者独立性可查；held-out 集不参与任何提示词与调参",
+      "source_line": 326,
+      "status": "partial",
+      "stage": "assurance",
+      "current": "宿主用例与公开检查隔离已有，分层场景和独立标注登记待补。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-061",
+      "requirement": "**内部基准与领域自评物理隔离**：两套指标独立存储、独立报表",
+      "priority": "M",
+      "acceptance": "内部基准由内核持有并判定；领域自评指标单独命名空间，报表中不可混列",
+      "source_line": 327,
+      "status": "partial",
+      "stage": "assurance",
+      "current": "公开开发检查/宿主终验分离已有，内部/领域评测独立物理存储报表待补。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    },
+    {
+      "id": "FR-062",
+      "requirement": "**鲁棒性演练模式**：可注入歧义需求、脏工具输出、模型降级、超大规模",
+      "priority": "M",
+      "acceptance": "四类注入可脚本化执行；输出鲁棒性保持率指标（NFR-016）",
+      "source_line": 328,
+      "status": "partial",
+      "stage": "assurance",
+      "current": "局部失败/恢复测试已有，四类产品化注入和保持率报告待补。",
+      "code": [
+        "src/loom/api.py",
+        "src/loom/store.py",
+        "src/loom/auth.py",
+        "src/loom/operator.py",
+        "src/loom/checkpoints.py",
+        "src/loom/recovery_check.py"
+      ],
+      "evidence": [
+        "tests/test_api.py",
+        "tests/test_operator.py",
+        "tests/test_recovery_check.py",
+        "tests/test_checkpoints.py"
+      ],
+      "comprehensive_acceptance_passed": false
+    }
+  ]
+}

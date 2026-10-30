@@ -74,9 +74,10 @@ class RoleTaskRunner:
             "Code-owned output schema: " + canonical(schema)},
             {"role": "user", "content": canonical(incoming)}]
         if output["kind"] == "review-findings":
+            source_name='artifact.json' if spec['review_subject']['schema_version']=='loom.review-subject-ref/v2' else 'main.py'
             messages[0]["content"] += (
                 " 请用中文填写审查摘要、问题说明和修复建议，协议标识与subject精确引用保持原样。"
-                "只审查提供的main.py；不得执行代码。意见仅为候选，不代表独立验证或任务完成。")
+                f"只审查提供的{source_name}及冻结原始需求；不得执行代码。意见仅为候选，不代表独立验证或任务完成。")
         readiness = self.gateway.readiness(route.alias)
         if not readiness.ready:
             raise GatewayError(readiness.reason)

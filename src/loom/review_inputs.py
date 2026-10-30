@@ -10,7 +10,7 @@ import json
 
 from pydantic import ValidationError
 
-from .artifact_schemas import (MAX_CONTEXT_BYTES, ReviewSubjectReference, ReviewFinding,
+from .artifact_schemas import (BODY_MODELS, MAX_CONTEXT_BYTES, ReviewSubjectReference, ReviewFinding,
                                ReviewFindingsBody)
 from .artifacts import ArtifactService
 from .sandbox import RUNNER_SHA256
@@ -48,6 +48,8 @@ class ReviewInputService:
         if run["status"] == "cancelled" or row["status"] not in {"submitted", "done"} or not row["output"]:
             raise Conflict("review requires a current submitted implementation")
         spec = self.artifacts._contract(db, tenant, run_id, task_id)
+        if spec['role'] in {'analyst','architect','tester'}:
+            return self._artifact_preview_in(db,tenant,run_id,row,spec,include_source)
         if (spec["role"] not in {"developer", "fixer"} or spec["scope"] != "local-workspace"
                 or not {"workspace.write", "tests.run"} <= set(spec["tools"])):
             raise Conflict("review source is not an approved executable task")
@@ -129,6 +131,52 @@ class ReviewInputService:
             result["files"] = context["files"]
         return result
 
+    def _artifact_preview_in(self,db,tenant,run_id,task,spec,include_source):
+        """Schema evidence plus exact gateway origin; semantics still need two reviews."""
+        if spec['scope']!='local-workspace' or 'artifacts.write' not in spec['tools']:
+            raise Conflict('document review requires an approved typed source')
+        if db.execute("SELECT 1 FROM effects WHERE tenant=? AND task_id=? AND state IN ('intent','indeterminate','partial')",(tenant,task['id'])).fetchone():
+            raise Conflict('document review source has an unresolved external effect')
+        try:
+            output=json.loads(task['output'])
+            if output['kind']!='role-artifact':raise ValueError
+            row,body=self.artifacts._candidate(db,tenant,run_id,output['artifact_id'])
+            provenance=self.artifacts._candidate_binding(row)
+            stale=self.artifacts._stale_reasons(db,row)
+            if task['status']=='done' and self.store._run(db,tenant,run_id)['status']=='succeeded':
+                stale=[reason for reason in stale if reason!='run_terminal']
+            if (stale or provenance.get('model_source_recorded') is not True
+                    or row['source_task_id']!=task['id'] or row['source_epoch']!=task['epoch']
+                    or row['kind']!=spec['role_output']['kind'] or row['plan_digest']!=spec['plan_digest']
+                    or output['artifact_content_hash']!=row['content_hash'] or output['artifact_kind']!=row['kind']
+                    or output['artifact_schema_version']!=row['schema_version'] or output['plan_digest']!=spec['plan_digest']
+                    or output['model_call_id']!=provenance['model_provenance']['call_id']):raise ValueError
+            events=self._events_in(db,tenant,run_id)
+            claims=[e for e in events if e['type']=='task.claimed' and e['payload'].get('task_id')==task['id'] and e['payload'].get('epoch')==task['epoch']]
+            generated=[e for e in events if e['type']=='role.candidate_generated' and e['hash']==row['source_event_hash'] and e['actor']=='local-executor']
+            submitted=[e for e in events if e['type']=='task.output_submitted' and e['payload'].get('task_id')==task['id']
+                and e['payload'].get('content_hash')==digest(output) and e['payload'].get('output')==output]
+            if len(claims)!=1 or len(generated)!=1 or len(submitted)!=1:raise ValueError
+            if (not claims[0]['seq']<generated[0]['seq']<submitted[0]['seq']
+                    or submitted[0]['actor']!='worker:'+claims[0]['payload']['worker']
+                    or (task['worker'] is not None and task['worker']!=claims[0]['payload']['worker'])):raise ValueError
+            files={'artifact.json':json.dumps(body,ensure_ascii=False,indent=2,sort_keys=True)+'\n'}
+            schema_digest=digest(BODY_MODELS[row['kind']].model_json_schema())
+            subject=ReviewSubjectReference(schema_version='loom.review-subject-ref/v2',run_id=run_id,task_id=task['id'],epoch=task['epoch'],
+                plan_digest=spec['plan_digest'],content_hash=digest(output),source_sha256=digest(files),evaluation_digest=schema_digest,
+                evaluation_event_hash=row['source_event_hash'],submission_event_hash=submitted[0]['hash'],artifact_id=row['id'],
+                artifact_kind=row['kind'],artifact_schema_version=row['schema_version'],artifact_content_hash=row['content_hash']).model_dump(mode='json')
+        except (KeyError,TypeError,ValueError,ValidationError):raise Conflict('document review source binding is inconsistent') from None
+        summary=dict(cases_executed=0,cases_passed=0,hard_criteria_passed=True,report_digest=schema_digest,
+            evidence_source='local-executor-typed-schema')
+        context=dict(schema_version='loom.review-input/v1',subject=subject,execution_summary=summary,files=files)
+        if len(canonical(context).encode('utf-8'))>MAX_CONTEXT_BYTES:raise Conflict('review context exceeds the static byte limit')
+        result=dict(schema_version=context['schema_version'],subject=subject,execution_summary=summary,input_digest=digest(context),
+            source_included=include_source,untrusted_source=True,independently_verified=False,counts_as_success=False,
+            execution_authorized=False,hidden_tests_included=False,reviewer_generation_connected=True)
+        if include_source:result['files']=files
+        return result
+
     def preview(self, tenant, run_id, task_id, *, include_source=False):
         if type(include_source) is not bool:
             raise InvalidInput("include_source must be boolean")
@@ -151,7 +199,9 @@ class ReviewInputService:
     def check_body(body, current):
         if body["subject"] != current["subject"]:
             raise Conflict("review findings refer to a changed implementation or evidence")
-        line_count = len(current["files"]["main.py"].splitlines())
+        path='main.py' if current['subject']['schema_version']=='loom.review-subject-ref/v1' else 'artifact.json'
+        line_count = len(current["files"][path].splitlines())
+        if any(f['path']!=path for f in body['findings']):raise InvalidInput('finding path differs from current source')
         if any(f["end_line"] > line_count for f in body["findings"]):
             raise InvalidInput("review finding line range exceeds the bound source")
 

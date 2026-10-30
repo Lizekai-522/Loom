@@ -138,7 +138,8 @@ class TaskNode(StrictModel):
                 if self.role_output is None or self.role_output.kind != "review-findings":
                     raise ValueError("reviewer reference requires explicit findings output")
             elif self.role == "fixer":
-                if (self.evaluation_digest != self.review_subject.evaluation_digest
+                if (self.review_subject.schema_version!='loom.review-subject-ref/v1'
+                        or self.evaluation_digest != self.review_subject.evaluation_digest
                         or self.repair is not None or self.development_suite is not None
                         or self.limits.max_attempts != 1
                         or not any(i.kind == "review-findings" and i.required for i in self.input_artifacts or [])):

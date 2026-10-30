@@ -28,7 +28,7 @@ ReviewIdentifier = Annotated[str, Field(min_length=1, max_length=200)]
 
 
 class ReviewSubjectReference(ArtifactModel):
-    schema_version: Literal["loom.review-subject-ref/v1"]
+    schema_version: Literal["loom.review-subject-ref/v1", "loom.review-subject-ref/v2"]
     run_id: ReviewIdentifier
     task_id: ReviewIdentifier
     epoch: int = Field(ge=1)
@@ -38,12 +38,26 @@ class ReviewSubjectReference(ArtifactModel):
     evaluation_digest: Hash
     evaluation_event_hash: Hash
     submission_event_hash: Hash
+    artifact_id: ReviewIdentifier | None = Field(default=None, exclude_if=lambda value: value is None)
+    artifact_kind: Literal['requirements','design','public-checks'] | None = Field(default=None, exclude_if=lambda value: value is None)
+    artifact_schema_version: str | None = Field(default=None, max_length=64, exclude_if=lambda value: value is None)
+    artifact_content_hash: Hash | None = Field(default=None, exclude_if=lambda value: value is None)
+
+    @model_validator(mode='after')
+    def typed_reference(self):
+        fields=(self.artifact_id,self.artifact_kind,self.artifact_schema_version,self.artifact_content_hash)
+        if self.schema_version=='loom.review-subject-ref/v1':
+            if any(value is not None for value in fields):raise ValueError('program reference cannot include document fields')
+        elif (any(value is None for value in fields)
+              or self.artifact_schema_version!=ARTIFACT_SCHEMAS[self.artifact_kind]):
+            raise ValueError('document reference requires its complete typed binding')
+        return self
 
 
 class ReviewFinding(ArtifactModel):
     id: Name
     severity: Literal["blocker", "major", "minor", "info"]
-    path: Literal["main.py"]
+    path: Literal["main.py", "artifact.json"]
     start_line: int = Field(ge=1, le=262144)
     end_line: int = Field(ge=1, le=262144)
     description: Text
@@ -68,6 +82,8 @@ class ReviewFindingsBody(ArtifactModel):
         if (bool(self.findings) != (self.verdict == "findings")
                 or len({item.id for item in self.findings}) != len(self.findings)):
             raise ValueError("findings and verdict differ or IDs repeat")
+        path='main.py' if self.subject.schema_version=='loom.review-subject-ref/v1' else 'artifact.json'
+        if any(finding.path!=path for finding in self.findings):raise ValueError('finding path differs from the typed subject')
         return self
 
 

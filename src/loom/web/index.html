@@ -61,12 +61,12 @@
         </section>
         <section id="tab-verification" class="tab-panel" aria-label="独立双模型复核" hidden>
           <div class="section-heading"><h2>独立复核</h2><button id="verification-workspace-refresh" type="button">刷新工作台状态</button></div>
-          <p class="field-help">核对已测试的程序，并明确请求 Flash 与 Pro 分别复核。双签通过后才验证程序任务；目标需全部任务与冻结判据通过。下载证据不会发起调用。</p>
-          <label for="verification-task">程序任务</label><select id="verification-task"></select><button id="verification-read" type="button">重新核对复核条件</button>
+          <p class="field-help">核对已测试程序或具备模型来源的需求、设计、公开检查候选，并明确请求 Flash 与 Pro 分别复核。双签通过后才验证产物任务；目标需全部任务与冻结判据通过。下载证据不会发起调用。</p>
+          <label for="verification-task">产物任务</label><select id="verification-task"></select><button id="verification-read" type="button">重新核对复核条件</button>
           <p id="verification-state" class="field-help" role="status" aria-live="polite"></p><div id="verification-detail"></div>
           <form id="verification-form" class="approval-form" hidden>
             <label for="verification-reason">复核理由</label><textarea id="verification-reason" maxlength="2000" rows="3" required></textarea>
-            <label class="check-label"><input id="verification-reviewed" type="checkbox" required>我已核对源码、宿主测试、版本和独立复核额度；同意本次额外复核预留，生成任务额度另行计算</label>
+            <label class="check-label"><input id="verification-reviewed" type="checkbox" required>我已核对产物正文、验证证据、版本和独立复核额度；同意本次额外复核预留，生成任务额度另行计算</label>
             <button id="verification-submit" class="primary" type="submit">申请双模型独立复核</button>
           </form>
         </section>
