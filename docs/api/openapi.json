@@ -3,7 +3,7 @@
   "info": {
     "title": "Loom local kernel",
     "description": "Single-host audited API. Explicit generation and dual-model verification requests are handled by separately configured private workers; production identity and hosting remain tracked independently.",
-    "version": "0.22.0"
+    "version": "0.23.0"
   },
   "paths": {
     "/v1/me": {
@@ -3547,7 +3547,8 @@
                 "enum": [
                   "requirements",
                   "design",
-                  "public-checks"
+                  "public-checks",
+                  "review-findings"
                 ]
               },
               {

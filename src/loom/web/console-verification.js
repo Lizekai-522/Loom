@@ -8,7 +8,7 @@ window.LoomVerificationPanel = function ({state,$,node,has,request,publicError,r
   const current=()=>Boolean(binding&&binding===selection()&&state.tab==='verification');
   const tasks=()=> (state.review?.tasks||[]).filter(t=>['submitted','done'].includes(t.status)&&(
     (t.artifact?.kind==='python-json-program'&&t.artifact.trusted_evaluation===true)||
-    (t.artifact?.kind==='role-artifact'&&['analyst','architect','tester'].includes(t.role)&&
+    (t.artifact?.kind==='role-artifact'&&['analyst','architect','tester','reviewer'].includes(t.role)&&
       (t.status==='done'||t.artifact.model_source_recorded===true))));
   function reset(){version++;binding="";taskId="";busy=false;preview=history=caps=null;commandKey="";clearTimeout(timer);timer=null;$("verification-detail").replaceChildren();$("verification-task").replaceChildren();$("verification-reviewed").checked=false;$("verification-reason").value="";}
   function controls(){
@@ -33,6 +33,7 @@ window.LoomVerificationPanel = function ({state,$,node,has,request,publicError,r
       root.append(card);
     }
     if(preview?.subject?.schema_version==='loom.review-subject-ref/v2')root.append(node('p','field-help','结构化产物先核对模型来源与格式，再由两模型分别核对原始需求。此操作不执行代码或公开测试用例，不能替代 tests.pass。'));
+    if(preview?.subject?.artifact_kind==='review-findings'||state.review?.tasks?.find(t=>t.id===taskId)?.role==='reviewer')root.append(node('p','field-help','原审查质量还须对照被审原始产物、冻结需求和宿主证据摘要；可在正文页展开并导出绑定的原始材料。'));
     if(history&&!history.requests.length)root.append(node('p','field-help','此产物还没有独立复核请求。请先核对预算、正文和验证证据，再明确申请。'));
     controls();
   }

@@ -1,6 +1,6 @@
 # Loom
 
-基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.22.0**修复普通 wheel 安装后领域资源缺失，增加只读内置包与租户隔离的版本化领域包、模板导入导出和精确计划绑定。新包沿用现有七种受控角色，不自动批准、发起模型或替换旧计划。[领域包 API](docs/domain-packs.md) · [全功能计划](docs/full-function-plan-2026-10-30.md) · [62项验收表](docs/functional-acceptance.md) · [本轮验证](docs/validation-0.22.0.md) · [四轮上线计划](docs/launch-four-rounds-2026-10-30.md) · [配额说明](docs/quotas.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
+基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.23.0**增加审查意见的独立双签验收：同时核对意见正文、被审原始产物、冻结需求和宿主摘要，绑定同一文件摘要。隐藏终验资料继续隔离，验证通过仍不自动授权修复。保留0.22.0正常安装包与领域版本资产。[审查验收](docs/reviewer-verification.md) · [全功能计划](docs/full-function-plan-2026-10-30.md) · [62项验收表](docs/functional-acceptance.md) · [本轮验证](docs/validation-0.23.0.md) · [四轮上线计划](docs/launch-four-rounds-2026-10-30.md) · [配额说明](docs/quotas.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
 
 0.17.4历史重测967主/382子、Chromium63项，三份源码下载与权威原始字节一致；0.17.5测试与真实基础设施证据单独登记。[历史验证](docs/validation.md)
 

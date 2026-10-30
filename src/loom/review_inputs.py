@@ -48,7 +48,7 @@ class ReviewInputService:
         if run["status"] == "cancelled" or row["status"] not in {"submitted", "done"} or not row["output"]:
             raise Conflict("review requires a current submitted implementation")
         spec = self.artifacts._contract(db, tenant, run_id, task_id)
-        if spec['role'] in {'analyst','architect','tester'}:
+        if spec['role'] in {'analyst','architect','tester','reviewer'}:
             return self._artifact_preview_in(db,tenant,run_id,row,spec,include_source)
         if (spec["role"] not in {"developer", "fixer"} or spec["scope"] != "local-workspace"
                 or not {"workspace.write", "tests.run"} <= set(spec["tools"])):
@@ -132,6 +132,11 @@ class ReviewInputService:
         return result
 
     def _artifact_preview_in(self,db,tenant,run_id,task,spec,include_source):
+        if (spec['role']=='reviewer' and (not spec.get('review_subject')
+                or spec['review_subject'].get('artifact_kind')=='review-findings')):
+            # One primary review may be independently audited. Do not recursively
+            # verify arbitrarily deep reviews of review reports.
+            raise Conflict('nested review reports require a separately bounded adjudication path')
         """Schema evidence plus exact gateway origin; semantics still need two reviews."""
         if spec['scope']!='local-workspace' or 'artifacts.write' not in spec['tools']:
             raise Conflict('document review requires an approved typed source')
@@ -161,6 +166,24 @@ class ReviewInputService:
                     or submitted[0]['actor']!='worker:'+claims[0]['payload']['worker']
                     or (task['worker'] is not None and task['worker']!=claims[0]['payload']['worker'])):raise ValueError
             files={'artifact.json':json.dumps(body,ensure_ascii=False,indent=2,sort_keys=True)+'\n'}
+            if row['kind']=='review-findings':
+                if body['subject']!=spec['review_subject']:raise ValueError
+                original=self.resolve_reference_in(db,tenant,spec['review_subject'])
+                original_ref=original['subject']
+                original_spec=self.artifacts._contract(db,tenant,original_ref['run_id'],original_ref['task_id'])
+                roots=[event for event in self._events_in(db,tenant,original_ref['run_id']) if event['type']=='run.created']
+                if len(roots)!=1 or not roots[0]['payload'].get('managed_workflow'):raise ValueError
+                goal=db.execute('SELECT description,acceptance FROM workflow_goals WHERE tenant=? AND run_id=?',
+                    (tenant,original_ref['run_id'])).fetchone()
+                requirements=dict(description=roots[0]['payload']['description'],instruction=original_spec['instruction'],
+                    acceptance=roots[0]['payload']['acceptance'])
+                if (goal is None or goal['description']!=requirements['description']
+                        or json.loads(goal['acceptance'])!=requirements['acceptance']):raise ValueError
+                # Only source text, trusted summary counts and frozen requirements.
+                # Private test inputs, expected outputs and model transcripts stay out.
+                files['review-context.json']=canonical(dict(schema_version='loom.review-context/v1',
+                    subject=original_ref,files=original['files'],execution_summary=original['execution_summary'],
+                    original_requirements=requirements,untrusted_source=True))+'\n'
             schema_digest=digest(BODY_MODELS[row['kind']].model_json_schema())
             subject=ReviewSubjectReference(schema_version='loom.review-subject-ref/v2',run_id=run_id,task_id=task['id'],epoch=task['epoch'],
                 plan_digest=spec['plan_digest'],content_hash=digest(output),source_sha256=digest(files),evaluation_digest=schema_digest,

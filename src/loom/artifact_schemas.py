@@ -39,7 +39,7 @@ class ReviewSubjectReference(ArtifactModel):
     evaluation_event_hash: Hash
     submission_event_hash: Hash
     artifact_id: ReviewIdentifier | None = Field(default=None, exclude_if=lambda value: value is None)
-    artifact_kind: Literal['requirements','design','public-checks'] | None = Field(default=None, exclude_if=lambda value: value is None)
+    artifact_kind: Literal['requirements','design','public-checks','review-findings'] | None = Field(default=None, exclude_if=lambda value: value is None)
     artifact_schema_version: str | None = Field(default=None, max_length=64, exclude_if=lambda value: value is None)
     artifact_content_hash: Hash | None = Field(default=None, exclude_if=lambda value: value is None)
 

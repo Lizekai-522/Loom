@@ -259,7 +259,7 @@
           button.disabled = state.busy || !runChecked(); button.addEventListener("click", () => { if (!button.disabled) sourcePanel.open(task); });
           content.append(button);
         }
-        if(artifact.kind==='role-artifact'&&['analyst','architect','tester'].includes(task.role)&&artifact.model_source_recorded===true&&['submitted','done'].includes(task.status)){
+        if(artifact.kind==='role-artifact'&&['analyst','architect','tester','reviewer'].includes(task.role)&&artifact.model_source_recorded===true&&['submitted','done'].includes(task.status)){
           const button=node('button','source-open','查看正文与导出');button.type='button';button.dataset.sourceTask=task.id;
           button.disabled=state.busy||!runChecked();button.addEventListener('click',()=>{if(!button.disabled)sourcePanel.open(task);});content.append(button);
         }

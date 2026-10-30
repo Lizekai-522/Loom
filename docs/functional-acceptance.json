@@ -2,7 +2,7 @@
   "schema_version": "loom.functional-acceptance/v1",
   "updated": "2026-10-30",
   "baseline": "0.20.0",
-  "current_increment": "0.22.0",
+  "current_increment": "0.23.0",
   "authoritative_spec": "docs/Loom.md",
   "implementation_plan": "docs/project-plan-2026-10-28.md",
   "rules": [
@@ -1180,18 +1180,22 @@
       "source_line": 242,
       "status": "partial",
       "stage": "roles",
-      "current": "结构化候选及隔离复核已有，全部角色/子工作流契约继续接通。",
+      "current": "类型化产物/精确审查引用/结构强校验已有；审查意见可结合绑定的被审原文和冻结需求做独立双签，隐藏用例不传递。完整七角色上下文及validator执行继续验收。",
       "code": [
         "src/loom/workflow.py",
         "src/loom/policy.py",
         "src/loom/verification_jobs.py",
         "src/loom/verification_worker.py",
-        "src/loom/review_inputs.py"
+        "src/loom/review_inputs.py",
+        "src/loom/review_inputs.py",
+        "src/loom/verification_worker.py"
       ],
       "evidence": [
         "tests/test_document_verification.py",
         "tests/test_verification_jobs.py",
-        "tests/test_policy.py"
+        "tests/test_policy.py",
+        "tests/test_reviewer_verification.py",
+        "tests/integration/test_reviewer_verification_live.py"
       ],
       "comprehensive_acceptance_passed": false
     },
