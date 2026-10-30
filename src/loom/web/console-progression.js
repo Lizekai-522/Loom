@@ -30,7 +30,7 @@ window.LoomProgression = function ({state, $, node, request, publicError, runChe
         const button=node('button','',actions[item.action]||'查看任务证据');button.type='button';
         button.addEventListener('click',()=>{if(button.disabled)return;if(item.action==='view_execution')execution(item);else navigate(item);});
         row.append(button);$("progression-list").append(row);
-        if(item.role&&item.role!=='validator'&&item.action!=='view_execution'){
+        if(item.role&&item.action!=='view_execution'){
           const history=node('button','','查看执行请求');history.type='button';history.addEventListener('click',()=>{if(!history.disabled)execution(item);});row.append(history);
         }
       }
@@ -39,7 +39,7 @@ window.LoomProgression = function ({state, $, node, request, publicError, runChe
   }
   function execution(item){
     const panel=$("progression-execution");panel.replaceChildren();
-    panel.append(node('h3','',`${label(item.role)} · 本机执行准备`),node('p','field-help',item.requires_host_tests
+    panel.append(node('h3','',`${label(item.role)} · 本机执行准备`),node('p','field-help',item.role==='validator'?'此节点只复验已独立验收的指定程序，不生成或修改代码。需要相同的冻结宿主用例；执行通过后仍需绑定本任务的新双签。':item.requires_host_tests
       ?'此节点需要本机独立冻结的宿主终验文件。先读取条件，再显式提交给本机执行器；页面不会加载用例正文或模型密钥。'
       :'此节点只生成结构化候选。读取准备不会调用模型，下方显式提交后由本机执行器处理。'));
     const preparation={schema_version:'loom.node-preparation/v1',run_id:data.run_id,node_id:item.node_id,role:item.role,

@@ -157,7 +157,7 @@ class DispatchService:
             try:
                 self._identity(tenant,'worker')
                 spec=self.artifacts._contract(db,tenant,run_id,task_id)
-                if spec['role']=='validator':raise InvalidInput('INDEPENDENT_MODEL_PENDING')
+                if spec['role']=='validator' and not spec.get('validation_source'):raise InvalidInput('INDEPENDENT_MODEL_PENDING')
                 tests=self.config.tests_for(spec)
                 preview=self.admission._check_in(db,tenant,run_id,spec['node_id'],spec['plan_digest'],tests,1024)[1]
                 binding=self.config.binding(spec['role'],spec['evaluation_digest'])

@@ -240,7 +240,7 @@
       const row = node("article", "task-row");
       const content = node("div");
       content.append(node("span", "task-title", task.title || task.id));
-      const detail = [label(task.role), task.model_alias, `轮次 ${str(task.epoch, "0")}`, label(task.channel)].filter(Boolean).join(" · ");
+      const detail = [label(task.role), task.validation_source?'指定程序复验 · 无代码生成':task.model_alias, `轮次 ${str(task.epoch, "0")}`, label(task.channel)].filter(Boolean).join(" · ");
       content.append(node("div", "task-detail", detail));
       const artifact = task.artifact;
       if (artifact) {

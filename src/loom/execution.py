@@ -169,7 +169,9 @@ class LocalTaskRunner:
                 'python-tests:'+phase+':'+digest(files)+':'+tests_hash,
                 dict(tool_id=PYTHON_TESTS.tool_id,tool_version=PYTHON_TESTS.version,phase=phase,
                     source_digest=digest(files),tests_digest=tests_hash,plan_digest=spec['plan_digest']))
-        result=run_python_tool(self.sandbox,spec,files,frozen)
+        if spec['role']=='validator':
+            result=run_python_tool(self.sandbox,spec,files,frozen,validation_input=(snapshot or {}).get('review_input'))
+        else:result=run_python_tool(self.sandbox,spec,files,frozen)
         if grant is not None:
             self.store.finish_effect(claim,grant['call_id'],dict(kind='python-tool-receipt',
                 tool_id=PYTHON_TESTS.tool_id,tool_version=PYTHON_TESTS.version,

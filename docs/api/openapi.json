@@ -3,7 +3,7 @@
   "info": {
     "title": "Loom local kernel",
     "description": "Single-host audited API. Explicit generation and dual-model verification requests are handled by separately configured private workers; production identity and hosting remain tracked independently.",
-    "version": "0.23.0"
+    "version": "0.24.0"
   },
   "paths": {
     "/v1/me": {
@@ -3911,6 +3911,16 @@
                 "type": "null"
               }
             ]
+          },
+          "validation_source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValidationSource"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -3997,6 +4007,29 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "ValidationSource": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "loom.validation-source/v1",
+            "title": "Schema Version"
+          },
+          "source_node": {
+            "type": "string",
+            "maxLength": 48,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "title": "Source Node"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "source_node"
+        ],
+        "title": "ValidationSource"
       },
       "VerificationRequestInput": {
         "properties": {

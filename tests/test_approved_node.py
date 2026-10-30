@@ -34,7 +34,7 @@ KINDS={'analyst':'requirements','architect':'design','tester':'public-checks'}
 
 @pytest.fixture
 def node_case(tmp_path):
-    def make(role,*,with_input=False,actor='subject:operator',context_limit=None,acceptance=None,domain_pack=False):
+    def make(role,*,with_input=False,actor='subject:operator',context_limit=None,acceptance=None,domain_pack=False,with_validator=False):
         store=Store(tmp_path/'node.db');workflow=WorkflowService(store);ArtifactService(store)
         tests=(FrozenTest('private-host',{'value':1},{'answer':2}),)
         goal=workflow.create_goal('a','goal',title='统一节点测试',description='加一',acceptance=acceptance or ['tests.pass'],cost_limit=4000000,token_limit=8000000)
@@ -45,6 +45,12 @@ def node_case(tmp_path):
         elif role=='developer':node['evaluation_digest']=freeze_tests(tests)[1]
         elif role=='validator':node['channel']='verification'
         definition['nodes']=[node]
+        if with_validator:
+            assert role=='developer'
+            definition['nodes'].append(dict(id='verify',title='独立终验',instruction='只复验已签名的指定程序，不修改源码',
+                role='validator',channel='verification',depends=['work'],evaluation_digest=node['evaluation_digest'],
+                validation_source=dict(schema_version='loom.validation-source/v1',source_node='work'),
+                limits=dict(cost_limit_microusd=0,token_limit=1,max_attempts=1)))
         if with_input:
             node['input_artifacts']=[dict(source_node='supply',kind='requirements',schema_version='loom.requirements/v1',required=True)]
             definition['nodes'].insert(0,dict(id='supply',title='输入来源',instruction='产出需求',role='analyst',role_output=dict(kind='requirements',schema_version='loom.requirements/v1'),limits=node['limits']))

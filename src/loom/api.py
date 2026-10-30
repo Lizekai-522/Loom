@@ -414,6 +414,8 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
                     item["input_artifacts"] = spec.get("input_artifacts") or []
                     if spec.get("role_output") is not None:
                         item["role_output"] = spec["role_output"]
+                    if spec.get("validation_source") is not None:
+                        item["validation_source"] = spec["validation_source"]
                 if row["output"] is not None:
                     output = json.loads(row["output"])
                     identity = digest(output)

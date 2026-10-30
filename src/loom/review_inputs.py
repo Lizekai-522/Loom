@@ -50,8 +50,10 @@ class ReviewInputService:
         spec = self.artifacts._contract(db, tenant, run_id, task_id)
         if spec['role'] in {'analyst','architect','tester','reviewer'}:
             return self._artifact_preview_in(db,tenant,run_id,row,spec,include_source)
-        if (spec["role"] not in {"developer", "fixer"} or spec["scope"] != "local-workspace"
-                or not {"workspace.write", "tests.run"} <= set(spec["tools"])):
+        validator=spec['role']=='validator' and spec.get('validation_source') is not None
+        required={'workspace.read','tests.run','artifacts.read','artifacts.write'} if validator else {'workspace.write','tests.run'}
+        if ((spec["role"] not in {"developer", "fixer"} and not validator) or spec["scope"] != "local-workspace"
+                or not required <= set(spec["tools"])):
             raise Conflict("review source is not an approved executable task")
         unknown = db.execute("SELECT 1 FROM effects WHERE tenant=? AND run_id=? AND task_id=? AND state IN ('intent','indeterminate','partial')",
                              (tenant, run_id, task_id)).fetchone()
@@ -60,6 +62,11 @@ class ReviewInputService:
         try:
             output = json.loads(row["output"])
             source = output["source"]
+            if validator:
+                from .validation_inputs import resolve_validation_input_in
+                original,binding=resolve_validation_input_in(self.store,db,tenant,spec)
+                if (output.get('generation_model_used') is not False or output.get('validation_source')!=binding
+                        or source!=original['files']['main.py']):raise ValueError
             report = output["tests"]
             if (output["kind"] != "python-json-program" or type(source) is not str or not source.strip()
                     or len(source.encode("utf-8")) > 262144

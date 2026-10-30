@@ -34,6 +34,15 @@ class LocalExecutor:
             worker=self.requests._identity(tenant,'worker',current['worker_id'])
             with self.store.connect() as db:spec=self.requests.artifacts._contract(db,tenant,run_id,current['task_id'])
             if self.config.binding(spec['role'],spec['evaluation_digest'])!=current['runtime_binding']:raise Conflict('local policy changed')
+            if current['role']=='validator':
+                from .validator_execution import ValidatorTaskRunner
+                if not self.config.sandbox_image:raise Conflict('immutable image not configured')
+                sandbox=DockerSandbox(SandboxConfig(self.config.sandbox_image))
+                await asyncio.to_thread(sandbox.preflight)
+                claim,tests,spec=self.requests.start(tenant,run_id,request_id,operator=operator,worker=worker)
+                claimed=True
+                await ValidatorTaskRunner(self.store,sandbox).run(claim,tests)
+                return self.requests.finish(tenant,run_id,request_id)
             routes,roles=load_model_config(self.config.model_config)
             if self.config.binding(spec['role'],spec['evaluation_digest'])!=current['runtime_binding']:raise Conflict('local policy changed')
             secrets=load_project_secrets(self.config.secrets_file,allowed_names={r.key_env for r in routes})

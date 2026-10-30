@@ -42,6 +42,7 @@ class ApprovedExecutionService:
         role_data=spec['role'] in {'analyst','architect','tester'}
         reviewer=spec['role']=='reviewer'
         structured=role_data or reviewer
+        validator=spec['role']=='validator' and spec.get('validation_source') is not None
         if structured:
             if tests is not None:raise Conflict('structured role execution does not accept host tests')
             tests,evaluation_digest=(),None
@@ -60,6 +61,11 @@ class ApprovedExecutionService:
             if (not spec.get('review_subject') or (spec.get('role_output') or {}).get('kind')!='review-findings'
                     or spec.get('input_artifacts') or not {'artifacts.read','artifacts.write'}<=set(spec['tools'])):
                 raise Conflict('reviewer requires an explicit subject and findings contract')
+        elif validator:
+            if not {'workspace.read','tests.run','artifacts.read','artifacts.write'}<=set(spec['tools']):
+                raise Conflict('validator requires read, test and evidence capabilities')
+            from .validation_inputs import resolve_validation_input_in
+            resolve_validation_input_in(self.store,db,tenant,spec)
         elif review_fixer:
             selectors=spec.get('input_artifacts') or []
             if (len(selectors)!=1 or selectors[0]['kind']!='review-findings' or not selectors[0]['required']
@@ -89,16 +95,19 @@ class ApprovedExecutionService:
         if not approvals or not approvals[-1]['actor'].startswith('subject:'):
             raise Conflict('named operator plan approval required')
         review_fields={}
-        if spec.get('review_subject') is not None or spec.get('input_artifacts'):
+        if spec.get('review_subject') is not None or spec.get('input_artifacts') or validator:
             context=self.artifacts._preview_context_in(db,tenant,run_id,task_id)
             if not context['ready']:raise Conflict('review findings require explicit operator input approval')
             review_fields=dict(input_context_digest=context['context_digest'],
                 input_grants=[{key:item[key] for key in ('artifact_id','grant_id','source_epoch','revision','content_hash','approval_event_hash')}
                               for item in context['items']])
             if spec.get('review_subject') is not None:review_fields['review_subject']=spec['review_subject']
-        tariff=role_tariff(spec)
-        cost=tariff.cost(tariff.context_limit,max_output_tokens)
-        tokens=tariff.context_limit+max_output_tokens
+            if validator:review_fields['validation_binding']=context['validation_binding']
+        if validator:cost,tokens=0,0
+        else:
+            tariff=role_tariff(spec)
+            cost=tariff.cost(tariff.context_limit,max_output_tokens)
+            tokens=tariff.context_limit+max_output_tokens
         limits=spec['limits']
         if (limits['cost_limit_microusd']<cost or limits['token_limit']<tokens
                 or run['cost_limit']-run['spent']-run['reserved']<cost
@@ -107,7 +116,7 @@ class ApprovedExecutionService:
         report=dict(schema_version='loom.approved-execution-preview/v1',mode='existing-plan-preview',
             tenant_id=tenant,run_id=run_id,node_id=node_id,task_id=task_id,plan_digest=plan_digest,
             evaluation_digest=evaluation_digest,host_case_count=len(tests),development_suite=spec.get('development_suite'),
-            model_alias=spec['model_alias'],role=spec['role'],execution_kind='structured-data' if structured else 'python-json',
+            model_alias=spec['model_alias'],role=spec['role'],execution_kind='python-validation' if validator else 'structured-data' if structured else 'python-json',
             task_limits=limits,max_output_tokens=max_output_tokens,initial_cost_reservation_upper=cost,
             initial_token_reservation=tokens,run_cost_available=run['cost_limit']-run['spent']-run['reserved'],
             run_tokens_available=run['token_limit']-run['tokens_spent']-run['tokens_reserved'],
@@ -136,7 +145,7 @@ class ApprovedExecutionService:
             raise Conflict('execution does not match the current preview')
         total=db.execute("SELECT count(*) FROM tasks WHERE status='running'").fetchone()[0]
         business=db.execute("SELECT count(*) FROM tasks WHERE status='running' AND channel='business'").fetchone()[0]
-        if total>=self.store.max_workers or business>=self.store.max_workers-self.store.verify_reserve:
+        if total>=self.store.max_workers or (spec['channel']=='business' and business>=self.store.max_workers-self.store.verify_reserve):
             raise Conflict('local execution capacity is full')
         task_id=current['task_id']
         task=db.execute('SELECT * FROM tasks WHERE tenant=? AND id=?',(tenant,task_id)).fetchone()

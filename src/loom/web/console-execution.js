@@ -31,9 +31,11 @@ window.LoomExecutionPanel=function({state,node,has,request,publicError,runChecke
    refs.status.textContent=pending?'正在核对执行账本…':error||(receipt&&!data?'请求回执已收到，后续读取失败；请重新读取确认，勿重复发起。'
      :latest?`${names[latest.state]||'状态待核对'}${queueWarning}${retry?' · 上次回执未确认，字段已锁定；可读取核对或用同一编号重试':''}`
      :data?.ready?'预览已核对。勾选并显式提交后，本机执行器才会开始处理。':reasons[data?.reason]||'先读取本机执行条件。');
-   refs.budget.textContent=data?.approved_preview?`开始执行时费用预留上界 ${data.approved_preview.initial_cost_reservation_upper.toLocaleString('zh-CN')} µUSD，词元预留上界 ${data.approved_preview.initial_token_reservation.toLocaleString('zh-CN')}。实际按已知用量结算；未知结果保留预留。`:'';
+   const validation=data?.approved_preview?.execution_kind==='python-validation';
+   refs.checkText.textContent=validation?'我已核对指定已验收源码和冻结用例，允许本机容器复验；此步骤不调用生成模型，之后仍需新的双签':'我已核对精确计划、输入和预算，允许本机执行器调用模型；结果仍需独立验证';
+   refs.budget.textContent=validation?'本步骤复验已独立验收的指定程序，不生成或修改源码，模型生成费用和词元预留均为 0。后续独立双模型复核使用另设的项目预算，需另行核对并显式提交。':data?.approved_preview?`开始执行时费用预留上界 ${data.approved_preview.initial_cost_reservation_upper.toLocaleString('zh-CN')} µUSD，词元预留上界 ${data.approved_preview.initial_token_reservation.toLocaleString('zh-CN')}。实际按已知用量结算；未知结果保留预留。`:'';
    const contextLimit=data?.approved_preview?.task_limits?.context_limit_bytes;
-   if(data?.approved_preview)refs.budget.textContent+=Number.isSafeInteger(contextLimit)?` 本任务完整模型请求体上限 ${contextLimit.toLocaleString('zh-CN')} UTF-8 字节，超限先停止，不静默裁剪。`:' 本任务未另设请求体字节上限，仍受网关限制。';
+   if(data?.approved_preview&&!validation)refs.budget.textContent+=Number.isSafeInteger(contextLimit)?` 本任务完整模型请求体上限 ${contextLimit.toLocaleString('zh-CN')} UTF-8 字节，超限先停止，不静默裁剪。`:' 本任务未另设请求体字节上限，仍受网关限制。';
    refs.history.replaceChildren();
    if(latest){refs.history.append(node('p','mono break-word',`请求 ${latest.request_id}`),node('p','field-help',latest.reason),node('p','mono break-word',`最近事件 ${latest.last_event_hash||latest.event_hash}`));
      if(latest.result)refs.history.append(node('p','field-help',`已登记 ${latest.result.model_calls} 次模型发起，已知响应 ${latest.result.settled_calls} 次；此任务仍预留 ${latest.result.reserved_cost} µUSD / ${latest.result.reserved_tokens} 词元。`));}
@@ -54,7 +56,7 @@ window.LoomExecutionPanel=function({state,node,has,request,publicError,runChecke
      const value=await request('GET','/v1/tools');
      if(value?.schema_version==='loom.tools/v1'&&value.tenant_id===state.principal?.tenant_id&&value.model_dispatched===false&&value.counts_as_success===false){
        const tool=value.tools?.find(t=>t.tool_id==='tests.run'&&t.version==='loom.python-tests/v1');
-       if(tool)text=`已登记工具：${tool.label}。仅限开发与修复任务；源码进入无网容器，宿主冻结用例判定。${value.runtime_configured?'已配置执行环境。':'执行环境尚未配置。'} 登记信息不代表健康检查或执行授权。`;
+       if(tool)text=`已登记工具：${tool.label}。适用于开发、修复及指定源程序的终验任务；源码进入无网容器，宿主冻结用例判定。${value.runtime_configured?'已配置执行环境。':'执行环境尚未配置。'} 登记信息不代表健康检查或执行授权。`;
      }
    }catch{}
    if(version===generation&&bound===binding&&refs)refs.tools.textContent=text;
@@ -111,11 +113,11 @@ window.LoomExecutionPanel=function({state,node,has,request,publicError,runChecke
    const status=node('p','field-help'),heartbeatStatus=node('p','field-help'),tools=node('p','field-help','正在读取工具能力…'),quotas=node('p','field-help','正在读取持久配额…'),budget=node('p','field-help'),history=node('div');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
    const form=node('form'),label=node('label','','执行理由'),reason=node('textarea');reason.rows=3;reason.maxLength=2000;reason.required=true;label.append(reason);
    const check=node('label','check-label'),reviewed=node('input');reviewed.type='checkbox';reviewed.required=true;
-   check.append(reviewed,node('span','','我已核对精确计划、输入和预算，允许本机执行器调用模型；结果仍需独立验证'));
+   const checkText=node('span','','我已核对精确计划、输入和预算，允许本机执行器调用模型；结果仍需独立验证');check.append(reviewed,checkText);
    const submit=node('button','primary','提交给本机执行器');submit.type='submit';form.append(label,check,submit);
    const cancel=node('button','','取消尚未开始的请求'),refreshButton=node('button','','刷新任务与证据');cancel.type=refreshButton.type='button';
    root.append(status,heartbeatStatus,tools,quotas,budget,form,history,cancel,refreshButton);container.append(root);
-   refs={root,read,status,heartbeat:heartbeatStatus,tools,quotas,budget,history,form,reason,reviewed,submit,cancel,refresh:refreshButton};
+   refs={root,read,status,heartbeat:heartbeatStatus,tools,quotas,budget,history,form,reason,reviewed,checkText,submit,cancel,refresh:refreshButton};
    quotas.dataset.quotaStatus='local';
    tools.dataset.toolCatalog='local';
    heartbeatStatus.dataset.executorHeartbeat='local';

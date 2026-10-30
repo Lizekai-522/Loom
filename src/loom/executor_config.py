@@ -42,10 +42,13 @@ class LocalExecutorConfig:
     verification_config:Path|None=None
 
     def binding(self,role,evaluation_digest):
-        raw=self.model_config.read_bytes()
-        if len(raw)>262144:raise InvalidInput('model configuration exceeds limit')
-        return digest(dict(executor_id=self.executor_id,model_config_sha256=sha256(raw).hexdigest(),
-            sandbox_image=self.sandbox_image if role in {'developer','fixer'} else None,evaluation_digest=evaluation_digest,max_output_tokens=1024))
+        model_hash=None
+        if role!='validator':
+            raw=self.model_config.read_bytes()
+            if len(raw)>262144:raise InvalidInput('model configuration exceeds limit')
+            model_hash=sha256(raw).hexdigest()
+        return digest(dict(executor_id=self.executor_id,model_config_sha256=model_hash,
+            sandbox_image=self.sandbox_image if role in {'developer','fixer','validator'} else None,evaluation_digest=evaluation_digest,max_output_tokens=1024))
 
     def tests_for(self,spec):
         if spec['role'] in {'analyst','architect','tester','reviewer'}:return None

@@ -83,6 +83,11 @@ class RebindPolicy(StrictModel):
         return value
 
 
+class ValidationSource(StrictModel):
+    schema_version: Literal['loom.validation-source/v1']
+    source_node: Identifier
+
+
 class TaskNode(StrictModel):
     id: Identifier
     title: str = Field(min_length=1, max_length=500)
@@ -102,6 +107,7 @@ class TaskNode(StrictModel):
     role_output: RoleOutput | None = Field(default=None, exclude_if=lambda value: value is None)
     development_suite: DevelopmentSuiteReference | None = Field(default=None, exclude_if=lambda value: value is None)
     review_subject: ReviewSubjectReference | None = Field(default=None, exclude_if=lambda value: value is None)
+    validation_source: ValidationSource | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @field_validator("title", "instruction")
     @classmethod
@@ -117,6 +123,12 @@ class TaskNode(StrictModel):
         expected = "verification" if self.role == "validator" else "business"
         if self.channel != expected:
             raise ValueError("task channel does not match its authorized role")
+        if self.validation_source is not None:
+            if (self.role!='validator' or self.evaluation_digest is None or self.limits.max_attempts!=1
+                    or self.role_output is not None or self.review_subject is not None or self.repair is not None
+                    or self.development_suite is not None or self.input_artifacts
+                    or self.validation_source.source_node not in self.depends):
+                raise ValueError('validator requires one direct program dependency, frozen tests and a single read-only attempt')
         if self.repair is not None:
             if self.role not in {"developer", "fixer"} or self.evaluation_digest is None:
                 raise ValueError("Rebind requires an executable role and frozen acceptance tests")
@@ -169,6 +181,11 @@ class WorkflowDefinition(StrictModel):
         if len(nodes) != len(self.nodes):
             raise ValueError("duplicate task node ID")
         for node in self.nodes:
+            if node.validation_source is not None:
+                source=nodes.get(node.validation_source.source_node)
+                if (source is None or source.role not in {'developer','fixer'}
+                        or source.evaluation_digest is None or source.evaluation_digest!=node.evaluation_digest):
+                    raise ValueError('validator must reference a program node with the same frozen acceptance digest')
             if node.review_subject is not None:
                 role = next(role for role in self.roles if role.id == node.role)
                 if "artifacts.read" not in role.tools:

@@ -434,6 +434,13 @@ class ArtifactService:
                     raise ExecutionContextError("CONTEXT_SUITE_INVALID") from None
                 raise
             context["development_suite"] = target["development_suite"]
+        if target.get('validation_source') is not None:
+            from .validation_inputs import resolve_validation_input_in
+            try:
+                context['review_input'],context['validation_binding']=resolve_validation_input_in(self.store,db,tenant,target)
+            except (Conflict,InvalidInput,NotFound):
+                if execution:raise ExecutionContextError('CONTEXT_VALIDATION_INVALID') from None
+                raise
         if target.get("review_subject") is not None:
             try:
                 context["review_input"] = self._review_input_in(db, tenant, target)
@@ -453,7 +460,7 @@ class ArtifactService:
             raise ExecutionContextError("CONTEXT_BINDING_INVALID") from None
         try:
             target = self._contract(db, claim.tenant_id, claim.run_id, claim.task_id)
-            if not target.get("input_artifacts") and not target.get("development_suite") and not target.get("review_subject"):
+            if not target.get("input_artifacts") and not target.get("development_suite") and not target.get("review_subject") and not target.get('validation_source'):
                 return None
             if "artifacts.read" not in target["tools"]:
                 raise ExecutionContextError("CONTEXT_BINDING_INVALID")
@@ -590,7 +597,7 @@ class ArtifactService:
             # _command's cached legacy receipt must not be a validation bypass.
             with self.store.transaction() as db:
                 target = self._contract(db, claim.tenant_id, claim.run_id, claim.task_id)
-                if target.get("input_artifacts") or target.get("development_suite") or target.get("review_subject"):
+                if target.get("input_artifacts") or target.get("development_suite") or target.get("review_subject") or target.get('validation_source'):
                     raise ExecutionContextError("CONTEXT_SNAPSHOT_CHANGED")
             return self.store.submit_output(claim, key, output)
         snapshot, snapshot_digest = self._snapshot_receipt_binding(snapshot)
