@@ -3,7 +3,7 @@
   "info": {
     "title": "Loom local kernel",
     "description": "Single-host audited API. Explicit generation and dual-model verification requests are handled by separately configured private workers; production identity and hosting remain tracked independently.",
-    "version": "0.21.0"
+    "version": "0.22.0"
   },
   "paths": {
     "/v1/me": {
@@ -25,6 +25,190 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/v1/domain-packs": {
+      "get": {
+        "summary": "Domain Pack Catalog",
+        "operationId": "domain_pack_catalog_v1_domain_packs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Publish Domain Pack",
+        "operationId": "publish_domain_pack_v1_domain_packs_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackPublishInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/domain-packs/{name}/{version}": {
+      "get": {
+        "summary": "Read Domain Pack",
+        "operationId": "read_domain_pack_v1_domain_packs__name___version__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/domain-packs/{name}/{version}/templates/{template_id}": {
+      "get": {
+        "summary": "Read Domain Template",
+        "operationId": "read_domain_template_v1_domain_packs__name___version__templates__template_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Version"
+            }
+          },
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/health": {
@@ -2766,6 +2950,73 @@
         "title": "DevelopmentSuiteReference",
         "description": "Exact existing review reference; no copied model origin or case body."
       },
+      "DomainPack": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "loom.domain-pack/v1",
+            "title": "Schema Version"
+          },
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,47}$",
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,5})\\.(0|[1-9][0-9]{0,5})\\.(0|[1-9][0-9]{0,5})$",
+            "title": "Version"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Description"
+          },
+          "scope": {
+            "type": "string",
+            "const": "local-workspace",
+            "title": "Scope"
+          },
+          "roles": {
+            "items": {
+              "$ref": "#/components/schemas/AgentRole"
+            },
+            "type": "array",
+            "maxItems": 7,
+            "minItems": 7,
+            "title": "Roles"
+          },
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/PackTemplate"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Templates"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "name",
+          "version",
+          "title",
+          "description",
+          "scope",
+          "roles",
+          "templates"
+        ],
+        "title": "DomainPack"
+      },
       "ExecutionRequestInput": {
         "properties": {
           "expected_dispatch_digest": {
@@ -2847,6 +3098,93 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "PackPublishInput": {
+        "properties": {
+          "audit_run_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Audit Run Id"
+          },
+          "bundle": {
+            "$ref": "#/components/schemas/DomainPack"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "audit_run_id",
+          "bundle"
+        ],
+        "title": "PackPublishInput"
+      },
+      "PackReference": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "loom.domain-pack-ref/v1",
+            "title": "Schema Version",
+            "default": "loom.domain-pack-ref/v1"
+          },
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,47}$",
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,5})\\.(0|[1-9][0-9]{0,5})\\.(0|[1-9][0-9]{0,5})$",
+            "title": "Version"
+          },
+          "content_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Content Digest"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "content_digest"
+        ],
+        "title": "PackReference"
+      },
+      "PackTemplate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 48,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/TaskNode"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Nodes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "nodes"
+        ],
+        "title": "PackTemplate"
       },
       "PlanApprovalInput": {
         "properties": {
@@ -3690,8 +4028,18 @@
           },
           "pack": {
             "type": "string",
-            "const": "software-dev",
+            "pattern": "^[a-z][a-z0-9_-]{0,47}$",
             "title": "Pack"
+          },
+          "pack_ref": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PackReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "scope": {
             "type": "string",

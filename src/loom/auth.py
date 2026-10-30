@@ -19,7 +19,7 @@ _ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}")
 _TOKEN = re.compile(r"[!-~]{32,4096}")
 _ROLES = frozenset({"operator", "worker", "viewer"})
 _PERMISSIONS = MappingProxyType({
-    "operator": frozenset({"read", "goal.write", "plan.approve", "control", "suite.approve"}),
+    "operator": frozenset({"read", "goal.write", "plan.approve", "control", "suite.approve", "pack.publish"}),
     "worker": frozenset({"read", "task.claim", "task.submit"}),
     "viewer": frozenset({"read"}),
     "developer": frozenset({"read", "goal.write", "plan.approve", "task.claim", "task.submit"}),

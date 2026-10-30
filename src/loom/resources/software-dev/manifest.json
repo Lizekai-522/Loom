@@ -1,0 +1,19 @@
+{
+  "apiVersion": "loom/v1",
+  "kind": "DomainPack",
+  "metadata": {"name": "software-dev", "version": "0.1.0", "executionMode": "deterministic-fixture"},
+  "ruleset": "kernel-v1",
+  "kindRole": {"spec": "analyst", "design": "architect", "case": "tester", "code": "developer", "review": "reviewer", "fix": "fixer", "verify": "validator"},
+  "workflow": [
+    {"id": "spec", "kind": "spec", "dependsOn": []},
+    {"id": "design", "kind": "design", "dependsOn": ["spec"]},
+    {"id": "case", "kind": "case", "dependsOn": ["spec"]},
+    {"id": "code", "kind": "code", "dependsOn": ["design", "case"]},
+    {"id": "review", "kind": "review", "dependsOn": ["code"]},
+    {"id": "fix", "kind": "fix", "dependsOn": ["review"]},
+    {"id": "verify", "kind": "verify", "dependsOn": ["fix"], "channel": "verification"}
+  ],
+  "acceptance": ["schema.valid", "tests.pass", "report.traceable"],
+  "budget": {"maxMicrousd": 1000, "maxTokens": 1000, "maxAttemptsPerTask": 3},
+  "constraints": {"allowedScope": ["local-fixture"], "externalWrites": false, "realModels": false}
+}

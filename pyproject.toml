@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "loom-orchestrator"
-version = "0.21.0"
+version = "0.22.0"
 description = "Evidence-oriented agent orchestration kernel, local development milestone"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -21,7 +21,7 @@ loom = "loom.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-loom = ["web/*.html", "web/*.css", "web/*.js"]
+loom = ["web/*.html", "web/*.css", "web/*.js", "resources/software-dev/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

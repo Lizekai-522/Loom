@@ -16,6 +16,7 @@ from .attempts import attempt_summaries
 from .auth import AuthRegistry, LocalIdentity, Principal
 from .artifacts import ArtifactService
 from .development_suites import DevelopmentSuiteService
+from .domain_packs import DomainPack, DomainPackService
 from .artifact_schemas import MAX_BODY_BYTES
 from .role_summary import submitted_role_source
 from .review_inputs import ReviewFindingsBody, ReviewInputService
@@ -74,6 +75,11 @@ class PlanApprovalInput(Input):
 class SuiteFreezeInput(Input):
     expected_review_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     selected_case_names: list[str] | None = Field(default=None, min_length=1, max_length=32)
+
+
+class PackPublishInput(Input):
+    audit_run_id: str = Field(min_length=1, max_length=100)
+    bundle: DomainPack
 
 
 class ClaimInput(Input):
@@ -167,6 +173,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     operators = OperatorService(store)
     artifacts = ArtifactService(store)
     suites = DevelopmentSuiteService(store)
+    packs = DomainPackService(store)
     review_inputs = ReviewInputService(store)
     review_decisions = ReviewDecisionService(store)
     progression = ProgressionService(store)
@@ -206,6 +213,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     Approver = Annotated[Principal, Depends(permitted("plan.approve"))]
     Controller = Annotated[Principal, Depends(permitted("control"))]
     SuiteApprover = Annotated[Principal, Depends(permitted("suite.approve"))]
+    PackPublisher = Annotated[Principal, Depends(permitted("pack.publish"))]
     Claimer = Annotated[Principal, Depends(permitted("task.claim"))]
     Submitter = Annotated[Principal, Depends(permitted("task.submit"))]
     Key = Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=200)]
@@ -233,6 +241,23 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
         return {"tenant_id": identity.tenant_id, "subject_id": identity.subject_id,
                 "roles": sorted(identity.roles), "capabilities": registry.capabilities(identity),
                 "authentication": "public-session" if getattr(request.state, 'public_preview', False) else "local-console" if 'authorization' not in request.headers else "local-bearer", "production_identity": False}
+
+    @app.get('/v1/domain-packs')
+    def domain_pack_catalog(tenant: Tenant):
+        return {'items': packs.catalog(tenant)}
+
+    @app.get('/v1/domain-packs/{name}/{version}')
+    def read_domain_pack(name: str, version: str, tenant: Tenant):
+        return packs.get(tenant, name, version)
+
+    @app.get('/v1/domain-packs/{name}/{version}/templates/{template_id}')
+    def read_domain_template(name: str, version: str, template_id: str, tenant: Tenant):
+        return packs.template(tenant, name, version, template_id)
+
+    @app.post('/v1/domain-packs', status_code=201)
+    def publish_domain_pack(body: PackPublishInput, identity: PackPublisher, idempotency_key: Key):
+        return packs.publish(identity.tenant_id, idempotency_key, body.audit_run_id,
+                             body.bundle, actor='subject:'+identity.subject_id)
 
     @app.exception_handler(LoomError)
     async def loom_error(_, exc: LoomError):
