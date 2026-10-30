@@ -117,6 +117,8 @@ class LocalTaskRunner:
         if snapshot.get("review_input") is not None:
             result["review_input"] = {key: snapshot["review_input"][key] for key in
                 ("schema_version", "subject", "execution_summary", "files", "input_digest", "untrusted_source")}
+        if snapshot.get('review_source_binding') is not None:
+            result['original_requirements']=snapshot['review_source_binding']['original_requirements']
         return result
 
     @staticmethod

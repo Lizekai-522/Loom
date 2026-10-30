@@ -88,6 +88,11 @@ class ValidationSource(StrictModel):
     source_node: Identifier
 
 
+class ReviewSource(StrictModel):
+    schema_version: Literal['loom.review-source/v1']
+    source_node: Identifier
+
+
 class TaskNode(StrictModel):
     id: Identifier
     title: str = Field(min_length=1, max_length=500)
@@ -108,6 +113,7 @@ class TaskNode(StrictModel):
     development_suite: DevelopmentSuiteReference | None = Field(default=None, exclude_if=lambda value: value is None)
     review_subject: ReviewSubjectReference | None = Field(default=None, exclude_if=lambda value: value is None)
     validation_source: ValidationSource | None = Field(default=None, exclude_if=lambda value: value is None)
+    review_source: ReviewSource | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @field_validator("title", "instruction")
     @classmethod
@@ -123,6 +129,12 @@ class TaskNode(StrictModel):
         expected = "verification" if self.role == "validator" else "business"
         if self.channel != expected:
             raise ValueError("task channel does not match its authorized role")
+        if self.review_source is not None:
+            if (self.role!='reviewer' or self.review_subject is not None or self.validation_source is not None
+                    or self.evaluation_digest is not None or self.repair is not None or self.development_suite is not None
+                    or self.input_artifacts or self.role_output is None or self.role_output.kind!='review-findings'
+                    or self.review_source.source_node not in self.depends or self.limits.max_attempts!=1):
+                raise ValueError('review source requires a direct program dependency and one read-only reviewer attempt')
         if self.validation_source is not None:
             if (self.role!='validator' or self.evaluation_digest is None or self.limits.max_attempts!=1
                     or self.role_output is not None or self.review_subject is not None or self.repair is not None
@@ -144,7 +156,7 @@ class TaskNode(StrictModel):
                     or self.repair.development_digest != self.development_suite.development_digest
                     or self.evaluation_digest == self.development_suite.development_digest):
                 raise ValueError("reviewed development suite requires distinct frozen acceptance and matching Rebind policy")
-        if self.role_output is not None and self.role_output.kind == "review-findings" and self.review_subject is None:
+        if self.role_output is not None and self.role_output.kind == "review-findings" and self.review_subject is None and self.review_source is None:
             raise ValueError("review findings require an exact implementation reference")
         if self.review_subject is not None:
             if self.role == "reviewer":
@@ -181,6 +193,12 @@ class WorkflowDefinition(StrictModel):
         if len(nodes) != len(self.nodes):
             raise ValueError("duplicate task node ID")
         for node in self.nodes:
+            if node.review_source is not None:
+                source=nodes.get(node.review_source.source_node)
+                role=next(role for role in self.roles if role.id==node.role)
+                if (source is None or source.role not in {'developer','fixer'} or source.evaluation_digest is None
+                        or 'artifacts.read' not in role.tools):
+                    raise ValueError('review source must reference a frozen program node and allow reading its artifacts')
             if node.validation_source is not None:
                 source=nodes.get(node.validation_source.source_node)
                 if (source is None or source.role not in {'developer','fixer'}

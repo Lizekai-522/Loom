@@ -58,7 +58,7 @@ class ApprovedExecutionService:
                     or not {'artifacts.read','artifacts.write'}<=set(spec['tools'])):
                 raise Conflict('structured role requires an explicit typed output contract')
         elif reviewer:
-            if (not spec.get('review_subject') or (spec.get('role_output') or {}).get('kind')!='review-findings'
+            if (not (spec.get('review_subject') or spec.get('review_source')) or (spec.get('role_output') or {}).get('kind')!='review-findings'
                     or spec.get('input_artifacts') or not {'artifacts.read','artifacts.write'}<=set(spec['tools'])):
                 raise Conflict('reviewer requires an explicit subject and findings contract')
         elif validator:
@@ -95,13 +95,15 @@ class ApprovedExecutionService:
         if not approvals or not approvals[-1]['actor'].startswith('subject:'):
             raise Conflict('named operator plan approval required')
         review_fields={}
-        if spec.get('review_subject') is not None or spec.get('input_artifacts') or validator:
+        if spec.get('review_subject') is not None or spec.get('review_source') is not None or spec.get('input_artifacts') or validator:
             context=self.artifacts._preview_context_in(db,tenant,run_id,task_id)
             if not context['ready']:raise Conflict('review findings require explicit operator input approval')
             review_fields=dict(input_context_digest=context['context_digest'],
                 input_grants=[{key:item[key] for key in ('artifact_id','grant_id','source_epoch','revision','content_hash','approval_event_hash')}
                               for item in context['items']])
             if spec.get('review_subject') is not None:review_fields['review_subject']=spec['review_subject']
+            if spec.get('review_source') is not None:
+                review_fields.update(review_subject=context['review_input']['subject'],review_source_binding=context['review_source_binding'])
             if validator:review_fields['validation_binding']=context['validation_binding']
         if validator:cost,tokens=0,0
         else:

@@ -394,7 +394,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
         return store.snapshot(tenant, run_id)
 
     @app.get("/v1/runs/{run_id}/review")
-    def review_run(run_id: str, tenant: Tenant):
+    def review_run(run_id: str, tenant: Tenant, request: Request):
         # Display submitted data separately from a trusted executor event.
         # A worker's own tests.passed flag is never trusted evaluation evidence.
         with store.connect() as db:
@@ -416,6 +416,8 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
                         item["role_output"] = spec["role_output"]
                     if spec.get("validation_source") is not None:
                         item["validation_source"] = spec["validation_source"]
+                    if spec.get('review_source') is not None:
+                        item['review_source']=spec['review_source']
                 if row["output"] is not None:
                     output = json.loads(row["output"])
                     identity = digest(output)
@@ -430,6 +432,8 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
                     tests = output.get("tests", {})
                     if evidence and isinstance(tests, dict) and isinstance(tests.get("cases"), list):
                         item["artifact"]["cases"] = [{key: case.get(key) for key in ("name", "passed", "status")} for case in tests["cases"][:32] if isinstance(case, dict)]
+                        if getattr(request.state,'public_preview',False):
+                            for index,case in enumerate(item['artifact']['cases'],1):case['name']='case-'+str(index)
                 tasks.append(item)
             effects = []
             now = store.now(db)
@@ -543,12 +547,20 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
         return store.submit_output(current, idempotency_key, body.output)
 
     @app.get("/v1/runs/{run_id}/events")
-    def events(run_id: str, tenant: Tenant):
-        return {"events": store.events(tenant, run_id)}
+    def events(run_id: str, tenant: Tenant, request: Request):
+        events=store.events(tenant,run_id)
+        if getattr(request.state,'public_preview',False):
+            from .public_audit import public_event_summaries
+            return public_event_summaries(events,source_chain_verified=store.verify_events(events))
+        return {"events": events}
 
     @app.get("/v1/runs/{run_id}/replay")
-    def replay(run_id: str, tenant: Tenant):
-        return store.replay(tenant, run_id)
+    def replay(run_id: str, tenant: Tenant, request: Request):
+        state=store.replay(tenant,run_id)
+        if getattr(request.state,'public_preview',False):
+            from .public_audit import public_replay_summary
+            return public_replay_summary(state)
+        return state
 
     @app.get("/v1/runs/{run_id}/integrity")
     def integrity(run_id: str, tenant: Tenant):

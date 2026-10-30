@@ -139,8 +139,12 @@ class ReviewInputService:
         return result
 
     def _artifact_preview_in(self,db,tenant,run_id,task,spec,include_source):
-        if (spec['role']=='reviewer' and (not spec.get('review_subject')
-                or spec['review_subject'].get('artifact_kind')=='review-findings')):
+        review_subject=None
+        if spec['role']=='reviewer':
+            if spec.get('review_subject') or spec.get('review_source'):
+                review_subject=self.artifacts._review_input_in(db,tenant,spec)['subject']
+        if (spec['role']=='reviewer' and (not review_subject
+                or review_subject.get('artifact_kind')=='review-findings')):
             # One primary review may be independently audited. Do not recursively
             # verify arbitrarily deep reviews of review reports.
             raise Conflict('nested review reports require a separately bounded adjudication path')
@@ -174,8 +178,8 @@ class ReviewInputService:
                     or (task['worker'] is not None and task['worker']!=claims[0]['payload']['worker'])):raise ValueError
             files={'artifact.json':json.dumps(body,ensure_ascii=False,indent=2,sort_keys=True)+'\n'}
             if row['kind']=='review-findings':
-                if body['subject']!=spec['review_subject']:raise ValueError
-                original=self.resolve_reference_in(db,tenant,spec['review_subject'])
+                if body['subject']!=review_subject:raise ValueError
+                original=self.artifacts._review_input_in(db,tenant,spec)
                 original_ref=original['subject']
                 original_spec=self.artifacts._contract(db,tenant,original_ref['run_id'],original_ref['task_id'])
                 roots=[event for event in self._events_in(db,tenant,original_ref['run_id']) if event['type']=='run.created']

@@ -1,6 +1,6 @@
 # Loom
 
-基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.24.0**增加同一目标内的程序终验：只读取已获真实双签的开发/修复产物，使用相同冻结宿主用例重新执行，不生成代码、不读取生成模型配置或密钥。终验仍需绑定本任务的新双签才能完成目标。[终验说明](docs/validator-execution.md) · [全功能计划](docs/full-function-plan-2026-10-30.md) · [62项验收表](docs/functional-acceptance.md) · [本轮验证](docs/validation-0.24.0.md)。本轮先保存在本地，全部功能达到交付条件后再同步远端。 · [四轮上线计划](docs/launch-four-rounds-2026-10-30.md) · [配额说明](docs/quotas.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
+基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.25.0**修复公网事件/回放暴露隐藏测试执行输出的问题：公网显示明确标记的安全摘要，保留本机原始审计和哈希链。新增同一目标内指定程序的精确审查来源，冻结原始需求并单独复核审查质量；终验继续要求新双签。[可用性与漏洞报告](docs/usability-security-2026-10-30.md) · [审查来源](docs/review-sources.md) · [全功能计划](docs/full-function-plan-2026-10-30.md) · [62项验收表](docs/functional-acceptance.md) · [本轮验证](docs/validation-0.25.0.md)。完整交付门槛通过后再同步GitHub。 · [四轮上线计划](docs/launch-four-rounds-2026-10-30.md) · [配额说明](docs/quotas.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
 
 0.17.4历史重测967主/382子、Chromium63项，三份源码下载与权威原始字节一致；0.17.5测试与真实基础设施证据单独登记。[历史验证](docs/validation.md)
 
@@ -39,6 +39,7 @@ Python 3.11+，建议使用独立虚拟环境。以下 PowerShell 命令在本�
 
 ```powershell
 python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade "pip>=26.2.2"
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock
 .\.venv\Scripts\python.exe -m pip install --no-deps -e .
 .\.venv\Scripts\python.exe scripts/check_spec.py

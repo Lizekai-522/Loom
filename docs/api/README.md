@@ -1,8 +1,10 @@
 # 本地 API 契约
 
-此目录的 `openapi.json` 由当前 FastAPI 应用生成，描述实际可运行的 HTTP 子集。当前版本 **0.24.0**；本机 [控制台](http://127.0.0.1:8796/console) 与 [接口文档](http://127.0.0.1:8796/docs) 同源提供。设计方案附录中的其余接口仍属后续目标，未因列入规范而自动实现。
+此目录的 `openapi.json` 由当前 FastAPI 应用生成，描述实际可运行的 HTTP 子集。当前版本 **0.25.0**；本机 [控制台](http://127.0.0.1:8796/console) 与 [接口文档](http://127.0.0.1:8796/docs) 同源提供。设计方案附录中的其余接口仍属后续目标，未因列入规范而自动实现。
 
 `/health` 返回 version，stage 仍为 `S1-local`，表示 HTTP 内核继续使用单实例 SQLite；`external_writes_enabled=false` 表示此 API 没有执行真实外部写的路由。本机脚本的真实模型调用另见 [本机执行说明](../local-execution.md)。`/integrity` 的 `external_checkpoint: "not_configured"` 表示该 HTTP 实例尚未配置独立检查点；离线 Ed25519 组件不在普通查询时自动签名，使用方法见 [检查点说明](../checkpoints.md)。
+
+受邀公网的`events`返回`loom.public-event-summaries/v1`脱敏摘要，保留`original_event_hash`指针，标记`original_envelopes_included=false`，不能将摘要载荷当作原始可验事件。`source_chain_verified`和`integrity`核对的是服务端原始链。公网`replay`返回`loom.public-replay/v1`，不含任务output；`review`的宿主用例名使用顺序标签。具名本机操作员的原始审计接口保持，精确正文和独立证据继续使用各自接口。
 
 | 动作 | 实际接口 |
 |---|---|

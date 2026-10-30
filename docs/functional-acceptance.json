@@ -2,7 +2,7 @@
   "schema_version": "loom.functional-acceptance/v1",
   "updated": "2026-10-30",
   "baseline": "0.20.0",
-  "current_increment": "0.24.0",
+  "current_increment": "0.25.0",
   "authoritative_spec": "docs/Loom.md",
   "implementation_plan": "docs/project-plan-2026-10-28.md",
   "rules": [
@@ -1180,7 +1180,7 @@
       "source_line": 242,
       "status": "partial",
       "stage": "roles",
-      "current": "类型化产物、精确审查引用、审查意见质量双签已有；validator按同一Goal直接依赖和相同宿主判据复验已签程序，须新双签才完成。完整七角色同Goal上下文与审查/修复来源选择继续验收。",
+      "current": "同Goal reviewer按冻结节点选择已签程序并绑定精确subject、原始需求和宿主摘要，审查质量需双签；validator复验后需新双签，三节点实际路径验收。完整七角色同Goal修复、条件跳过和其余上下文继续推进。",
       "code": [
         "src/loom/workflow.py",
         "src/loom/policy.py",
@@ -1190,7 +1190,8 @@
         "src/loom/review_inputs.py",
         "src/loom/verification_worker.py",
         "src/loom/validator_execution.py",
-        "src/loom/validation_inputs.py"
+        "src/loom/validation_inputs.py",
+        "src/loom/review_sources.py"
       ],
       "evidence": [
         "tests/test_document_verification.py",
@@ -1199,7 +1200,9 @@
         "tests/test_reviewer_verification.py",
         "tests/integration/test_reviewer_verification_live.py",
         "tests/test_validator_execution.py",
-        "tests/integration/test_validator_live.py"
+        "tests/integration/test_validator_live.py",
+        "tests/test_review_sources.py",
+        "tests/integration/test_review_sources_live.py"
       ],
       "comprehensive_acceptance_passed": false
     },

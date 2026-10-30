@@ -28,8 +28,8 @@ from tests.test_verification_jobs import verification_case,run_job
 
 @pytest.fixture
 def validation_case(node_case,tmp_path):
-    def make(*,verified=True,source_sandbox=None):
-        def node(role,**kwargs):return node_case(role,with_validator=True,**kwargs)
+    def make(*,verified=True,source_sandbox=None,with_reviewer=False):
+        def node(role,**kwargs):return node_case(role,with_validator=True,with_reviewer=with_reviewer,**kwargs)
         with patch('tests.test_verification_jobs.execute',side_effect=lambda b:execute_source(b,sandbox=source_sandbox)):
             b=verification_case.__wrapped__(node,tmp_path)
         if verified:

@@ -718,13 +718,14 @@
       const [result, integrity] = await Promise.all([request("GET", `${pathForRun()}/events`), request("GET", `${pathForRun()}/integrity`)]);
       if (generation !== state.selection) return;
       const events = Array.isArray(result.events) ? result.events.slice(-200).reverse() : [];
-      $("integrity-label").textContent = integrity.valid === true ? "事件链核验通过 · 外部检查点未配置" : "事件链核验未通过";
+      $("integrity-label").textContent = integrity.valid === true ? result.redacted===true?'原始事件链在服务端核验通过 · 当前显示脱敏摘要':'事件链核验通过 · 外部检查点未配置' : "事件链核验未通过";
       $("events-state").textContent = events.length ? `最近 ${events.length} 条，最新在前` : "此运行暂无事件。";
       $("event-list").replaceChildren(...events.map((event) => {
         const item = node("li", "event-row");
         const head = node("div", "event-head");
         head.append(node("span", "mono", `#${str(event.seq)}`), node("strong", "", label(event.type)));
-        item.append(head, node("p", "event-meta", [event.timestamp || event.occurred_at, event.actor || event.actor_id].filter(Boolean).join(" · ")));
+        const eventTime=event.timestamp||event.occurred_at||(typeof event.ts==='number'&&Number.isFinite(event.ts)&&Math.abs(event.ts)<8.64e12?new Date(event.ts*1000).toLocaleString('zh-CN'):'');
+        item.append(head, node("p", "event-meta", [eventTime, event.actor || event.actor_id].filter(Boolean).join(" · ")));
         const details = node("details");
         details.append(node("summary", "", "查看事件数据"), node("pre", "", JSON.stringify(event.payload || {}, null, 2)));
         item.append(details);
