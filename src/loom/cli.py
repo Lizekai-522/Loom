@@ -14,7 +14,7 @@ def main():
     demo = commands.add_parser("demo", help="run seven-role fixture workflow with failure and repair")
     demo.add_argument("--db", default="artifacts/demo.db")
     demo.add_argument("--report", default="artifacts/demo-report.json")
-    demo.add_argument("--pack", default="packs/software-dev/manifest.json")
+    demo.add_argument("--pack", help="explicit fixture manifest; defaults to the packaged demonstration")
     serve = commands.add_parser("serve", help="serve a local authenticated development API")
     serve.add_argument("--db", default="artifacts/dev.db")
     serve.add_argument("--port", type=int, default=8796)

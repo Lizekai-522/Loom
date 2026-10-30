@@ -2,7 +2,7 @@
   "schema_version": "loom.functional-acceptance/v1",
   "updated": "2026-10-30",
   "baseline": "0.20.0",
-  "current_increment": "0.21.0",
+  "current_increment": "0.22.0",
   "authoritative_spec": "docs/Loom.md",
   "implementation_plan": "docs/project-plan-2026-10-28.md",
   "rules": [
@@ -1133,17 +1133,23 @@
       "source_line": 325,
       "status": "partial",
       "stage": "runtime",
-      "current": "当前固定software-dev包，通用包加载/兼容待补。",
+      "current": "包内资源支持源码/普通wheel安装；领域包按租户发布、发现、版本/摘要绑定与明确拒绝不兼容数据。当前只组合七个已有角色；跨领域新适配器及全面兼容验收未完成。",
       "code": [
         "src/loom/workflow.py",
         "src/loom/store.py",
-        "src/loom/quotas.py"
+        "src/loom/quotas.py",
+        "src/loom/domain_packs.py",
+        "src/loom/builtin_resources.py",
+        "src/loom/pack_refs.py"
       ],
       "evidence": [
         "tests/test_workflow.py",
         "tests/test_plan_integrity.py",
         "tests/test_store_admission.py",
-        "tests/test_quotas.py"
+        "tests/test_quotas.py",
+        "tests/test_domain_packs.py",
+        "tests/test_domain_pack_api.py",
+        "tests/integration/test_domain_pack_live.py"
       ],
       "comprehensive_acceptance_passed": false
     },
@@ -1292,17 +1298,23 @@
       "source_line": 253,
       "status": "partial",
       "stage": "runtime",
-      "current": "工作流JSON导入导出已有，领域签名及独立调度策略资产待补。",
+      "current": "工作流模板可随独立领域包导入/导出和版本冻结，选择旧版本不改旧任务；完整适用域签名与独立调度策略资产待补。",
       "code": [
         "src/loom/workflow.py",
         "src/loom/store.py",
-        "src/loom/quotas.py"
+        "src/loom/quotas.py",
+        "src/loom/domain_packs.py",
+        "src/loom/builtin_resources.py",
+        "src/loom/pack_refs.py"
       ],
       "evidence": [
         "tests/test_workflow.py",
         "tests/test_plan_integrity.py",
         "tests/test_store_admission.py",
-        "tests/test_quotas.py"
+        "tests/test_quotas.py",
+        "tests/test_domain_packs.py",
+        "tests/test_domain_pack_api.py",
+        "tests/integration/test_domain_pack_live.py"
       ],
       "comprehensive_acceptance_passed": false
     },

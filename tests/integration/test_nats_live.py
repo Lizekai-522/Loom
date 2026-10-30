@@ -47,6 +47,25 @@ class LiveNatsTests(unittest.IsolatedAsyncioTestCase):
         with self.store.connect() as db:
             self.assertEqual(db.execute("SELECT value FROM settings WHERE key='live_effect_count'").fetchone()[0], 3)
 
+    async def test_domain_pack_publication_delivers_with_immutable_content_after_reopen(self):
+        from loom.domain_packs import DomainPackService, builtin_pack
+        from loom.workflow import WorkflowService
+        run = WorkflowService(self.store).create_goal('live-tenant','assets',title='Assets',
+            description='No execution',acceptance=['schema.valid'])['run_id']
+        data = builtin_pack().model_dump(mode='json'); data.update(name='nats-software',version='1.0.0')
+        published = DomainPackService(self.store).publish('live-tenant','publish-pack',run,data,actor='subject:operator')
+        subscription = await self.bridge.subscribe(self.js,tenant='live-tenant',run_id=run,durable='pack-reader')
+        await self.bridge.publish_pending(self.js)
+        received = []
+        for _ in self.store.events('live-tenant',run):
+            message = (await subscription.fetch(1,timeout=2))[0]
+            def apply(db,event):
+                if event['type']=='domain_pack.published':received.append(event['payload'])
+            await self.bridge.consume_message(message,tenant='live-tenant',run_id=run,durable='pack-reader',apply=apply)
+        self.assertEqual(len(received),1)
+        self.assertEqual(received[0]['reference'],published['reference'])
+        self.assertEqual(DomainPackService(Store(self.store.path)).get('live-tenant','nats-software','1.0.0'),published)
+
     async def test_exit_boundary_after_broker_ack_republishes_same_message_id(self):
         mark = self.bridge._mark_published
         def fail(_):

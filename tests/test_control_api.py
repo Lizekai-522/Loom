@@ -113,7 +113,7 @@ def test_me_lists_named_capabilities_without_credentials(api):
     response = api.request("GET", "/v1/me")
     assert response.status_code == 200
     assert response.json() == {"tenant_id": "a", "subject_id": "operator-a", "roles": ["operator"],
-                               "capabilities": ["control", "goal.write", "plan.approve", "read", "suite.approve"],
+                               "capabilities": ["control", "goal.write", "pack.publish", "plan.approve", "read", "suite.approve"],
                                "authentication": "local-bearer", "production_identity": False}
     assert all(key not in response.text for key in KEYS.values())
     assert response.headers["Cache-Control"] == "no-store"

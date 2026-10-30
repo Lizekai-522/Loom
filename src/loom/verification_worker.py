@@ -6,6 +6,7 @@ import sqlite3
 
 from .approved_execution import ApprovedExecutionService
 from .artifacts import ArtifactService
+from .builtin_resources import software_workflow
 from .model_pricing import FLASH,PRO
 from .role_execution import RoleTaskRunner
 from .store import Conflict,InvalidInput,Store,canonical,digest
@@ -35,7 +36,7 @@ class VerificationWorker:
 
     def _prepare_review(self,shadow,state,requirements,model):
         workflows=WorkflowService(shadow)
-        definition=json.loads((Path(__file__).resolve().parents[2]/'packs/software-dev/workflow-v1.json').read_bytes())
+        definition=software_workflow()
         next(role for role in definition['roles'] if role['id']=='reviewer')['model_alias']=model
         limit=350000 if model=='deepseek-flash' else 1500000
         definition['nodes']=[dict(id='review',title=model+'独立复核',role='reviewer',

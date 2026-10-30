@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from .artifact_schemas import ARTIFACT_ROLES, ArtifactInput, DevelopmentSuiteReference, RoleOutput, ReviewSubjectReference
 from .policy import GateRules, TaskContract, gate_p
+from .pack_refs import PackName, PackReference
 from .store import BudgetExceeded, Conflict, InvalidInput, NotFound, PlanBindingConflict, Store, canonical, digest
 
 
@@ -151,13 +152,17 @@ class TaskNode(StrictModel):
 
 class WorkflowDefinition(StrictModel):
     schema_version: Literal["loom.workflow/v1"]
-    pack: Literal["software-dev"]
+    pack: PackName
+    pack_ref: PackReference | None = Field(default=None, exclude_if=lambda value: value is None)
     scope: Literal["local-workspace"]
     roles: list[AgentRole] = Field(min_length=7, max_length=7)
     nodes: list[TaskNode] = Field(min_length=1, max_length=100)
 
     @model_validator(mode="after")
     def complete_dag(self):
+        if ((self.pack_ref is None and self.pack != 'software-dev')
+                or (self.pack_ref is not None and self.pack_ref.name != self.pack)):
+            raise ValueError("custom domain packs require an exact matching version reference")
         if {role.id for role in self.roles} != set(ROLE_SKILLS):
             raise ValueError("the seven registered roles must be configured exactly once")
         nodes = {node.id: node for node in self.nodes}
@@ -233,6 +238,8 @@ def _revision(value):
 class WorkflowService:
     def __init__(self, store: Store):
         self.store = store
+        from .domain_packs import DomainPackService
+        DomainPackService(store)
         with store.connect() as db:
             db.executescript(SCHEMA)
         with store.transaction() as db:
@@ -249,6 +256,9 @@ class WorkflowService:
         return None
 
     def _validate_suites_in(self, db, suites, tenant, run_id, definition, *, actor=None, approval=False):
+        if definition.pack_ref is not None:
+            from .domain_packs import DomainPackService
+            DomainPackService(self.store, initialize=False).resolve_in(db, tenant, definition)
         nodes = [node for node in definition.nodes if node.development_suite is not None]
         if nodes and approval:
             from .artifacts import _subject
@@ -287,7 +297,8 @@ class WorkflowService:
         """Rebuild execution fields from the reviewed definition, not a cache."""
         run_id = goal["run_id"]
         role = next(role for role in definition.roles if role.id == node.role)
-        return {**node.model_dump(mode="json"), "node_id": node.id, "task_id": run_id + ":" + node.id,
+        pack = {} if definition.pack_ref is None else {'pack_ref': definition.pack_ref.model_dump(mode='json')}
+        return {**node.model_dump(mode="json"), **pack, "node_id": node.id, "task_id": run_id + ":" + node.id,
                 "run_id": run_id, "depends_on": [run_id + ":" + dependency for dependency in node.depends],
                 "intent_id": goal["intent_id"], "goal_id": goal["goal_id"], "scope": definition.scope,
                 "model_alias": role.model_alias, "skills": role.skills, "tools": role.tools,
@@ -464,6 +475,9 @@ class WorkflowService:
         try:
             definition = WorkflowDefinition.model_validate(json.loads(goal["definition"]))
             contract = json.loads(row["contract"])
+            if definition.pack_ref is not None:
+                from .domain_packs import DomainPackService
+                DomainPackService(store, initialize=False).resolve_in(db, tenant, definition)
             if definition.execution_digest != goal["plan_digest"] or not isinstance(contract, dict):
                 raise ValueError
             node = next((node for node in definition.nodes if node.id == row["node_id"]), None)

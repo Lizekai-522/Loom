@@ -34,7 +34,7 @@ KINDS={'analyst':'requirements','architect':'design','tester':'public-checks'}
 
 @pytest.fixture
 def node_case(tmp_path):
-    def make(role,*,with_input=False,actor='subject:operator',context_limit=None,acceptance=None):
+    def make(role,*,with_input=False,actor='subject:operator',context_limit=None,acceptance=None,domain_pack=False):
         store=Store(tmp_path/'node.db');workflow=WorkflowService(store);ArtifactService(store)
         tests=(FrozenTest('private-host',{'value':1},{'answer':2}),)
         goal=workflow.create_goal('a','goal',title='统一节点测试',description='加一',acceptance=acceptance or ['tests.pass'],cost_limit=4000000,token_limit=8000000)
@@ -48,6 +48,16 @@ def node_case(tmp_path):
         if with_input:
             node['input_artifacts']=[dict(source_node='supply',kind='requirements',schema_version='loom.requirements/v1',required=True)]
             definition['nodes'].insert(0,dict(id='supply',title='输入来源',instruction='产出需求',role='analyst',role_output=dict(kind='requirements',schema_version='loom.requirements/v1'),limits=node['limits']))
+        if domain_pack:
+            from copy import deepcopy
+            from loom.domain_packs import DomainPackService
+            packs=DomainPackService(store)
+            nodes=deepcopy(definition['nodes'])
+            for item in nodes:item.pop('evaluation_digest',None)
+            published=packs.publish('a','pack-publish',run,dict(schema_version='loom.domain-pack/v1',name='live-software',version='1.0.0',
+                title='测试软件领域包',description='测试版本冻结与执行',scope='local-workspace',roles=definition['roles'],
+                templates=[dict(id='work',title='执行节点',nodes=nodes)]),actor='subject:operator')
+            definition.update(pack='live-software',pack_ref=published['reference'])
         saved=workflow.save_plan('a',run,'save',definition,0,actor=actor)
         workflow.approve_plan('a',run,'approve',saved['revision'],saved['digest'],actor=actor)
         path=tmp_path/'host.json';path.write_text(json.dumps({'tests':[dict(name=t.name,input=t.input,expected=t.expected) for t in tests]}),encoding='utf-8')

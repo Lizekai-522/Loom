@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from .policy import ArtifactSubmission, VerificationSignature, classify_progress
 from .store import Store, digest
+from .builtin_resources import fixture_manifest
 
 
 def fixture_verification(claim, output, passed=True):
@@ -26,8 +27,8 @@ def clamp_tests(implementation):
              "passed": candidate(v, lo, hi) == expected} for v, lo, hi, expected in cases]
 
 
-def run_demo(store: Store, manifest_path: str | Path) -> dict:
-    pack = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+def run_demo(store: Store, manifest_path: str | Path | None = None) -> dict:
+    pack = fixture_manifest() if manifest_path is None else json.loads(Path(manifest_path).read_text(encoding="utf-8"))
     if pack["metadata"]["executionMode"] != "deterministic-fixture" or pack["constraints"]["externalWrites"]:
         raise ValueError("this runner accepts local fixture packs only")
     tenant = "demo"

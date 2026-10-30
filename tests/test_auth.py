@@ -40,7 +40,7 @@ def private_file(directory, data):
 
 
 @pytest.mark.parametrize("role,allowed", [
-    ("operator", {"read", "goal.write", "plan.approve", "control", "suite.approve"}),
+    ("operator", {"read", "goal.write", "plan.approve", "control", "suite.approve", "pack.publish"}),
     ("worker", {"read", "task.claim", "task.submit"}),
     ("viewer", {"read"}),
 ])
