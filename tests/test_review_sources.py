@@ -48,6 +48,11 @@ def test_review_reads_exact_same_goal_program_and_preserves_independent_gate(val
     assert result['passed'] and result['execution']['model_source_recorded'] and len(calls)==1
     incoming=json.loads(calls[0]['messages'][1]['content'])['auxiliary_inputs']['review_input']
     source=ReviewInputService(b['store']).preview('a',b['run'],b['source_task'],include_source=True)
+    # A real response changed the exact reviewed-source task identifier. The
+    # authoritative source reference belongs in the interface instructions;
+    # candidate prose must not supply or rewrite that reference.
+    from loom.store import canonical
+    assert 'Exact reviewed-source subject JSON: '+canonical(source['subject']) in calls[0]['messages'][0]['content']
     assert incoming['subject']==source['subject'] and incoming['files']==source['files']
     assert json.loads(calls[0]['messages'][1]['content'])['auxiliary_inputs']['original_requirements']==dict(
         description='加一',instruction='只处理批准需求',acceptance=['tests.pass'])
@@ -86,11 +91,12 @@ def test_review_selector_rejects_invalid_or_ambiguous_plan(validation_case,mutat
     with pytest.raises(ValueError):WorkflowDefinition.model_validate(definition)
 
 
-@pytest.mark.parametrize('change',['hash','task','epoch'])
+@pytest.mark.parametrize('change',['hash','task','current_reviewer_task','epoch'])
 def test_model_cannot_substitute_another_review_subject(validation_case,change):
     b=validation_case(with_reviewer=True);body=review_body(b)
     if change=='hash':body['subject']['content_hash']='0'*64
     elif change=='task':body['subject']['task_id']=b['run']+':verify'
+    elif change=='current_reviewer_task':body['subject']['task_id']=b['run']+':review'
     else:body['subject']['epoch']+=1
     result,calls=generate_review(b,body)
     assert not result['passed'] and len(calls)==1 and result['execution']['reason']=='MODEL_ROLE_OUTPUT_INVALID'

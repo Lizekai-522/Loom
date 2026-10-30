@@ -2,7 +2,7 @@
   "schema_version": "loom.functional-acceptance/v1",
   "updated": "2026-10-30",
   "baseline": "0.20.0",
-  "current_increment": "0.25.0",
+  "current_increment": "0.26.0",
   "authoritative_spec": "docs/Loom.md",
   "implementation_plan": "docs/project-plan-2026-10-28.md",
   "rules": [
@@ -1180,7 +1180,7 @@
       "source_line": 242,
       "status": "partial",
       "stage": "roles",
-      "current": "同Goal reviewer按冻结节点选择已签程序并绑定精确subject、原始需求和宿主摘要，审查质量需双签；validator复验后需新双签，三节点实际路径验收。完整七角色同Goal修复、条件跳过和其余上下文继续推进。",
+      "current": "同Goal reviewer按冻结节点选择已签程序并绑定精确subject、原始需求和宿主摘要，审查质量需双签；validator复验后需新双签，三节点实际路径验收。完整七角色同Goal修复、条件跳过和其余上下文继续推进。 0.26.0新增会话式真实状态概览与需求草案入口，未实现任意自然语言自动批准或执行。",
       "code": [
         "src/loom/workflow.py",
         "src/loom/policy.py",

@@ -1,10 +1,10 @@
 {
-  "version": "0.25.0",
-  "stage": "usability-security-alpha",
+  "version": "0.26.0",
+  "stage": "product-cloud-alpha",
   "production_ready": false,
-  "generated_at": "2026-10-30T19:36:16.778742+08:00",
+  "generated_at": "2026-10-31T00:24:18.818300+08:00",
   "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
-  "source_file_count_excluding_manifest": 402,
+  "source_file_count_excluding_manifest": 412,
   "files": [
     {
       "path": ".gitignore",
@@ -13,13 +13,13 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 3345,
-      "sha256": "d59b6da6d0796742528513ca1e181a8f870bcec0b18db142dbac923ac9fca5eb"
+      "bytes": 3761,
+      "sha256": "48baf3ff9d78276c669ce8417f03866f47435dbdebe783580e8de6b984c39c8d"
     },
     {
       "path": "README.md",
-      "bytes": 18696,
-      "sha256": "b2b6ba1d2d5a58337b63ace9b2f50ef12a067ff1d0360dc68fa3a6e2a81e467d"
+      "bytes": 18641,
+      "sha256": "044e3426cb1ffa3252db0452d2463f0bcb18d7809ec11709d191953d7bde236a"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -82,6 +82,16 @@
       "sha256": "2f1108a0010f1ebbac53a80bc23e34ed406001c81d9cc54b65385df314c560b8"
     },
     {
+      "path": "deployment/README.md",
+      "bytes": 4251,
+      "sha256": "3c825e44973091799f7565b9c2b54309de5a4ecf57bf3a348d7c028fccf1934e"
+    },
+    {
+      "path": "deployment/install_services.sh",
+      "bytes": 4342,
+      "sha256": "4837cc00b75dfabcfa7d0fd4cd5b575a58fd021fa3d11c6a4257a662a217aba8"
+    },
+    {
       "path": "docs/Loom.md",
       "bytes": 189731,
       "sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7"
@@ -89,12 +99,12 @@
     {
       "path": "docs/api/README.md",
       "bytes": 14556,
-      "sha256": "564bb134ed4a54f57dd6942f083a80bacd073c8563fb67a86a76845ecb75314b"
+      "sha256": "745eab09d6a45c7a779bbf45c1c49c055513ab3c1897e2c22e43f4080053073a"
     },
     {
       "path": "docs/api/openapi.json",
       "bytes": 109515,
-      "sha256": "e0bed8cb9e47b93ed9725a3832c216efe80c4a89d890cd154a874b3593d50072"
+      "sha256": "1c73f6791da66a473d9e80c812dc937158f9532ab27b3acc63ea56dd893d0570"
     },
     {
       "path": "docs/approved-execution.md",
@@ -158,18 +168,18 @@
     },
     {
       "path": "docs/full-function-plan-2026-10-30.md",
-      "bytes": 3408,
-      "sha256": "f2c12fe3a989da769beb0147991ff839bcd07e8c0de74480c6b859d72385f118"
+      "bytes": 3690,
+      "sha256": "439e04c3cd4eda0d85e27ef6de78e71292a6f59d2c1103f5b29dacc594ac00b3"
     },
     {
       "path": "docs/functional-acceptance.json",
-      "bytes": 51163,
-      "sha256": "6243e263a708d5f395028500d267e0a5fd5c17b0eea2f47496500f549cc950c5"
+      "bytes": 51278,
+      "sha256": "8d117f1e7fc500fe4eec27146312e947883f6844339998c858bf9c2d41674dee"
     },
     {
       "path": "docs/functional-acceptance.md",
-      "bytes": 6788,
-      "sha256": "b6323fc4c27a45ca96b7c77ce73fd94366349896591a18a5d1c5f454b5d1a4fa"
+      "bytes": 6903,
+      "sha256": "22dde7ecbd3ff958b8d274c5a939d9e3fc6d0dba87d0c872084c522f9942808c"
     },
     {
       "path": "docs/github-reuse.md",
@@ -183,8 +193,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 55010,
-      "sha256": "c2cf187d5fa471abce556ac2a22c56bc5f33a087c62b196b26d52217f6aff739"
+      "bytes": 55504,
+      "sha256": "b3fdcf0d11907bd1bbf2e2918a23c4401e241b369651de21a651a8663bde8e01"
     },
     {
       "path": "docs/launch-four-rounds-2026-10-30.md",
@@ -195,6 +205,11 @@
       "path": "docs/launch-readiness-2026-10-29.md",
       "bytes": 4521,
       "sha256": "b28f5213401a9876c456b203b939ad67a3dd6060b16bb37acc0ffeb4532eaeea"
+    },
+    {
+      "path": "docs/linux-bootstrap-0.26.0.json",
+      "bytes": 501,
+      "sha256": "db99ca8db066b65e6e80c5b586f587558dd4f682d8b2ed55a42e883caf9719a0"
     },
     {
       "path": "docs/local-auth.md",
@@ -252,14 +267,24 @@
       "sha256": "6fee3266393a9ae0df5fb697eac6d719b5f62e98f071e9f76500e5c81966b3d8"
     },
     {
+      "path": "docs/product-cloud-review-2026-10-30.md",
+      "bytes": 5111,
+      "sha256": "10e7d69a267e629ef448f7e6352cadc8202166cbce69ef60cb8caf2ac1ed06c3"
+    },
+    {
+      "path": "docs/program-edges-0.26.0.json",
+      "bytes": 1610,
+      "sha256": "7fb6633afddc00cb0bc4b8cd77bfff013f11bad9149588dc9bbdc411b121e08b"
+    },
+    {
       "path": "docs/progress-cycle.md",
       "bytes": 20873,
       "sha256": "c73fd5a8a85cb974cfd390ede27adc90f524addef5d15e61a67d840b1b043010"
     },
     {
       "path": "docs/project-plan-2026-10-28.md",
-      "bytes": 21654,
-      "sha256": "6772e3ffd50ca5ce2558edab69b8b3f324d340924f082c977ace629cdc199ea0"
+      "bytes": 22182,
+      "sha256": "07c29ced0dc5cebde0c1354536a43d009121c189f9dfbedbb072549e2bd2e44f"
     },
     {
       "path": "docs/public-checks.md",
@@ -280,6 +305,11 @@
       "path": "docs/real-public-flow-0.20.0.json",
       "bytes": 844,
       "sha256": "721de48da1a90e008438a0193950c1ef424d8dbf37f22d57ad4b77ad49f313d8"
+    },
+    {
+      "path": "docs/real-public-flow-0.26.0.json",
+      "bytes": 1453,
+      "sha256": "1636171f1eb50c4b73bb285bb3c9db9f9ee26bc115fb1d36906653814d61302a"
     },
     {
       "path": "docs/recovery-check.md",
@@ -672,6 +702,11 @@
       "sha256": "d15bab28105814e480751c51012184c71c31114082770fbe7acf074a373fce9d"
     },
     {
+      "path": "docs/validation-0.26.0.md",
+      "bytes": 4849,
+      "sha256": "e2bc9e88d63fb4f68d8ceaf0cf532ca3bf74571d4d66fc03f302957a6ef7c645"
+    },
+    {
       "path": "docs/validation-0.3.md",
       "bytes": 4056,
       "sha256": "95b8e50c114e15ebe4405559a3bb84cb64bab6c958e75f7332f37a688554e023"
@@ -749,7 +784,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 804,
-      "sha256": "78fd13d8cd5a6a1d624a99d62eee395a7df9dfd06a3794d065b61486c7233f88"
+      "sha256": "36c27360b7b4306cbdc0e9de95f1f084e47a7dc9feec5d277113cdb5628f0b89"
     },
     {
       "path": "requirements.lock",
@@ -860,6 +895,11 @@
       "path": "scripts/demo_checkpoints.py",
       "bytes": 12866,
       "sha256": "e7f800c26ed9564543d9c230c7af3758328df17cad2c13a9bd3594e33a39864d"
+    },
+    {
+      "path": "scripts/prepare_cloud.py",
+      "bytes": 4106,
+      "sha256": "6a64255c0e7c7c7c1300c81f7fcec2df230a4799d56f56e3fa3180d218759fde"
     },
     {
       "path": "scripts/prepare_public_preview.py",
@@ -989,7 +1029,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "61b376193d0a371b6a4a0aead214cc77ea98f3af430995fad623c4cce18eaccc"
+      "sha256": "dafa987e2fc3ec52f41c3d264cd64a3efc9dc53177fd6c6f2ed7886d23802b51"
     },
     {
       "path": "src/loom/__main__.py",
@@ -1138,8 +1178,8 @@
     },
     {
       "path": "src/loom/public_access.py",
-      "bytes": 12777,
-      "sha256": "b9dd43533e801e3f385645b570e3ac5222f178610edb13f22bbdac1ca70dd502"
+      "bytes": 13182,
+      "sha256": "670081f32643900ab0802cfacb234ff1eb460d57b8127eb3f21e002115a9f613"
     },
     {
       "path": "src/loom/public_audit.py",
@@ -1193,8 +1233,8 @@
     },
     {
       "path": "src/loom/role_execution.py",
-      "bytes": 8504,
-      "sha256": "b8a57cf9f4eeaa7661ef136a5368d4a718dba4119a5241cb720ff6b2c37427ca"
+      "bytes": 8839,
+      "sha256": "aad63b08684f8791e864fbf5442b81345f9757c42b448e7e2603212eca748ec6"
     },
     {
       "path": "src/loom/role_summary.py",
@@ -1258,18 +1298,18 @@
     },
     {
       "path": "src/loom/web/console-execution.js",
-      "bytes": 14333,
-      "sha256": "91d744fec45bdc615ed6ba666fb11f3ed71918793d5260d78868d58aa2239be0"
+      "bytes": 14345,
+      "sha256": "6e7c7fb0c7a9126b4aae7b9de4acd6e91554b23bfc83227680110f8c12ad15ba"
     },
     {
       "path": "src/loom/web/console-preview.js",
-      "bytes": 2063,
-      "sha256": "caf43fd21b2ed81870ba154b8e350ed1e19c557317972093a4c399feedd8e822"
+      "bytes": 2295,
+      "sha256": "17b7a22696e2b44f913fb44c85aa575df127d7efc38b75788c79bb2bc3e951c7"
     },
     {
       "path": "src/loom/web/console-progression.js",
-      "bytes": 6813,
-      "sha256": "7170da19b670964565ff0a29234c416117fe682bc4c9e4b1ae11f0e9ecf0bd3c"
+      "bytes": 6804,
+      "sha256": "5e61d66b39d69a8729a544ccbdeeda41ad915f0a2bb0c30f2bcabb948e334de6"
     },
     {
       "path": "src/loom/web/console-review-decisions.js",
@@ -1288,8 +1328,8 @@
     },
     {
       "path": "src/loom/web/console-verification.js",
-      "bytes": 9758,
-      "sha256": "2088bc1a5b1ae12f2e2a6a4d024f5ac93a6687d42fa5a6772ba51cc4703627a3"
+      "bytes": 10024,
+      "sha256": "212fd372f95fd07e01827ca435a46554e5a1ecb0c950f24b66aa2c7b9a4ab4e3"
     },
     {
       "path": "src/loom/web/console-zh.js",
@@ -1303,13 +1343,18 @@
     },
     {
       "path": "src/loom/web/console.js",
-      "bytes": 72428,
-      "sha256": "3773b5ba8adcd8233e932db82b9115d45a2fde302a2ff3dc0e0abf9bc02651d5"
+      "bytes": 77630,
+      "sha256": "28031c0c98a6dbbaded7a66282c7902a628a34fb9546de779ea10528302019d6"
     },
     {
       "path": "src/loom/web/index.html",
-      "bytes": 20986,
-      "sha256": "a22666a64980667d6759ea9b1427a5877936f681d15dc3351f7342b7ae959383"
+      "bytes": 23761,
+      "sha256": "39e9d595dbd6982c3a4b1bb5e90e9b90fd903c244f0fc864e00467509b1266b5"
+    },
+    {
+      "path": "src/loom/web/product.css",
+      "bytes": 14007,
+      "sha256": "14135d48abc278e96edf2eb04ff12af2847f11620e15508cb72c366a2a203c57"
     },
     {
       "path": "src/loom/workflow.py",
@@ -1497,6 +1542,11 @@
       "sha256": "db1af837b1f6e33e583e4d53232202c0e803ed5f9cc17908846f6dfd38eb2aa7"
     },
     {
+      "path": "tests/test_cloud_bootstrap.py",
+      "bytes": 3418,
+      "sha256": "bce291f284db9f5becb7b9c4ef3334e169ec41842d95eafec5e9e9b7c2cc1583"
+    },
+    {
       "path": "tests/test_complete_preview.py",
       "bytes": 3425,
       "sha256": "48ed2fdd7e06c5965f68cd6efd3c5bcb79833503459e83465d56cfee4c54b07c"
@@ -1563,8 +1613,8 @@
     },
     {
       "path": "tests/test_execution.py",
-      "bytes": 32751,
-      "sha256": "7e1efb726c0bec6e26666aafd079179b94401c08758253f2be60fda2a719de8f"
+      "bytes": 33674,
+      "sha256": "f08aabf1c72e35cd0f8b7ed36001fd0d5549b354024d17f68e49c95abb3fe2be"
     },
     {
       "path": "tests/test_execution_context.py",
@@ -1688,8 +1738,8 @@
     },
     {
       "path": "tests/test_review_sources.py",
-      "bytes": 8980,
-      "sha256": "ae16c5b122b63ffba62b323fbb086520e0fb18ea5184d0886482ebb7f6fd9a46"
+      "bytes": 9463,
+      "sha256": "012f46ae8be92bd7dc8a15681cdccbde157b5a5cc8c4929de88b466ad5c4acaa"
     },
     {
       "path": "tests/test_reviewed_execution.py",
@@ -2019,31 +2069,76 @@
   ],
   "validation": {
     "full": {
-      "main_tests": 1259,
+      "main_tests": 1265,
       "subtests": 387,
       "failures": 0,
       "skipped": 0
     },
     "target": {
-      "main_tests": 130,
-      "subtests": 0,
+      "main_tests": 48,
+      "subtests": 9,
       "failures": 0,
       "skipped": 0
     },
     "infra": {
-      "main_tests": 48,
+      "main_tests": 10,
       "subtests": 0,
       "failures": 0,
       "skipped": 0
     }
   },
   "live_http_checks": 81,
-  "browser_checks": 34,
-  "new_paid_model_requests": 0,
-  "real_provider_probe": null,
+  "browser_checks": 48,
+  "new_paid_model_requests": 7,
+  "real_provider_probe": {
+    "passed": true,
+    "version": "0.26.0",
+    "run_id": "83e2feb5-2577-46e6-8532-6b4986ea212d",
+    "goal_status": "succeeded",
+    "task_status": "done",
+    "actual_models": [
+      "deepseek-flash",
+      "deepseek-v4-pro"
+    ],
+    "provider_requests_attempted": 3,
+    "provider_responses": 3,
+    "actual_generation_cost_upper_microusd": 491,
+    "actual_verification_cost_upper_microusd": 6700,
+    "actual_cost_upper_microusd": 7191,
+    "real_docker_cases": 6,
+    "real_ed25519_attestations": 2,
+    "billing_uncertain": false,
+    "reserved_microusd": 0,
+    "verification_pool_reserved_microusd": 0,
+    "public_https_browser": true,
+    "source_effects_done": 2,
+    "audit_chain_valid": true,
+    "source_database_audit_valid": true,
+    "automatic_retry": false,
+    "provider_bill_verified": false,
+    "production_ready": false,
+    "counts_as_original_62_complete": false,
+    "prior_failed_acceptance": {
+      "run_id": "fb5c53ae-1658-49ef-a79e-9befb7a7fa28",
+      "status": "open",
+      "task_status": "submitted",
+      "verification_state": "blocked",
+      "reason": "VERIFICATION_MODEL_RESPONSE_UNAVAILABLE",
+      "provider_requests": 2,
+      "source_reference_rejected": true,
+      "automatic_retry": false,
+      "actual_generation_cost_upper_microusd": 546,
+      "actual_verification_cost_upper_microusd": 1294
+    },
+    "connectivity_probes": 2,
+    "total_new_provider_requests": 7,
+    "fresh_goal_after_code_fix": true,
+    "cloud_host_tested": false,
+    "personal_computer_off_tested": false
+  },
   "notes": [
     "Original 62 requirements retained; partial feature increments do not establish production readiness.",
-    "Current infrastructure tests use real Docker and JetStream with simulated provider responses.",
+    "Current infrastructure tests use real Docker; separate browser acceptance records three real provider calls and two real signatures.",
     "Dual-model signed verification is tested; each release records its UI and workflow scope. Full adjudication, general tools, distributed quotas and production hosting remain tracked separately.",
     "Private configuration, invitations, session cookies, identities and databases are excluded."
   ]

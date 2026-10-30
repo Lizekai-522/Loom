@@ -62,15 +62,15 @@ class PreviewAccess:
 
 LOGIN = '''<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Loom 公网体验</title><link rel="stylesheet" href="/preview/style.css">
-<main><p>LOOM · 临时公网体验</p><h1>进入项目工作台</h1>
-<p>本机提供真实模型与隔离执行。与受邀测试者共用体验空间，请使用测试内容。</p>
+<title>Loom · 项目空间</title><link rel="stylesheet" href="/preview/style.css">
+<main><p>LOOM · 受邀体验</p><h1>开始你的项目</h1>
+<p>输入访问码，直接进入项目空间。与受邀测试者共用体验空间，请使用测试内容。</p>
 <form method="post" action="/preview/login"><label for="code">体验访问码</label>
 <input id="code" name="code" type="password" autocomplete="off" required maxlength="128">
-<button type="submit">进入工作台</button></form>
+<button type="submit">进入项目空间</button></form>
 <p>单目标预算上限 $1、3,200,000 词元；最多 20 个目标。按模型上下文上限保守预留，实际用量结算。执行前仍须明确确认。
 Flash 已接通；独立复核另用操作员配置的项目额度，最多预留 $1.85，原生成额度保持。进入后可检查复核执行器状态并明确申请。</p></main></html>'''
-STYLE = 'body{font:16px/1.7 system-ui;background:#f6f5f1;color:#24292b;margin:0}main{max-width:620px;margin:10vh auto;padding:32px}input,button{font:inherit;display:block;box-sizing:border-box;padding:12px;margin:12px 0;width:100%}button{background:#255943;color:white;border:0;cursor:pointer}p{color:#48544d}'
+STYLE = 'body{font:14px/1.8 system-ui,"Microsoft YaHei",sans-serif;background:#fafafa;color:#222326;margin:0}main{box-sizing:border-box;max-width:490px;margin:9vh auto;padding:36px;background:white;border:1px solid #e8e8e8;border-radius:16px}h1{font-size:28px;letter-spacing:-1px;font-weight:550;margin:16px 0}input,button{font:inherit;display:block;box-sizing:border-box;border:1px solid #ddd;border-radius:8px;padding:11px 13px;margin:12px 0;width:100%}input:focus-visible,button:focus-visible{outline:2px solid #5c78c9;outline-offset:3px}button{background:#222326;color:white;border:0;cursor:pointer}p{font-size:12px;color:#75767c}label{font-size:12px}@media(max-width:560px){main{margin:5vh 16px;padding:25px}}'
 
 
 class PublicPreview:
