@@ -90,7 +90,7 @@ class VerificationJobs:
             if event['type'] in {'verification.started','verification.finished','verification.blocked'} and event['payload'].get('job_id')==row['id']:
                 if event['actor']!='verification-engine' or event['payload'].get('binding_digest')!=digest(record['binding']):raise Conflict('VERIFICATION_LEDGER_INVALID')
                 state=event['payload']
-        if (state['state'] not in {'queued','running','verified','rejected','blocked'} or type(state['actual_cost_microusd']) is not int
+        if (state['state'] not in {'queued','running','verified','rejected','disputed','blocked'} or type(state['actual_cost_microusd']) is not int
             or state['actual_cost_microusd']<0 or type(state['billing_uncertain']) is not bool):raise Conflict('VERIFICATION_LEDGER_INVALID')
         return {**record,**state}
 
@@ -205,8 +205,9 @@ class VerificationJobs:
                     'verification://'+job_id,True,True,'signed',signatures))
             else:
                 db.execute("UPDATE runs SET status='awaiting_human' WHERE tenant=? AND id=? AND status='open'",(tenant,row['run_id']))
-            result=dict(job_id=job_id,binding_digest=digest(state['binding']),state='verified' if passed else 'rejected',actual_cost_microusd=actual_cost,
-                billing_uncertain=False,reason=None if passed else 'MODEL_REVIEW_REJECTED',counts_as_success=False,task_verified=passed)
+            disputed=len({signature.passed for signature in signatures})>1
+            result=dict(job_id=job_id,binding_digest=digest(state['binding']),state='verified' if passed else 'disputed' if disputed else 'rejected',actual_cost_microusd=actual_cost,
+                billing_uncertain=False,reason=None if passed else 'MODEL_REVIEW_DISPUTED' if disputed else 'MODEL_REVIEW_REJECTED',counts_as_success=False,task_verified=passed)
             self.store._event(db,tenant,row['run_id'],'verification.finished',result,'verification-engine')
             return result
 
@@ -226,5 +227,9 @@ class VerificationJobs:
             root=json.loads(db.execute('SELECT envelope FROM events WHERE tenant=? AND run_id=? AND seq=1',(tenant,run_id)).fetchone()[0])['payload']
             criteria=root['acceptance']
             if not set(criteria)<={'schema.valid','tests.pass','report.traceable'}:return False
+            if 'tests.pass' in criteria:
+                programs=[task for task in tasks if json.loads(task['output']).get('kind')=='python-json-program']
+                if not programs:return False  # Document schema success is not an executed test.
+                if any(self.reviews._preview_in(db,tenant,run_id,t['id'],False)['execution_summary']['hard_criteria_passed'] is not True for t in programs):return False
         self.store.finish_run(tenant,run_id,'verified-goal:'+run_id,{criterion:True for criterion in criteria})
         return True

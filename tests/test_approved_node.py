@@ -34,10 +34,10 @@ KINDS={'analyst':'requirements','architect':'design','tester':'public-checks'}
 
 @pytest.fixture
 def node_case(tmp_path):
-    def make(role,*,with_input=False,actor='subject:operator',context_limit=None):
+    def make(role,*,with_input=False,actor='subject:operator',context_limit=None,acceptance=None):
         store=Store(tmp_path/'node.db');workflow=WorkflowService(store);ArtifactService(store)
         tests=(FrozenTest('private-host',{'value':1},{'answer':2}),)
-        goal=workflow.create_goal('a','goal',title='统一节点测试',description='加一',acceptance=['tests.pass'],cost_limit=4000000,token_limit=8000000)
+        goal=workflow.create_goal('a','goal',title='统一节点测试',description='加一',acceptance=acceptance or ['tests.pass'],cost_limit=4000000,token_limit=8000000)
         run=goal['run_id'];definition=json.loads((ROOT/'packs/software-dev/workflow-v1.json').read_bytes())
         node=dict(id='work',title='执行节点',instruction='只处理批准需求',role=role,limits=dict(cost_limit_microusd=1000000,token_limit=2000000,max_attempts=1))
         if context_limit is not None:node['limits']['context_limit_bytes']=context_limit

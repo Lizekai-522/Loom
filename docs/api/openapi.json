@@ -3,7 +3,7 @@
   "info": {
     "title": "Loom local kernel",
     "description": "Single-host audited API. Explicit generation and dual-model verification requests are handled by separately configured private workers; production identity and hosting remain tracked independently.",
-    "version": "0.20.0"
+    "version": "0.21.0"
   },
   "paths": {
     "/v1/me": {
@@ -3044,7 +3044,10 @@
           },
           "path": {
             "type": "string",
-            "const": "main.py",
+            "enum": [
+              "main.py",
+              "artifact.json"
+            ],
             "title": "Path"
           },
           "start_line": {
@@ -3133,7 +3136,10 @@
         "properties": {
           "schema_version": {
             "type": "string",
-            "const": "loom.review-subject-ref/v1",
+            "enum": [
+              "loom.review-subject-ref/v1",
+              "loom.review-subject-ref/v2"
+            ],
             "title": "Schema Version"
           },
           "run_id": {
@@ -3182,6 +3188,59 @@
             "type": "string",
             "pattern": "^[0-9a-f]{64}$",
             "title": "Submission Event Hash"
+          },
+          "artifact_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Id"
+          },
+          "artifact_kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "requirements",
+                  "design",
+                  "public-checks"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Kind"
+          },
+          "artifact_schema_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Schema Version"
+          },
+          "artifact_content_hash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Content Hash"
           }
         },
         "additionalProperties": false,

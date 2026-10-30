@@ -252,12 +252,16 @@
           const source = artifact.model_provenance;
           const recorded = artifact.model_source_recorded === true && artifact.model_source_status === "recorded"
             && validRoleSource(source) && source.source_epoch === task.epoch && source.plan_digest === state.plan?.digest;
-          content.append(roleSourceDisplay(recorded ? source : null, recorded ? "recorded" : artifact.model_source_status, true));
+          content.append(roleSourceDisplay(recorded ? source : null, recorded ? "recorded" : artifact.model_source_status, true,task.status==='done'));
         }
         if (artifact.kind === "python-json-program" && artifact.trusted_evaluation === true && ["submitted", "done"].includes(task.status)) {
           const button = node("button", "source-open", "查看源码与导出"); button.type = "button"; button.dataset.sourceTask = task.id;
           button.disabled = state.busy || !runChecked(); button.addEventListener("click", () => { if (!button.disabled) sourcePanel.open(task); });
           content.append(button);
+        }
+        if(artifact.kind==='role-artifact'&&['analyst','architect','tester'].includes(task.role)&&artifact.model_source_recorded===true&&['submitted','done'].includes(task.status)){
+          const button=node('button','source-open','查看正文与导出');button.type='button';button.dataset.sourceTask=task.id;
+          button.disabled=state.busy||!runChecked();button.addEventListener('click',()=>{if(!button.disabled)sourcePanel.open(task);});content.append(button);
         }
       }
       row.append(node("span", "task-number", String(index + 1).padStart(2, "0")), content, badge(task.status));
@@ -471,11 +475,11 @@
     return validRoleSource(summary) ? summary : null;
   }
 
-  function roleSourceDisplay(source, status, compact = false) {
+  function roleSourceDisplay(source, status, compact = false, taskVerified = false) {
     const block = node("div", "artifact-metadata");
     const labels = {version_mismatch: "版本不匹配，未确认当前来源", worker_submission: "未取得匹配执行记录（执行器 提交）", unavailable: "证据暂不可用"};
     block.append(node("p", "task-detail", `模型来源：${source ? "已绑定执行记录" : labels[status] || "证据摘要待核对"}`),
-      node("p", "task-detail", "内容：未独立验证"));
+      node("p", "task-detail", taskVerified?'内容：任务已通过独立验收，签名见“独立复核”':'内容：未独立验证'));
     if (source) {
       block.append(node("p", "task-detail", `${label(source.role)} · ${source.provider} / ${source.model} · 路由 ${source.route}`));
       if (source.kind === "public-checks") block.append(node("p", "task-detail", "公开开发检查候选：用例未执行，未作为冻结验收。"));

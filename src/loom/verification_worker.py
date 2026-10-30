@@ -39,7 +39,8 @@ class VerificationWorker:
         next(role for role in definition['roles'] if role['id']=='reviewer')['model_alias']=model
         limit=350000 if model=='deepseek-flash' else 1500000
         definition['nodes']=[dict(id='review',title=model+'独立复核',role='reviewer',
-            instruction='独立核对main.py是否满足冻结的原始需求。不得执行代码。只报告明确可定位的问题；无问题用no_findings及空findings。subject逐字段照抄平台引用。用中文说明结论。',
+            instruction=('独立核对artifact.json是否完整、准确满足冻结原始需求，不能把schema有效当作语义正确。' if state['subject']['schema_version']=='loom.review-subject-ref/v2' else '独立核对main.py是否满足冻结的原始需求。')+
+                '不得执行代码。只报告明确可定位的问题；无问题用no_findings及空findings。subject逐字段照抄平台引用。用中文说明结论。',
             review_subject=state['subject'],role_output=dict(kind='review-findings',schema_version='loom.review-findings/v1'),
             limits=dict(cost_limit_microusd=limit,token_limit=1100000,max_attempts=1,context_limit_bytes=65536))]
         description=canonical(dict(original_requirements=requirements,policy='只读独立复核；不得自报签名或自行批准验收。'))

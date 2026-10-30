@@ -64,7 +64,8 @@ def submitted_role_source(artifacts, tenant, run_id, task, spec, output):
     if source is None:
         return {"model_source_recorded": False, "model_source_status": "worker_submission"}
     contract = spec.get("role_output") if spec else None
-    if (type(contract) is not dict or candidate["stale"]
+    archival_source=task['status']=='done' and candidate.get('stale_reasons')==['run_terminal']
+    if (type(contract) is not dict or (candidate["stale"] and not archival_source)
             or candidate["source_task_id"] != task["id"] or candidate["source_epoch"] != task["epoch"]
             or candidate["plan_digest"] != spec["plan_digest"] or candidate["kind"] != contract["kind"]
             or candidate["schema_version"] != contract["schema_version"]

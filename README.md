@@ -1,6 +1,6 @@
 # Loom
 
-基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.20.0**提供可完成的公网词频体验：创建草案、批准冻结计划、Flash生成、Docker终验、Flash/Pro独立签名和Goal验收；保留现有七角色与多角色流程。实际验收及运行边界见[本轮验证](docs/validation-0.20.0.md)与[体验步骤](online-experience.md)。 · [四轮上线计划](docs/launch-four-rounds-2026-10-30.md) · [配额说明](docs/quotas.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
+基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.21.0**扩展需求、设计和公开检查候选的双模型签名消费，区分模型分歧disputed与共同拒绝；结构有效不会冒充实际执行测试。原程序真实闭环保留。[全功能计划](docs/full-function-plan-2026-10-30.md) · [62项验收表](docs/functional-acceptance.md) · [本轮验证](docs/validation-0.21.0.md)。 · [四轮上线计划](docs/launch-four-rounds-2026-10-30.md) · [配额说明](docs/quotas.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
 
 0.17.4历史重测967主/382子、Chromium63项，三份源码下载与权威原始字节一致；0.17.5测试与真实基础设施证据单独登记。[历史验证](docs/validation.md)
 
