@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import secrets
 
-from bootstrap_local import write_private
+from bootstrap_local import enable_auto_acceptance, write_private
 from loom.auth import load_identities
 from loom.execution import freeze_tests
 from loom.executor_config import load_executor_config
@@ -65,6 +65,7 @@ def prepare(work_root, port=8799):
     executor=private/'executor.json'
     if not executor.exists():
         write_private(executor,dict(schema_version='loom.local-executor/v1',executor_id='public-preview',identities_file=str(identity_path),secrets_file=str(work/'loom-private/model-secrets.json'),model_config=str(repo/'configs/models.example.json'),sandbox_image=(work/'loom-sandbox-image.id').read_text().strip(),host_tests={evaluation:str(host)}))
+    enable_auto_acceptance(executor,private/'auto-acceptance')
     load_executor_config(executor)
     config_path=private/'access.json'
     if not config_path.exists():write_private(config_path,dict(origin='https://unconfigured.invalid',access_code=secrets.token_urlsafe(32),port=port))

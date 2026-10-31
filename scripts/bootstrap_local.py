@@ -15,6 +15,14 @@ def write_private(path,data):
     except OSError:pass
 
 
+def enable_auto_acceptance(config,directory):
+    """Add the private autopilot held-out directory to an existing executor config once."""
+    data=json.loads(config.read_text(encoding='utf-8-sig'))
+    if 'auto_acceptance_dir' not in data:
+        directory.mkdir(parents=True,exist_ok=True)
+        write_private(config,{**data,'auto_acceptance_dir':str(directory)})
+
+
 def prepare(work_root,port=8796):
     repo=Path(__file__).resolve().parents[1];work=Path(work_root).resolve()
     if work.is_relative_to(repo.parent) or work==Path(work.anchor):raise ValueError('private work directory must be outside public outputs')
@@ -31,6 +39,7 @@ def prepare(work_root,port=8796):
         image=work/'loom-sandbox-image.id'
         write_private(config,dict(schema_version='loom.local-executor/v1',executor_id='local-dev',identities_file=str(identities),secrets_file=str(private/'model-secrets.json'),
             model_config=str(repo/'configs/models.example.json'),sandbox_image=image.read_text().strip() if image.exists() else None,host_tests={}))
+    enable_auto_acceptance(config,private/'auto-acceptance')
     return dict(passed=True,base_url=f'http://127.0.0.1:{session["port"]}/console',private_configuration_ready=True,model_key_loaded=False)
 
 

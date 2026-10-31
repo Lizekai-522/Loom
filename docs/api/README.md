@@ -1,6 +1,6 @@
 # 本地 API 契约
 
-此目录的 `openapi.json` 由当前 FastAPI 应用生成，描述实际可运行的 HTTP 子集。当前版本 **0.26.0**；本机 [控制台](http://127.0.0.1:8796/console) 与 [接口文档](http://127.0.0.1:8796/docs) 同源提供。设计方案附录中的其余接口仍属后续目标，未因列入规范而自动实现。
+此目录的 `openapi.json` 由当前 FastAPI 应用生成，描述实际可运行的 HTTP 子集。当前版本 **0.27.0**；本机 [控制台](http://127.0.0.1:8796/console) 与 [接口文档](http://127.0.0.1:8796/docs) 同源提供。设计方案附录中的其余接口仍属后续目标，未因列入规范而自动实现。
 
 `/health` 返回 version，stage 仍为 `S1-local`，表示 HTTP 内核继续使用单实例 SQLite；`external_writes_enabled=false` 表示此 API 没有执行真实外部写的路由。本机脚本的真实模型调用另见 [本机执行说明](../local-execution.md)。`/integrity` 的 `external_checkpoint: "not_configured"` 表示该 HTTP 实例尚未配置独立检查点；离线 Ed25519 组件不在普通查询时自动签名，使用方法见 [检查点说明](../checkpoints.md)。
 
@@ -13,6 +13,9 @@
 | 本租户持久配额与计数 | `GET /v1/quotas`；只读，实际模型及已登记 Python 工具准入在相应 effect 事务核对，工具不新增模型费用预留 |
 | 本机工具未知态核对 | `POST /v1/runs/{run_id}/tool-effects/{call_id}/reconcile`；具名操作员，公网禁止，不改费用或自动重跑 |
 | 独立验证能力 | `GET /v1/verification-capabilities`；鉴权只读，区分签名核心与真实配置/完成入口，不接受HTTP密钥登记 |
+| 新建自动会话或追问 | `POST /v1/sessions`，正文 `{"prompt":…, "title"?:…, "parent_session_id"?:…}`；需具名操作员（goal.write+plan.approve+control）与 Idempotency-Key。创建即按会话模板批准计划，由私有执行器委托推进；带 parent 时须上一轮已结束，新会话携带原始需求、历次补充与上一版程序，不含留出用例 |
+| 列出/读取会话 | `GET /v1/sessions`（每个对话线程一行，含轮数）、`GET /v1/sessions/{session_id}`；返回线程、步骤、需求/用例正文、尝试计数、源码、当前活动、停止原因与费用，不含留出用例执行输出 |
+| 停止后继续自动推进 | `POST /v1/sessions/{session_id}/resume`，正文 `{"reason":…}`；只解除会话停止标记，不改变运行状态、预算或未知调用 |
 | 创建 Goal 草案 | `POST /v1/goals` |
 | 列出本租户目标/读取目标 | `GET /v1/goals`、`GET /v1/goals/{run_id}` |
 | 保存/读取版本化计划 | `PUT /v1/goals/{run_id}/plan`、`GET /v1/goals/{run_id}/plan` |

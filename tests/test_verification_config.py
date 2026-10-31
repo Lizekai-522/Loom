@@ -14,7 +14,7 @@ script=importlib.util.module_from_spec(spec);spec.loader.exec_module(script)
 
 def test_private_key_configuration_is_encrypted_distinct_and_never_overwritten(tmp_path):
     source=tmp_path/'source.db';Store(source)
-    identities=tmp_path/'identities.json';identities.write_text(json.dumps(dict(schema_version='loom.local-identities/v1',identities=[dict(tenant_id=i.tenant_id,subject_id=i.subject_id,roles=sorted(i.roles),token=i.token) for i in (OP,WORKER)])),encoding='utf-8')
+    identities=tmp_path/'identities.json';identities.write_text(json.dumps(dict(schema_version='loom.local-identities/v1',identities=[dict(tenant_id=i.tenant_id,subject_id=i.subject_id,roles=sorted(i.roles),token=i.token) for i in (OP,WORKER)])),encoding='utf-8');identities.chmod(0o600)
     directory=tmp_path/'private-keys'
     path=script.configure(directory,tenant='a',identities=identities,model_config=ROOT/'configs/models.dual.example.json',model_secrets=tmp_path/'project-secret.json',db=source,pool_limit=2000000)
     config=load_verification_config(path);private,trusted=config.load_signers()

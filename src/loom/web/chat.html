@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Loom</title>
+  <link rel="stylesheet" href="/console/assets/chat.css">
+  <script src="/console/assets/chat.js" defer></script>
+</head>
+<body>
+  <div class="shell" id="shell">
+    <aside class="sidebar" id="sidebar" aria-label="会话">
+      <div class="side-top">
+        <a class="brand" href="/console"><span class="brand-mark" aria-hidden="true">L</span>Loom</a>
+        <button id="close-sidebar" class="icon-button only-mobile" type="button" aria-label="收起侧栏">×</button>
+      </div>
+      <button id="new-session" class="new-session" type="button">＋ 新建会话</button>
+      <nav class="session-list" id="session-list" aria-label="历史会话"></nav>
+      <div class="side-foot">
+        <div id="identity" class="identity"></div>
+        <a class="foot-link" href="/console/expert">项目空间（计划 · 证据 · 人工待办）</a>
+        <button id="logout" class="foot-link as-button" type="button" hidden>退出体验</button>
+      </div>
+    </aside>
+    <div class="scrim" id="scrim" hidden></div>
+    <main class="main" id="main">
+      <header class="main-head">
+        <button id="open-sidebar" class="icon-button only-mobile" type="button" aria-label="打开会话列表">☰</button>
+        <div class="head-title"><h1 id="session-title">新会话</h1><span id="session-state" class="state" hidden></span></div>
+        <div class="head-actions">
+          <button id="pause" class="ghost" type="button" hidden>暂停</button>
+          <button id="continue" class="ghost" type="button" hidden>继续</button>
+          <button id="toggle-details" class="ghost" type="button" hidden aria-expanded="false" aria-controls="details">详情</button>
+        </div>
+      </header>
+      <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+      <section class="stream" id="stream" aria-live="polite">
+        <div class="welcome" id="welcome">
+          <h2>今天要构建什么？</h2>
+          <p class="muted">用一句话描述程序。Loom 会自动分析需求、设计测试、编写代码并在隔离环境验收，只有遇到预算、未知调用或验收失败才会停下来问你。</p>
+          <div class="examples" id="examples"></div>
+          <p class="scope">当前自动会话支持：Python 标准库程序，从标准输入读取 JSON、向标准输出写 JSON。验收用例由测试角色生成并留出，不等同于独立双模型复核。</p>
+        </div>
+        <div id="conversation" hidden></div>
+      </section>
+      <form class="composer" id="composer">
+        <label class="sr-only" for="prompt">描述你的需求</label>
+        <textarea id="prompt" rows="1" maxlength="4000" placeholder="描述你想要的程序…" title="Enter 发送，Shift+Enter 换行" autocomplete="off"></textarea>
+        <button id="send" class="send" type="submit" aria-label="发送">发送</button>
+      </form>
+    </main>
+    <aside class="details" id="details" hidden aria-label="运行详情">
+      <div class="details-head"><h2>运行详情</h2><button id="close-details" class="icon-button" type="button" aria-label="关闭详情">×</button></div>
+      <div id="details-body"></div>
+    </aside>
+  </div>
+</body>
+</html>

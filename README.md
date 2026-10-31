@@ -1,6 +1,8 @@
 # Loom
 
-基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.26.0**新增中文项目空间：窄项目侧栏、需求输入区、会话式运行概览、任务与源码、可展开控制面板和深浅色外观。页面自动进入，不要求连接本地工作台。新增[Linux 云端部署包](deployment/README.md)，目标为电脑关机后继续运行；当前尚待购买服务器和云端验收。[全功能计划](docs/full-function-plan-2026-10-30.md) · [62项验收表](docs/functional-acceptance.md) · [本轮验证](docs/validation-0.26.0.md)。完整交付门槛通过后再同步GitHub。 · [四轮上线计划](docs/launch-four-rounds-2026-10-30.md) · [配额说明](docs/quotas.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
+基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.27.0**把首页改为对话式自动会话：在 `/console` 用一句话描述程序，Loom 自动分析需求、设计测试、编写代码并在隔离环境用留出用例验收，只在预算不足、调用结果未知或验收失败时停下；交付后可以在同一会话继续补充修改要求，参考上一版程序重新实现。公网体验输入一次访问码后记住设备 30 天，服务重启后仍有效。0.26.0 的项目空间保留在 `/console/expert`，用于审阅计划、证据和人工待办。留出用例由测试角色模型生成，不等同于独立双模型复核。
+
+0.26.0新增中文项目空间：窄项目侧栏、需求输入区、会话式运行概览、任务与源码、可展开控制面板和深浅色外观。页面自动进入，不要求连接本地工作台。新增[Linux 云端部署包](deployment/README.md)，目标为电脑关机后继续运行；当前尚待购买服务器和云端验收。[全功能计划](docs/full-function-plan-2026-10-30.md) · [62项验收表](docs/functional-acceptance.md) · [本轮验证](docs/validation-0.26.0.md)。完整交付门槛通过后再同步GitHub。 · [四轮上线计划](docs/launch-four-rounds-2026-10-30.md) · [配额说明](docs/quotas.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
 
 0.17.4历史重测967主/382子、Chromium63项，三份源码下载与权威原始字节一致；0.17.5测试与真实基础设施证据单独登记。[历史验证](docs/validation.md)
 
@@ -8,6 +10,7 @@
 
 ## 当前可以做什么
 
+- **自动会话**：`POST /v1/sessions` 一句话创建；具名操作员一次委托后，私有执行器复用已有审计入口自动推进（批准计划与精确输入、发起执行、冻结开发套件、留出验收、配置后申请独立复核），任何非例行状态即停止。`parent_session_id` 创建追问轮次，携带原始需求、历次补充和上一版程序（不含留出用例）。
 - 将 Goal / Intent / Task、完整事件信封、幂等回执与 outbox 持久化到 SQLite。
 - 从 HTTP 创建 Goal 草案，保存带 revision/digest 的计划，按审阅版本批准后在单一事务中创建任务；草案不可领取，批准后旧增任务入口和计划修改均被拒绝。
 - 冻结 analyst、architect、tester、developer、reviewer、fixer、validator 的不同技能/工具权限、模型路由、依赖、指令、预算与判据摘要；七角色规划存在不表示七角色真实执行已经完成。

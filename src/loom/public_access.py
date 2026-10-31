@@ -2,7 +2,7 @@
 from collections import deque
 from dataclasses import dataclass, field
 from hashlib import sha256
-from hmac import compare_digest
+from hmac import compare_digest, new as hmac_new
 from http.cookies import SimpleCookie, CookieError
 import json
 import re
@@ -18,6 +18,8 @@ from .store import Store, Conflict, LoomError
 
 COOKIE = '__Host-loom-preview'
 MAX_BODY = 262144
+REMEMBER_SECONDS = 30 * 86400
+MAX_SESSIONS = 64
 
 
 class PreviewStore(Store):
@@ -47,7 +49,7 @@ class PreviewAccess:
     origin: str
     access_code: str = field(repr=False)
     bearer: str = field(repr=False)
-    session_seconds: int = 14400
+    session_seconds: int = REMEMBER_SECONDS
 
     def __post_init__(self):
         url = urlsplit(self.origin)
@@ -56,7 +58,7 @@ class PreviewAccess:
                 or not re.fullmatch(r'[a-z0-9]+(?:[-.][a-z0-9]+)*', url.hostname)
                 or not re.fullmatch(r'[A-Za-z0-9_-]{32,128}', self.access_code)
                 or not re.fullmatch(r'[!-~]{32,4096}', self.bearer)
-                or type(self.session_seconds) is not int or not 60 <= self.session_seconds <= 14400):
+                or type(self.session_seconds) is not int or not 60 <= self.session_seconds <= REMEMBER_SECONDS):
             raise ValueError('PUBLIC_PREVIEW_CONFIG_INVALID')
 
 
@@ -68,7 +70,8 @@ LOGIN = '''<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <form method="post" action="/preview/login"><label for="code">体验访问码</label>
 <input id="code" name="code" type="password" autocomplete="off" required maxlength="128">
 <button type="submit">进入项目空间</button></form>
-<p>单目标预算上限 $1、3,200,000 词元；最多 20 个目标。按模型上下文上限保守预留，实际用量结算。执行前仍须明确确认。
+<p>验证一次后，本浏览器会记住 30 天，无需重复输入。</p>
+<p>单目标预算上限 $1、3,200,000 词元；最多 20 个目标。按模型上下文上限保守预留，实际用量结算。新建会话默认自动推进，遇到预算、未知调用或验收失败才暂停。
 Flash 已接通；独立复核另用操作员配置的项目额度，最多预留 $1.85，原生成额度保持。进入后可检查复核执行器状态并明确申请。</p></main></html>'''
 STYLE = 'body{font:14px/1.8 system-ui,"Microsoft YaHei",sans-serif;background:#fafafa;color:#222326;margin:0}main{box-sizing:border-box;max-width:490px;margin:9vh auto;padding:36px;background:white;border:1px solid #e8e8e8;border-radius:16px}h1{font-size:28px;letter-spacing:-1px;font-weight:550;margin:16px 0}input,button{font:inherit;display:block;box-sizing:border-box;border:1px solid #ddd;border-radius:8px;padding:11px 13px;margin:12px 0;width:100%}input:focus-visible,button:focus-visible{outline:2px solid #5c78c9;outline-offset:3px}button{background:#222326;color:white;border:0;cursor:pointer}p{font-size:12px;color:#75767c}label{font-size:12px}@media(max-width:560px){main{margin:5vh 16px;padding:25px}}'
 
@@ -85,21 +88,45 @@ class PublicPreview:
         self.example = example
         self.verified_example=verified_example
         self.sessions = {}
+        # Expired or logged-out device tokens; a restart forgets this set, but the
+        # browser cookie is deleted on logout and expiry is also signed.
+        self.revoked = set()
         self.login_attempts = deque()
         self.writes = deque()
         self.policy = None
 
     @staticmethod
+    def _device_key(config):
+        return sha256(('loom-preview-device/v1|' + config.origin + '|' + config.access_code + '|' + config.bearer).encode()).digest()
+
+    def _issue(self, config):
+        expiry = int(time.time()) + config.session_seconds
+        body = f'v1.{expiry}.{secrets.token_urlsafe(24)}'
+        return body + '.' + hmac_new(self._device_key(config), body.encode(), 'sha256').hexdigest()
+
+    def _device_valid(self, config, token):
+        """Signed, expiring device token so a remembered browser survives restarts."""
+        try:
+            version, expiry, nonce, mac = token.split('.')
+            body = f'{version}.{expiry}.{nonce}'
+            expected = hmac_new(self._device_key(config), body.encode(), 'sha256').hexdigest()
+            return (version == 'v1' and compare_digest(mac, expected) and re.fullmatch(r'[A-Za-z0-9_-]{16,64}', nonce) is not None
+                    and time.time() < int(expiry) <= time.time() + config.session_seconds)
+        except (ValueError, TypeError):
+            return False
+
+    @staticmethod
     def allowed(method, path):
         if method == 'GET':
-            return (path in {'/', '/console', '/console/', '/health', '/v1/me', '/v1/goals', '/v1/interventions', '/v1/executor-status', '/v1/tools', '/v1/quotas', '/v1/verification-capabilities', '/v1/domain-packs'}
+            return (path in {'/', '/console', '/console/', '/console/expert', '/health', '/v1/me', '/v1/goals', '/v1/sessions', '/v1/interventions', '/v1/executor-status', '/v1/tools', '/v1/quotas', '/v1/verification-capabilities', '/v1/domain-packs'}
                     or re.fullmatch(r'/v1/domain-packs/[a-z][a-z0-9_-]{0,47}/[0-9.]{1,20}(?:/templates/[a-z][a-z0-9_-]{0,47})?', path)
                     or re.fullmatch(r'/console/assets/[A-Za-z0-9_-]+\.(?:css|js)', path)
-                    or re.fullmatch(r'/v1/(?:goals|runs)/[A-Za-z0-9:_-]+(?:/[A-Za-z0-9:_-]+)*', path))
+                    or re.fullmatch(r'/v1/(?:goals|runs)/[A-Za-z0-9:_-]+(?:/[A-Za-z0-9:_-]+)*', path)
+                    or re.fullmatch(r'/v1/sessions/[A-Za-z0-9_-]+', path))
         if method == 'PUT':
             return bool(re.fullmatch(r'/v1/goals/[A-Za-z0-9_-]+/plan', path))
         if method == 'POST':
-            return (path == '/v1/goals' or bool(re.fullmatch(
+            return (path in {'/v1/goals', '/v1/sessions'} or bool(re.fullmatch(r'/v1/sessions/[A-Za-z0-9_-]+/resume', path)) or bool(re.fullmatch(
                 r'/v1/(?:goals/[A-Za-z0-9_-]+/plan/approve|runs/[A-Za-z0-9_-]+/(?:control/(?:pause|resume|terminate)|pause|resume|terminate|tasks/[A-Za-z0-9:_-]+/(?:auxiliary-inputs|execution-requests|verification-requests)|execution-requests/[A-Za-z0-9_-]+/cancel|artifacts/[A-Za-z0-9_-]+/(?:development-suites|review-decisions)))', path)))
         return False
 
@@ -120,6 +147,7 @@ class PublicPreview:
         policy = sha256((config.origin + config.access_code + config.bearer).encode()).hexdigest()
         if policy != self.policy:
             self.sessions.clear()
+            self.revoked.clear()
             self.policy = policy
         # No trust in X-Forwarded-*; cloudflared preserves the public Host.
         if request.headers.get('host') != urlsplit(config.origin).netloc:
@@ -149,6 +177,7 @@ class PublicPreview:
                 if len(body) > MAX_BODY:
                     return await reply(denied(413, 'PUBLIC_BODY_LIMIT'))
         now = time.monotonic()
+        self.revoked.update(key for key,value in self.sessions.items() if value <= now)
         self.sessions = {key:value for key,value in self.sessions.items() if value > now}
         if path == '/preview/style.css' and method == 'GET':
             return await reply(Response(STYLE, media_type='text/css'))
@@ -168,9 +197,9 @@ class PublicPreview:
                 valid = False
             if not valid:
                 return await reply(HTMLResponse(LOGIN.replace('<form ', '<p>访问码无效，请核对本机私有体验文件。</p><form '), status_code=401))
-            if len(self.sessions) >= 16:
+            if len(self.sessions) >= MAX_SESSIONS:
                 return await reply(denied(429, 'PUBLIC_SESSION_LIMIT'))
-            session = secrets.token_urlsafe(32)
+            session = self._issue(config)
             self.sessions[sha256(session.encode()).hexdigest()] = now + config.session_seconds
             response = RedirectResponse('/console', status_code=303)
             response.set_cookie(COOKIE, session, secure=True, httponly=True, samesite='strict', path='/', max_age=config.session_seconds)
@@ -178,14 +207,22 @@ class PublicPreview:
         try:
             cookies = SimpleCookie(request.headers.get('cookie',''))
             session = cookies[COOKIE].value
-            authenticated = sha256(session.encode()).hexdigest() in self.sessions
-        except (KeyError, ValueError, CookieError):
+            hashed = sha256(session.encode()).hexdigest()
+            authenticated = hashed in self.sessions
+            if not authenticated and hashed not in self.revoked and self._device_valid(config, session):
+                # Remembered device after a restart: re-admit for its signed remaining time.
+                remaining = int(session.split('.')[1]) - time.time()
+                if len(self.sessions) < MAX_SESSIONS:
+                    self.sessions[hashed] = now + remaining
+                    authenticated = True
+        except (KeyError, ValueError, CookieError, IndexError):
             authenticated = False
         if not authenticated:
             response = RedirectResponse('/preview/login',status_code=303) if method == 'GET' and path in {'/','/console','/console/'} else denied(401,'PUBLIC_SESSION_REQUIRED')
             return await reply(response)
         if path == '/preview/logout' and method == 'POST':
             self.sessions.pop(sha256(session.encode()).hexdigest(),None)
+            self.revoked.add(sha256(session.encode()).hexdigest())
             response = Response(status_code=204)
             response.delete_cookie(COOKIE, secure=True, httponly=True, samesite='strict', path='/')
             return await reply(response)

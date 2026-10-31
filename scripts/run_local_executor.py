@@ -6,12 +6,17 @@ from pathlib import Path
 
 from loom.executor_config import load_executor_config
 from loom.local_executor import LocalExecutor
+from loom.public_access import PreviewStore
 from loom.store import Store,LoomError
 
 
 async def run(args):
     if not Path(args.db).is_file():raise ValueError('existing database required')
-    executor=LocalExecutor(Store(args.db),load_executor_config(args.config))
+    config=load_executor_config(args.config)
+    # The shared public preview keeps its durable goal/budget caps for goals the
+    # autopilot creates inside this private worker, not only for HTTP requests.
+    store=PreviewStore(args.db) if config.executor_id=='public-preview' else Store(args.db)
+    executor=LocalExecutor(store,config)
     async with executor.status.monitor():
         while True:
             result=await executor.drain_one()

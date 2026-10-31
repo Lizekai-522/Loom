@@ -58,8 +58,9 @@ def test_ambiguous_or_absent_operator_refuses_startup(tmp_path,identities):
 
 def test_connection_page_has_no_credential_input(tmp_path):
     with client(tmp_path) as c:
-        text=c.get('/console').text
-        assert 'id="access-token"' not in text and 'type="password"' not in text
-        assert 'console-zh.js' in text
+        for page in ('/console','/console/expert'):
+            text=c.get(page).text
+            assert 'id="access-token"' not in text and 'type="password"' not in text
+        assert 'chat.js' in c.get('/console').text and 'console-zh.js' in c.get('/console/expert').text
         js=c.get('/console/assets/console.js').text
         assert 'state.token' not in js and 'connect();' in js

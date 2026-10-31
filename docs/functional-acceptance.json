@@ -1,8 +1,8 @@
 {
   "schema_version": "loom.functional-acceptance/v1",
-  "updated": "2026-10-30",
+  "updated": "2026-10-31",
   "baseline": "0.20.0",
-  "current_increment": "0.26.0",
+  "current_increment": "0.27.0",
   "authoritative_spec": "docs/Loom.md",
   "implementation_plan": "docs/project-plan-2026-10-28.md",
   "rules": [
@@ -391,17 +391,19 @@
       "source_line": 266,
       "status": "partial",
       "stage": "workflow",
-      "current": "受限执行/验证/Rebind循环已有，通用PDCA待补。",
+      "current": "受限执行/验证/Rebind循环已有；0.27.0自动会话把需求→测试设计→开发检查→有界Rebind→留出终验串成委托推进闭环并支持同线程追问。仍为固定模板，通用PDCA待补。",
       "code": [
         "src/loom/workflow.py",
         "src/loom/policy.py",
         "src/loom/repair.py",
-        "src/loom/execution.py"
+        "src/loom/execution.py",
+        "src/loom/autopilot.py"
       ],
       "evidence": [
         "tests/test_workflow.py",
         "tests/test_repair.py",
-        "tests/test_reviewed_execution.py"
+        "tests/test_reviewed_execution.py",
+        "tests/test_autopilot.py"
       ],
       "comprehensive_acceptance_passed": false
     },
@@ -530,20 +532,22 @@
       "source_line": 278,
       "status": "partial",
       "stage": "assurance",
-      "current": "暂停/恢复/部分人工核对已有，独立裁决和SLA降级告警待补。",
+      "current": "暂停/恢复/部分人工核对已有；0.27.0自动会话遇预算/未知调用/验收失败等非例行状态即停止并说明原因。独立裁决和SLA降级告警待补。",
       "code": [
         "src/loom/api.py",
         "src/loom/store.py",
         "src/loom/auth.py",
         "src/loom/operator.py",
         "src/loom/checkpoints.py",
-        "src/loom/recovery_check.py"
+        "src/loom/recovery_check.py",
+        "src/loom/autopilot.py"
       ],
       "evidence": [
         "tests/test_api.py",
         "tests/test_operator.py",
         "tests/test_recovery_check.py",
-        "tests/test_checkpoints.py"
+        "tests/test_checkpoints.py",
+        "tests/test_autopilot.py"
       ],
       "comprehensive_acceptance_passed": false
     },
@@ -1337,20 +1341,22 @@
       "source_line": 286,
       "status": "partial",
       "stage": "assurance",
-      "current": "中文证据/控制/核对已有，独立责任人裁决/禁止自批/完整证据面板待补。",
+      "current": "中文证据/控制/核对已有；0.27.0首页为对话式会话，项目空间保留完整证据与控制。独立责任人裁决/禁止自批/完整证据面板待补。",
       "code": [
         "src/loom/api.py",
         "src/loom/store.py",
         "src/loom/auth.py",
         "src/loom/operator.py",
         "src/loom/checkpoints.py",
-        "src/loom/recovery_check.py"
+        "src/loom/recovery_check.py",
+        "src/loom/autopilot.py"
       ],
       "evidence": [
         "tests/test_api.py",
         "tests/test_operator.py",
         "tests/test_recovery_check.py",
-        "tests/test_checkpoints.py"
+        "tests/test_checkpoints.py",
+        "tests/test_autopilot.py"
       ],
       "comprehensive_acceptance_passed": false
     },
@@ -1384,20 +1390,22 @@
       "source_line": 326,
       "status": "partial",
       "stage": "assurance",
-      "current": "宿主用例与公开检查隔离已有，分层场景和独立标注登记待补。",
+      "current": "宿主用例与公开检查隔离已有；0.27.0自动会话按固定规则留出约1/3 tester用例作验收、实现者不可见，标注为模型生成而非独立标注。分层场景和独立标注登记待补。",
       "code": [
         "src/loom/api.py",
         "src/loom/store.py",
         "src/loom/auth.py",
         "src/loom/operator.py",
         "src/loom/checkpoints.py",
-        "src/loom/recovery_check.py"
+        "src/loom/recovery_check.py",
+        "src/loom/autopilot.py"
       ],
       "evidence": [
         "tests/test_api.py",
         "tests/test_operator.py",
         "tests/test_recovery_check.py",
-        "tests/test_checkpoints.py"
+        "tests/test_checkpoints.py",
+        "tests/test_autopilot.py"
       ],
       "comprehensive_acceptance_passed": false
     },

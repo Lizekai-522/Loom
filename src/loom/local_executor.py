@@ -2,6 +2,7 @@
 import asyncio
 
 from .auth import load_identities
+from .autopilot import SessionService
 from .dispatch import DispatchService
 from .execution import LocalTaskRunner
 from .executor_status import ExecutorStatus
@@ -18,8 +19,23 @@ class LocalExecutor:
         self.identities=load_identities(config.identities_file)
         self.requests=DispatchService(store,config=config,identities=self.identities)
         self.status=ExecutorStatus(store,config,self.identities)
+        verification=None
+        if getattr(config,'verification_config',None) is not None:
+            try:
+                from .verification_config import load_verification_config
+                from .verification_runtime import VerificationRuntime
+                verification=VerificationRuntime(store,load_verification_config(config.verification_config))
+            except Exception:
+                verification=None
+        self.autopilot=SessionService(store,executor_config=config,identities=self.identities,verification=verification)
+
+    def advance_sessions(self):
+        """Delegated audited steps only; never calls a model or the sandbox."""
+        try:return self.autopilot.tick()
+        except Exception:return []
 
     async def drain_one(self):
+        self.advance_sessions()
         states=self.requests.pending()
         # A previous process may have committed output before saving its request
         # receipt. Recover only from the ledger, never by repeating a model call.

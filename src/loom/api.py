@@ -30,6 +30,7 @@ from .tool_registry import catalog as tool_catalog
 from .tool_recovery import ToolRecoveryService
 from .quotas import QuotaService
 from .operator import OperatorService
+from .autopilot import SessionService
 from .local_console import allows_local_console, console_principal
 from .store import Claim, Conflict, InvalidInput, LoomError, NotFound, Store, canonical, digest
 from .workflow import WorkflowDefinition, WorkflowService
@@ -159,6 +160,12 @@ class ExecutionRequestInput(Input):
     expected_dispatch_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     reason: str = Field(min_length=1,max_length=2000)
 
+class SessionInput(Input):
+    prompt: str = Field(min_length=1, max_length=4000)
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    parent_session_id: str | None = Field(default=None, min_length=1, max_length=100, pattern=r"^[A-Za-z0-9-]+$")
+
+
 class VerificationRequestInput(Input):
     expected_preview_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     reason: str = Field(min_length=1,max_length=2000)
@@ -181,6 +188,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     executor_status = ExecutorStatus(store,executor_config,identities)
     verification_path=getattr(executor_config,'verification_config',None)
     verification = VerificationRuntime(store,load_verification_config(verification_path)) if verification_path is not None else None
+    sessions = SessionService(store, executor_config=executor_config, identities=identities, verification=verification)
     security = HTTPBearer(auto_error=False)
 
     def principal(request: Request, credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)]) -> Principal:
@@ -234,6 +242,11 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     @app.get("/console", include_in_schema=False)
     @app.get("/console/", include_in_schema=False)
     def console():
+        # Conversation-first workspace; the full audited workbench stays one click away.
+        return FileResponse(web / "chat.html")
+
+    @app.get("/console/expert", include_in_schema=False)
+    def expert_console():
         return FileResponse(web / "index.html")
 
     @app.get("/v1/me")
@@ -280,6 +293,26 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
         return workflows.create_goal(identity.tenant_id, idempotency_key, title=body.title, description=body.description,
                                      acceptance=body.acceptance, cost_limit=body.cost_limit_microusd,
                                      token_limit=body.token_limit, **audit(identity))
+
+    @app.post("/v1/sessions", status_code=201)
+    def create_session(body: SessionInput, identity: Controller, idempotency_key: Key):
+        # One explicit opt-in delegates routine steps to the private executor.
+        if not all(registry.authorize(identity, action) for action in ("goal.write", "plan.approve")):
+            raise HTTPException(403, "automatic sessions require a named operator")
+        return sessions.create(identity, idempotency_key, prompt=body.prompt, title=body.title,
+                               parent_session_id=body.parent_session_id)
+
+    @app.get("/v1/sessions")
+    def list_sessions(tenant: Tenant):
+        return {"items": sessions.list(tenant)}
+
+    @app.get("/v1/sessions/{session_id}")
+    def read_session(session_id: str, tenant: Tenant):
+        return sessions.get(tenant, session_id)
+
+    @app.post("/v1/sessions/{session_id}/resume")
+    def resume_session(session_id: str, body: ControlInput, identity: Controller, idempotency_key: Key):
+        return sessions.resume(identity, session_id, idempotency_key, reason=body.reason)
 
     @app.get("/v1/goals")
     def list_goals(tenant: Tenant):
