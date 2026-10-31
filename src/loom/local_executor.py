@@ -2,7 +2,7 @@
 import asyncio
 
 from .auth import load_identities
-from .autopilot import SessionService
+from .autopilot import UNAVAILABLE,SessionService
 from .dispatch import DispatchService
 from .execution import LocalTaskRunner
 from .executor_status import ExecutorStatus
@@ -26,7 +26,8 @@ class LocalExecutor:
                 from .verification_runtime import VerificationRuntime
                 verification=VerificationRuntime(store,load_verification_config(config.verification_config))
             except Exception:
-                verification=None
+                # Configured but unloadable: sessions stop instead of delivering as unverified.
+                verification=UNAVAILABLE
         self.autopilot=SessionService(store,executor_config=config,identities=self.identities,verification=verification)
 
     def advance_sessions(self):
@@ -35,7 +36,8 @@ class LocalExecutor:
         except Exception:return []
 
     async def drain_one(self):
-        self.advance_sessions()
+        # DB-only work, kept off the event loop so heartbeats stay fresh.
+        await asyncio.to_thread(self.advance_sessions)
         states=self.requests.pending()
         # A previous process may have committed output before saving its request
         # receipt. Recover only from the ledger, never by repeating a model call.

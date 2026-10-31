@@ -16,7 +16,8 @@
   const STATE_NAMES = {running: "自动推进中", needs_attention: "需要你处理", paused: "已暂停",
                        delivered: "已交付", verified: "已独立复核", terminated: "已终止"};
   const STEP_NAMES = {submitted: "已完成", verified: "已复核", running: "进行中", queued: "排队中",
-                      waiting: "等待中", attention: "需处理", pending: "待复核", done: "已复核", not_configured: "未配置"};
+                      waiting: "等待中", attention: "需处理", pending: "待复核", done: "已复核", not_configured: "未配置",
+                      rejected: "未通过", disputed: "结论不一致", blocked: "已拦截", unavailable: "不可用"};
 
   function el(tag, cls, text) {
     const e = document.createElement(tag);
@@ -95,7 +96,7 @@
   function stepIcon(status) {
     if (status === "submitted" || status === "verified" || status === "done") return el("span", "icon done", "✓");
     if (status === "running") return el("span", "icon running spin");
-    if (status === "attention") return el("span", "icon attention", "!");
+    if (["attention", "rejected", "disputed", "blocked", "unavailable"].includes(status)) return el("span", "icon attention", "!");
     if (status === "not_configured") return el("span", "icon off", "–");
     return el("span", "icon waiting");
   }
@@ -137,8 +138,9 @@
     table.append(head);
     for (const item of cases) {
       const row = el("tr");
-      const input = el("td"); input.append(el("code", null, json(item.input)));
-      const expected = el("td"); expected.append(el("code", null, json(item.expected)));
+      // Held-out inputs/answers stay private to the executor; the server sends only the name.
+      const input = el("td"); input.append(item.hidden ? el("span", "muted", "不公开") : el("code", null, json(item.input)));
+      const expected = el("td"); expected.append(item.hidden ? el("span", "muted", "不公开") : el("code", null, json(item.expected)));
       const tagCell = el("td");
       tagCell.append(el("span", held.has(item.name) ? "tag held" : "tag", held.has(item.name) ? "留出验收" : "开发检查"));
       row.append(el("td", null, item.name), input, expected, tagCell);
@@ -200,9 +202,21 @@
     }
     if (step.key === "verify") {
       if (step.status === "not_configured") return "本实例未配置独立复核；结果标注为未独立复核";
-      if (step.status === "pending") return "等待独立复核服务";
+      if (step.status === "pending") return "等待申请独立复核";
+      if (step.status === "queued" || step.status === "running") return "Flash 与 Pro 正在分别复核";
+      if (step.status === "rejected") return "复核未通过，程序不会记为完成";
+      if (step.status === "disputed") return "两个复核模型结论不一致，需要人工裁决";
+      if (step.status === "blocked") return "复核被拦截，不会自动重试";
+      if (step.status === "unavailable") return "执行器无法加载复核配置";
     }
     return null;
+  }
+  function elapsed(seconds) { return seconds < 90 ? seconds + " 秒" : Math.round(seconds / 60) + " 分钟"; }
+  function tickActivity() {
+    for (const node of document.querySelectorAll(".activity-text")) {
+      const seconds = Math.max(0, Math.round(Date.now() / 1000 - Number(node.dataset.since)));
+      node.textContent = `${node.dataset.label} · ${elapsed(seconds)}`;
+    }
   }
   function turn(view, last) {
     const frag = document.createDocumentFragment();
@@ -214,7 +228,9 @@
       if (view.state === "running" && view.activity) {
         const line = el("p", "activity");
         const seconds = Math.max(0, Math.round(Date.now() / 1000 - view.activity.since));
-        line.append(el("span", "dot running"), el("span", null, `${view.activity.text} · ${seconds < 90 ? seconds + " 秒" : Math.round(seconds / 60) + " 分钟"}`));
+        const text = el("span", "activity-text", `${view.activity.text} · ${elapsed(seconds)}`);
+        text.dataset.since = String(view.activity.since); text.dataset.label = view.activity.text;
+        line.append(el("span", "dot running"), text);
         body.append(line);
         if (state.executorWarning) body.append(el("p", "activity warn-text", state.executorWarning));
       }
@@ -319,7 +335,7 @@
       state.views.set(id, view);
       for (const other of view.thread) {
         const cached = state.views.get(other);
-        if (other !== id && (!cached || cached.state === "running" || cached.state === "paused")) {
+        if (other !== id && (!cached || !["delivered", "verified", "terminated"].includes(cached.state))) {
           state.views.set(other, await request("GET", "/v1/sessions/" + encodeURIComponent(other)));
         }
       }
@@ -327,7 +343,8 @@
       if (state.current !== id) return;
       const views = view.thread.map(t => state.views.get(t)).filter(Boolean);
       const snapshot = json(views) + (state.executorWarning || "");
-      const changed = snapshot !== state.snapshot || view.state === "running";
+      // Re-render only on real changes so selections and copy buttons survive polling.
+      const changed = snapshot !== state.snapshot;
       state.snapshot = snapshot;
       if (changed) { render(views); if (scroll) scrollToEnd(); if (state.detailsOpen) loadEvents(); }
       schedule(view.state === "running" ? 2000 : 8000);
@@ -419,7 +436,7 @@
       const data = await request("GET", `/v1/runs/${encodeURIComponent(view.current_run_id)}/events`);
       state.events = data.events.slice(-40).reverse();
       renderDetails();
-    } catch { state.events = null; }
+    } catch (error) { state.events = null; if (error.status === 401) handleUnauthorized(); }
   }
   function renderDetails() {
     if (!state.detailsOpen) return;
@@ -500,6 +517,7 @@
     const match = location.hash.match(/^#s=([A-Za-z0-9-]+)$/);
     if (match) select(decodeURIComponent(match[1])); else newSession();
     state.listTimer = setInterval(loadList, 15000);
+    setInterval(tickActivity, 1000);
     window.addEventListener("hashchange", () => {
       const next = location.hash.match(/^#s=([A-Za-z0-9-]+)$/);
       if (next && decodeURIComponent(next[1]) !== state.current) select(decodeURIComponent(next[1]));

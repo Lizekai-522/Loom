@@ -128,7 +128,11 @@ def test_logout_expiry_restart_and_policy_rotation_invalidate_sessions(public):
     assert client.post('/preview/logout',headers={'Origin':ORIGIN}).status_code==204
     assert client.get('/v1/me').status_code==401
     login(client);app.sessions={k:time.monotonic()-1 for k in app.sessions}
-    assert client.get('/v1/me').status_code==401
+    # Cache expiry alone re-admits by signature; the signed expiry is the real limit.
+    from unittest.mock import patch
+    real=time.time
+    with patch('loom.public_access.time.time',lambda:real()+CONFIG.session_seconds+1):
+        assert client.get('/v1/me').status_code==401
     login(client);app.config=lambda:replace(CONFIG,access_code='new_private_access_code_000000000000000')
     assert client.get('/v1/me').status_code==401
 
@@ -179,9 +183,11 @@ def test_example_endpoint_is_explicit_idempotent_and_bounded(public):
 
 
 def test_shared_preview_limits_login_sessions_and_write_flood(public):
-    client,app,_=public;client.get('/preview/login');app.sessions={str(i):time.monotonic()+100 for i in range(MAX_SESSIONS)}
-    assert client.post('/preview/login',data={'code':CONFIG.access_code},headers={'Origin':ORIGIN}).status_code==429
-    app.sessions.clear();login(client)
+    client,app,_=public;client.get('/preview/login');app.sessions={str(i):time.monotonic()+100+i for i in range(MAX_SESSIONS)}
+    # A full cache evicts the earliest-expiring entry instead of locking new devices out for 30 days.
+    login(client)
+    assert len(app.sessions)==MAX_SESSIONS and '0' not in app.sessions
+    assert client.get('/v1/me').status_code==200
     app.writes.extend([time.monotonic()]*60)
     assert client.post('/v1/goals',json=GOAL,headers=HEADERS).status_code==429
     assert client.get('/v1/goals').status_code==200
@@ -227,3 +233,21 @@ def test_session_routes_are_reachable_through_preview(public):
     created=client.post('/v1/sessions',json={'prompt':'写一个加一程序'},headers={'Origin':ORIGIN,'Idempotency-Key':'s1'})
     assert created.status_code==201 and created.json()['state']=='running'
     assert client.get('/v1/sessions/'+created.json()['session_id']).status_code==200
+
+
+def test_logout_survives_restart_when_revocations_are_persisted(public,tmp_path):
+    client,app,store=public
+    path=tmp_path/'device-revocations.json'
+    first=PublicPreview(create_app(store,{},identities=(OP,),local_console=False),lambda:CONFIG,revocations=path)
+    c1=TestClient(first,base_url=ORIGIN);login(c1);cookie=c1.cookies.get(COOKIE)
+    assert c1.post('/preview/logout',headers={'Origin':ORIGIN}).status_code==204
+    restarted=PublicPreview(create_app(store,{},identities=(OP,),local_console=False),lambda:CONFIG,revocations=path)
+    c2=TestClient(restarted,base_url=ORIGIN);c2.cookies.set(COOKIE,cookie,domain='loom-preview.example')
+    assert c2.get('/v1/me').status_code==401
+    assert cookie.split('.')[2] not in path.read_text() and CONFIG.access_code not in path.read_text()
+
+
+def test_full_cache_never_locks_out_remembered_devices(public):
+    client,app,store=public;login(client);cookie=client.cookies.get(COOKIE)
+    app.sessions={str(i):time.monotonic()+100 for i in range(MAX_SESSIONS)}
+    assert client.get('/v1/me').status_code==200

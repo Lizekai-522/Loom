@@ -30,7 +30,7 @@ def main():
     def verified_example(key):
         return create_verified_example(store,Path(__file__).resolve().parents[1],next(iter(executor.host_tests)),operator,'preview-verified:'+key)
     # No access log: login bodies and session cookies never enter request logs.
-    uvicorn.run(PublicPreview(app,access,example=example,verified_example=verified_example),host='127.0.0.1',port=port,proxy_headers=False,access_log=False,log_level='warning')
+    uvicorn.run(PublicPreview(app,access,example=example,verified_example=verified_example,revocations=private/'device-revocations.json'),host='127.0.0.1',port=port,proxy_headers=False,access_log=False,log_level='warning')
 
 
 if __name__=='__main__':main()

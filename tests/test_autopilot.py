@@ -191,33 +191,140 @@ def test_paused_run_is_left_alone_until_resumed(case):
 
 
 class FakeVerification:
-    def __init__(self):
+    """Mirrors VerificationJobs.preview: existing_request carries the job state."""
+    def __init__(self, outcome='queued'):
         self.requests = []
         self.jobs = self
+        self.outcome = outcome
 
     def check(self, tenant):
         return None
 
     def preview(self, tenant, run_id, task_id):
-        return {'ready': not self.requests, 'preview_digest': 'f' * 64, 'latest': {'state': 'pending'} if self.requests else None}
+        job = dict(state=self.outcome) if self.requests else None
+        return {'ready': not self.requests, 'preview_digest': 'f' * 64, 'existing_request': job}
 
     def request(self, identity, run_id, task_id, key, *, expected_preview_digest, reason):
         self.requests.append((identity.subject_id, run_id, task_id, key))
-        return {'state': 'pending'}
+        return {'state': 'queued'}
+
+
+def run_with_verification(c, verification, bodies, outcomes):
+    factory = lambda store, **kw: SessionService(store, **{**kw, 'verification': verification})
+    with patch('loom.local_executor.SessionService', side_effect=factory):
+        run_until_idle(c, bodies, outcomes)
+        run_until_idle(c, [], [])
 
 
 def test_configured_verification_is_requested_once_and_session_waits(case):
     c = case
-    verification = FakeVerification()
+    verification = FakeVerification('queued')
     service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER), verification=verification)
     created = service.create(PRINCIPAL, 'verify', prompt='写一个加一程序')
-    worker_patch = patch('loom.local_executor.SessionService', side_effect=lambda store, **kw: SessionService(store, **{**kw, 'verification': verification}))
-    with worker_patch:
-        run_until_idle(c, [REQUIREMENTS, CHECKS, {'source': GOOD}], [True, True])
-        run_until_idle(c, [], [])
+    run_with_verification(c, verification, [REQUIREMENTS, CHECKS, {'source': GOOD}], [True, True])
     view = service.get('a', created['session_id'])
     assert len(verification.requests) == 1 and verification.requests[0][0] == 'operator'
-    assert view['state'] == 'running' and view['steps'][3]['status'] == 'pending'
+    # Regression: a queued job must keep the session waiting, never "delivered (unverified)".
+    assert view['state'] == 'running' and view['steps'][3]['status'] == 'queued'
+
+
+@pytest.mark.parametrize('outcome', ['rejected', 'disputed', 'blocked'])
+def test_failed_verification_stops_and_is_never_delivered(case, outcome):
+    c = case
+    verification = FakeVerification(outcome)
+    service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER), verification=verification)
+    created = service.create(PRINCIPAL, 'v-' + outcome, prompt='写一个加一程序')
+    run_with_verification(c, verification, [REQUIREMENTS, CHECKS, {'source': GOOD}], [True, True])
+    view = service.get('a', created['session_id'])
+    assert view['state'] == 'needs_attention' and view['attention']['code'] == 'VERIFICATION_' + outcome.upper()
+    assert view['steps'][3]['status'] == outcome
+
+
+def test_verified_goal_is_delivered_as_verified(case):
+    c = case
+    verification = FakeVerification('verified')
+    service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER), verification=verification)
+    created = service.create(PRINCIPAL, 'v-ok', prompt='写一个加一程序')
+    run_with_verification(c, verification, [REQUIREMENTS, CHECKS, {'source': GOOD}], [True, True])
+    build = service.get('a', created['session_id'])['runs']['build']
+    task = build + ':implement'
+    # Simulate the private verifier's trusted completion: task done, goal succeeded.
+    with c['store'].transaction() as db:
+        db.execute("UPDATE tasks SET status='done' WHERE tenant='a' AND id=?", (task,))
+        db.execute("UPDATE runs SET status='succeeded' WHERE tenant='a' AND id=?", (build,))
+    run_with_verification(c, verification, [], [])
+    view = service.get('a', created['session_id'])
+    assert view['state'] == 'verified' and view['independently_verified'] is True
+
+
+def test_unloadable_verification_stops_instead_of_unverified_delivery(case):
+    from loom.autopilot import UNAVAILABLE
+    c = case
+    service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER), verification=UNAVAILABLE)
+    created = service.create(PRINCIPAL, 'v-broken', prompt='写一个加一程序')
+    run_with_verification(c, UNAVAILABLE, [REQUIREMENTS, CHECKS, {'source': GOOD}], [True, True])
+    view = service.get('a', created['session_id'])
+    assert view['attention']['code'] == 'VERIFICATION_UNAVAILABLE' and view['steps'][3]['status'] == 'unavailable'
+
+
+def test_recurring_stop_after_resume_is_recorded_again_and_can_be_resumed(case):
+    from loom.operator import OperatorService
+    c = case
+    service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER))
+    created = service.create(PRINCIPAL, 'again', prompt='写一个加一程序')
+    run_until_idle(c, [REQUIREMENTS, CHECKS, {'source': GOOD}], [True, False])
+    assert service.get('a', created['session_id'])['attention']['code'] == 'ACCEPTANCE_FAILED'
+    for attempt in range(2):
+        service.resume(PRINCIPAL, created['session_id'], f'resume-{attempt}', reason='再看一次')
+        run_until_idle(c, [], [])
+        view = service.get('a', created['session_id'])
+        assert view['state'] == 'needs_attention' and view['attention']['code'] == 'ACCEPTANCE_FAILED'
+
+
+def test_unregistered_operator_stops_with_reason(case):
+    c = case
+    service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER))
+    created = service.create(PRINCIPAL, 'no-op', prompt='写一个加一程序')
+    with patch('loom.local_executor.load_identities', return_value=(WORKER,)):
+        worker = LocalExecutor(c['store'], c['config'])
+    worker.advance_sessions()
+    assert service.get('a', created['session_id'])['attention']['code'] == 'OPERATOR_NOT_REGISTERED'
+
+
+def test_preview_goal_cap_stops_instead_of_spinning(tmp_path, case):
+    from loom.public_access import PreviewStore
+    c = dict(case, store=PreviewStore(tmp_path / 'preview.db', max_goals=1))
+    service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER))
+    created = service.create(PRINCIPAL, 'cap', prompt='写一个加一程序')
+    run_until_idle(c, [REQUIREMENTS, CHECKS], [])
+    view = service.get('a', created['session_id'])
+    assert view['attention']['code'] == 'PREVIEW_LIMIT_REACHED' and 'build' not in view['runs']
+
+
+def test_human_cancellation_is_respected(case):
+    c = case
+    service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER))
+    created = service.create(PRINCIPAL, 'cancel', prompt='写一个加一程序')
+    service.tick()
+    run_id, task = created['current_run_id'], created['current_run_id'] + ':requirements'
+    request = service.dispatch.history('a', run_id, task)['items'][-1]
+    service.dispatch.cancel('a', run_id, request['request_id'], 'cancel-1', actor='subject:operator', reason='人工取消')
+    service.tick()
+    history = service.dispatch.history('a', run_id, task)['items']
+    assert [h['state'] for h in history] == ['cancelled']
+    assert service.get('a', created['session_id'])['attention']['code'] == 'EXECUTION_CANCELLED'
+
+
+def test_session_view_hides_heldout_case_contents(case):
+    c = case
+    service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER))
+    created = service.create(PRINCIPAL, 'hide', prompt='写一个加一程序')
+    run_until_idle(c, [REQUIREMENTS, CHECKS, {'source': GOOD}], [True, True])
+    view = service.get('a', created['session_id'])
+    cases = view['steps'][1]['content']['cases']
+    assert {'name': 'negative', 'hidden': True} in cases
+    # Neither the held-out input nor its answer appears anywhere in the view (UUIDs may contain "-5").
+    assert '{"value": -5}' not in json.dumps(view) and '{"answer": -4}' not in json.dumps(view)
 
 
 def test_follow_up_continues_the_thread_with_previous_source_but_not_heldout_cases(case):
@@ -246,3 +353,19 @@ def test_session_view_reports_current_activity_while_running(case):
     service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER))
     created = service.create(PRINCIPAL, 'activity', prompt='写一个加一程序')
     assert created['activity']['text'] == '计划已自动批准'
+
+
+def test_long_follow_up_chains_stay_within_instruction_limits(case):
+    c = case
+    service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER))
+    current = service.create(PRINCIPAL, 'long-0', prompt='加一' + '。' * 3990)
+    long_source = GOOD + '#' + 'x' * 6000 + '\n'
+    run_until_idle(c, [REQUIREMENTS, CHECKS, {'source': long_source}], [True, True])
+    for turn in range(1, 4):
+        current = service.create(PRINCIPAL, f'long-{turn}', prompt=f'第{turn}次补充' + '要' * 3900,
+                                 parent_session_id=current['session_id'])
+        assert len(current['prompt']) <= 15000 + 20 and current['thread_id'] == current['thread'][0]
+        run_until_idle(c, [REQUIREMENTS, CHECKS, {'source': long_source}], [True, True])
+        assert service.get('a', current['session_id'])['state'] == 'delivered'
+    listed = service.list('a')
+    assert len(listed) == 1 and listed[0]['turns'] == 4 and listed[0]['state'] == 'delivered'

@@ -57,6 +57,8 @@ BUILD_LIMITS = dict(cost_limit_microusd=700000, token_limit=2200000, max_attempt
 BUILD_BUDGET = dict(cost_limit=750000, token_limit=2300000)
 ACCEPTANCE = ['schema.valid', 'tests.pass', 'report.traceable']
 MIN_CASES = 2
+MAX_PROMPT = 15000
+CONFLICT_LIMIT = 5
 
 # Progression stages that need a person. Everything else is routine or waiting.
 ATTENTION = {
@@ -83,6 +85,14 @@ MESSAGES = {
     'AUTO_ACCEPTANCE_NOT_CONFIGURED': '执行器没有配置自动验收用例目录（auto_acceptance_dir）。',
     'ACCEPTANCE_FAILED': '程序没有通过留出验收用例（已用完允许的修复次数），请查看证据后决定下一步。',
     'AUTOPILOT_ERROR': '自动推进遇到无法分类的状态，已停止以免误操作。',
+    'OPERATOR_NOT_REGISTERED': '执行器的身份配置里找不到开启这个会话的操作员，自动推进已停止。请核对执行器与服务使用同一份身份文件。',
+    'PREVIEW_LIMIT_REACHED': '体验空间的目标数量或预算额度已满，无法创建实现阶段。请联系维护者清理或提高额度。',
+    'EXECUTION_CANCELLED': '这一步的执行请求被人工取消，自动推进不会覆盖人的决定。',
+    'VERIFICATION_REJECTED': '独立双模型复核没有通过，程序不能记为已完成。请查看复核意见后补充说明重试。',
+    'VERIFICATION_DISPUTED': '两个复核模型结论不一致，需要人工裁决。',
+    'VERIFICATION_BLOCKED': '独立复核被拦截（额度、配置或结果未知），不会自动重试。',
+    'VERIFICATION_UNAVAILABLE': '执行器配置了独立复核但无法加载，已停止，避免把程序误记为“未复核交付”。',
+    'PERSISTENT_CONFLICT': '同一步骤连续多次被拒绝（状态反复变化），自动推进已停止以免空转。',
 }
 FAILURE_MESSAGES = {
     'REPEATED_SOURCE': '修复后模型生成了与上一版相同的程序，自动修复已停止。',
@@ -95,6 +105,7 @@ FAILURE_MESSAGES = {
 }
 MESSAGES.update(FAILURE_MESSAGES)
 FINAL_STATES = {'terminated', 'delivered', 'verified'}
+UNAVAILABLE = object()  # verification configured but could not be loaded
 
 
 def _text(value, label, limit):
@@ -159,6 +170,7 @@ class SessionService:
         self.suites = DevelopmentSuiteService(store, artifacts=self.artifacts)
         self.progression = ProgressionService(store)
         self.dispatch = DispatchService(store, config=executor_config, identities=identities)
+        self._conflicts = {}
         if initialize:
             with store.connect() as db:
                 db.executescript(SCHEMA)
@@ -219,23 +231,25 @@ class SessionService:
         view = self.get(tenant, parent_id)
         if view['state'] in {'running', 'paused'}:
             raise Conflict('previous turn is still in progress')
-        chain, current = [], parent_id
         with self.store.connect() as db:
-            while current is not None and len(chain) < 20:
-                record, _ = self._session_row(db, tenant, current)
-                chain.append(record)
-                current = record.get('parent_session_id')
-        chain.reverse()
-        root = chain[0]
+            parent, _ = self._session_row(db, tenant, parent_id)
+            thread_id = parent.get('thread_id') or parent_id
+            root, _ = self._session_row(db, tenant, thread_id)
+            earlier = [r.get('request') for r in self._thread_records(db, tenant, thread_id)[1:] if r.get('request')]
         source = next((s.get('source') for s in view['steps'] if s['key'] == 'implement'), None)
-        parts = ['原始需求：\n' + _clip(root.get('request') or root['prompt'], 4000)]
-        earlier = [r.get('request') for r in chain[1:] if r.get('request')]
+        parts = ['原始需求：\n' + _clip(root.get('request') or root['prompt'], 3500)]
         if earlier:
-            parts.append('之前的补充要求（按顺序）：\n' + _clip('\n'.join(f'{i + 1}. {t}' for i, t in enumerate(earlier)), 3000))
+            parts.append('之前的补充要求（按顺序）：\n' + _clip('\n'.join(f'{i + 1}. {t}' for i, t in enumerate(earlier)), 2500))
         if source:
-            parts.append('上一版程序（仅供参考，未经独立验证，可能有缺陷）：\n' + _clip(source, 5000))
+            parts.append('上一版程序（仅供参考，未经独立验证，可能有缺陷）：\n' + _clip(source, 4500))
         parts.append('本次补充或修改要求（优先满足）：\n' + message)
-        return '\n\n'.join(parts), root['title'], root.get('thread_id') or root['session_id']
+        # Spec instructions are capped at 16000 characters including the runtime contract.
+        return _clip('\n\n'.join(parts), MAX_PROMPT), root['title'], thread_id
+
+    def _thread_records(self, db, tenant, thread_id):
+        rows = db.execute("SELECT record FROM autopilot_sessions WHERE tenant=? AND (id=? OR json_extract(record,'$.thread_id')=?) "
+                          "ORDER BY rowid", (tenant, thread_id, thread_id)).fetchall()
+        return [json.loads(r['record']) for r in rows]
 
     def create(self, identity, key, *, prompt, title=None, parent_session_id=None):
         _text(prompt, 'prompt', 4000)
@@ -299,8 +313,13 @@ class SessionService:
 
     # ----- automatic progression --------------------------------------
     def _stop(self, tenant, session_id, run_id, code, actor, detail=None):
-        key = f'ap:{session_id}:stop:{run_id}:{code}:{detail or ""}'[:200]
-        args = dict(session_id=session_id, run_id=run_id, code=code, detail=detail)
+        # One stop per control episode: a resume starts a new episode, so a
+        # recurring cause records a fresh stop instead of replaying the old receipt.
+        with self.store.connect() as db:
+            _, links = self._session_row(db, tenant, session_id)
+            episode = len(self._control_events(db, tenant, session_id, list(links.values())))
+        key = f'ap:{session_id}:stop:{episode}'
+        args = dict(session_id=session_id, run_id=run_id, code=code, detail=detail, episode=episode)
 
         def apply(db):
             record, links = self._session_row(db, tenant, session_id)
@@ -315,13 +334,22 @@ class SessionService:
         try:
             return self.store._command(tenant, key, 'autopilot.stop', args, apply)
         except Conflict:
-            # Same key after a resume: record a fresh stop for the new episode.
-            return self.store._command(tenant, key + ':' + uuid4().hex[:8], 'autopilot.stop', args, apply)
+            # A concurrent tick already recorded this episode's stop with other details.
+            return dict(already_stopped=True)
 
     def active(self):
+        """Sessions whose latest control event is not a stop or delivery."""
         with self.store.connect() as db:
             rows = db.execute('SELECT tenant,id FROM autopilot_sessions ORDER BY rowid').fetchall()
-        return [(r['tenant'], r['id']) for r in rows]
+            latest = {}
+            for r in db.execute("SELECT tenant,json_extract(envelope,'$.payload.session_id') AS sid,json_extract(envelope,'$.type') AS type "
+                                "FROM events WHERE (tenant,run_id) IN (SELECT tenant,run_id FROM autopilot_links) "
+                                "AND json_extract(envelope,'$.type') IN "
+                                "('autopilot.stopped','autopilot.resumed','autopilot.delivered') "
+                                "ORDER BY json_extract(envelope,'$.ts'),rowid"):
+                latest[(r['tenant'], r['sid'])] = r['type']
+        return [(r['tenant'], r['id']) for r in rows
+                if latest.get((r['tenant'], r['id'])) not in {'autopilot.stopped', 'autopilot.delivered'}]
 
     def tick(self):
         """Advance every non-final session by at most one step each. DB only."""
@@ -329,21 +357,28 @@ class SessionService:
         for tenant, session_id in self.active():
             try:
                 result = self.advance(tenant, session_id)
-            except LoomError:
-                # Usually a benign race (a preview digest moved); re-read next tick.
-                result = None
+                self._conflicts.pop(session_id, None)
+            except Conflict as error:
+                # Usually a benign race (a preview digest moved). A cause that keeps
+                # recurring is persistent: stop with a reason instead of spinning.
+                count = self._conflicts[session_id] = self._conflicts.get(session_id, 0) + 1
+                code = 'PREVIEW_LIMIT_REACHED' if 'limit reached' in str(error) else 'PERSISTENT_CONFLICT'
+                result = self._stop_unexpected(tenant, session_id, code) if code == 'PREVIEW_LIMIT_REACHED' or count >= CONFLICT_LIMIT else None
+            except (InvalidInput, NotFound) as error:
+                code = 'OPERATOR_NOT_REGISTERED' if 'registered named operator' in str(error) else 'AUTOPILOT_ERROR'
+                result = self._stop_unexpected(tenant, session_id, code)
             except Exception:
                 result = self._stop_unexpected(tenant, session_id)
             if result:
                 acted.append(dict(session_id=session_id, action=result))
         return acted
 
-    def _stop_unexpected(self, tenant, session_id):
+    def _stop_unexpected(self, tenant, session_id, code='AUTOPILOT_ERROR'):
         try:
             with self.store.connect() as db:
                 record, links = self._session_row(db, tenant, session_id)
             run_id = links.get('build') or links['spec']
-            self._stop(tenant, session_id, run_id, 'AUTOPILOT_ERROR', 'subject:' + record['operator_id'])
+            self._stop(tenant, session_id, run_id, code, 'subject:' + record['operator_id'])
             return 'stopped'
         except Exception:
             return None
@@ -361,6 +396,8 @@ class SessionService:
         phase = 'build' if 'build' in links else 'spec'
         run_id = links[phase]
         progress = self.progression.read(tenant, run_id)
+        if progress['run_status'] == 'succeeded' and phase == 'build':
+            return self._deliver(tenant, session_id, run_id, progress, operator, actor)
         if progress['run_status'] in {'paused', 'cancelled', 'terminated', 'succeeded', 'failed'}:
             return None
         if progress['run_status'] == 'awaiting_human':
@@ -416,6 +453,9 @@ class SessionService:
             latest = preview['latest_request']
             if preview['reason'] == 'REQUEST_ALREADY_ACTIVE':
                 return None
+            if latest and latest['state'] == 'cancelled':
+                self._stop(tenant, session_id, run_id, 'EXECUTION_CANCELLED', actor, task_id)
+                return 'stopped'
             if latest and latest['state'] in {'blocked', 'awaiting_human', 'indeterminate'}:
                 self._stop(tenant, session_id, run_id,
                            'EXECUTION_BLOCKED' if latest['state'] == 'blocked' else 'EXECUTION_UNFINISHED', actor, task_id)
@@ -512,21 +552,36 @@ class SessionService:
         self.store._command(tenant, base + ':link', 'autopilot.link_phase', link_args, link)
         return 'build_started'
 
+    def _verification_state(self, tenant, run_id, task_id):
+        """Latest independent verification job for the task, or None."""
+        if not self.verification or self.verification is UNAVAILABLE:
+            return None, None
+        try:
+            self.verification.check(tenant)
+            preview = self.verification.jobs.preview(tenant, run_id, task_id)
+        except (Conflict, InvalidInput, NotFound):
+            return None, None
+        return preview, preview.get('existing_request')
+
     def _deliver(self, tenant, session_id, run_id, progress, operator, actor):
         node = progress['nodes'][0]
+        if node['status'] == 'submitted' and self.verification is UNAVAILABLE:
+            self._stop(tenant, session_id, run_id, 'VERIFICATION_UNAVAILABLE', actor, node['task_id'])
+            return 'stopped'
         if node['status'] == 'submitted' and self.verification is not None:
-            try:
-                self.verification.check(tenant)
-                preview = self.verification.jobs.preview(tenant, run_id, node['task_id'])
-            except (Conflict, InvalidInput, NotFound):
-                preview = None
+            preview, job = self._verification_state(tenant, run_id, node['task_id'])
             if preview and preview.get('ready'):
                 self.verification.jobs.request(operator, run_id, node['task_id'], f'ap:{session_id}:verify:{node["epoch"]}',
                                                expected_preview_digest=preview['preview_digest'],
                                                reason='自动会话：程序已通过留出验收，申请独立双模型复核')
                 return 'verification_requested'
-            if preview and preview.get('latest') and preview['latest'].get('state') in {'pending', 'running'}:
+            if job and job.get('state') in {'queued', 'running'}:
                 return None
+            if job and job.get('state') in {'rejected', 'disputed', 'blocked'}:
+                self._stop(tenant, session_id, run_id, 'VERIFICATION_' + job['state'].upper(), actor, node['task_id'])
+                return 'stopped'
+            if job and job.get('state') == 'verified':
+                return None  # the verifier marks the task done; deliver as verified on the next tick
         key = f'ap:{session_id}:delivered:{node["epoch"]}:{node["status"]}'
         args = dict(session_id=session_id, run_id=run_id, status=node['status'])
 
@@ -540,21 +595,43 @@ class SessionService:
 
     # ----- read model for the conversation UI ----------------------------
     def list(self, tenant):
+        """One sidebar row per thread from records and control events only (no progression)."""
         with self.store.connect() as db:
-            ids = [r['id'] for r in db.execute('SELECT id FROM autopilot_sessions WHERE tenant=? ORDER BY rowid DESC', (tenant,))]
-        result = []
-        for session_id in ids:
-            try:
-                view = self.get(tenant, session_id, include_source=False)
-            except LoomError:
-                continue
-            result.append({k: view[k] for k in ('session_id', 'title', 'state', 'created_at', 'updated_at', 'thread_id')})
-        # One sidebar row per conversation thread, showing its latest session.
-        latest = {}
-        for item in result:
-            latest.setdefault(item['thread_id'], item)
-        return [dict(item, session_id=item['session_id'], turns=sum(1 for r in result if r['thread_id'] == item['thread_id']))
-                for item in latest.values()]
+            records = [json.loads(r['record']) for r in db.execute(
+                'SELECT record FROM autopilot_sessions WHERE tenant=? ORDER BY rowid', (tenant,))]
+            links = {}
+            for r in db.execute('SELECT session_id,run_id FROM autopilot_links WHERE tenant=? ORDER BY rowid', (tenant,)):
+                links.setdefault(r['session_id'], []).append(r['run_id'])
+            control, updated, created, status = {}, {}, {}, {}
+            for r in db.execute("SELECT run_id,json_extract(envelope,'$.type') AS type,json_extract(envelope,'$.ts') AS ts,"
+                                "json_extract(envelope,'$.payload.session_id') AS sid,"
+                                "json_extract(envelope,'$.payload.independently_verified') AS verified "
+                                "FROM events WHERE tenant=? AND run_id IN (SELECT run_id FROM autopilot_links WHERE tenant=events.tenant) "
+                                "AND json_extract(envelope,'$.type') LIKE 'autopilot.%' "
+                                "ORDER BY json_extract(envelope,'$.ts'),rowid", (tenant,)):
+                if r['type'] == 'autopilot.session_created':
+                    created[r['sid']] = r['ts']
+                if r['type'] in {'autopilot.stopped', 'autopilot.resumed', 'autopilot.delivered'}:
+                    control[r['sid']] = (r['type'], r['verified'])
+                updated[r['sid']] = max(updated.get(r['sid'], 0), r['ts'])
+            for r in db.execute('SELECT id,status FROM runs WHERE tenant=?', (tenant,)):
+                status[r['id']] = r['status']
+        rows = []
+        for record in records:
+            sid = record['session_id']
+            kind, verified = control.get(sid, (None, None))
+            current = status.get((links.get(sid) or [record['spec_run_id']])[-1])
+            state = ('needs_attention' if kind == 'autopilot.stopped' else
+                     ('verified' if verified else 'delivered') if kind == 'autopilot.delivered' else
+                     'paused' if current == 'paused' else 'terminated' if current in {'cancelled', 'terminated'} else 'running')
+            rows.append(dict(session_id=sid, title=record['title'], state=state, created_at=created.get(sid),
+                             updated_at=updated.get(sid), thread_id=record.get('thread_id') or sid))
+        latest, turns = {}, {}
+        for item in rows:
+            latest[item['thread_id']] = item
+            turns[item['thread_id']] = turns.get(item['thread_id'], 0) + 1
+        ordered = sorted(latest.values(), key=lambda item: item['updated_at'] or 0, reverse=True)
+        return [dict(item, turns=turns[item['thread_id']]) for item in ordered]
 
     def _events(self, db, tenant, run_id):
         return [json.loads(r['envelope']) for r in db.execute(
@@ -597,6 +674,13 @@ class SessionService:
                 step['content'] = body
             steps.append(step)
         frozen = next((e['payload'] for e in events['spec'] if e['type'] == 'autopilot.acceptance_frozen'), None)
+        if frozen and isinstance(steps[1]['content'], dict):
+            # Held-out inputs/answers never leave the private executor directory
+            # through this view (shared preview viewers can read sessions).
+            held = set(frozen['heldout_case_names'])
+            steps[1]['content'] = {**steps[1]['content'], 'cases': [
+                dict(name=c['name'], hidden=True) if c.get('name') in held else c
+                for c in steps[1]['content'].get('cases', [])]}
         if frozen:
             steps[1]['split'] = dict(development=len(frozen['development_case_names']),
                                      heldout=len(frozen['heldout_case_names']), origin='tester-model-heldout',
@@ -636,7 +720,14 @@ class SessionService:
         if build['status'] == 'verified':
             verify_status = 'done'
         elif build['status'] == 'submitted':
-            verify_status = 'pending' if self.verification is not None else 'not_configured'
+            if self.verification is UNAVAILABLE:
+                verify_status = 'unavailable'
+            elif self.verification is None:
+                verify_status = 'not_configured'
+            else:
+                _, job = self._verification_state(tenant, links['build'], build['task_id'])
+                verify_status = {None: 'pending', 'queued': 'queued', 'running': 'running', 'verified': 'done',
+                                 'rejected': 'rejected', 'disputed': 'disputed', 'blocked': 'blocked'}.get(job and job.get('state'), 'pending')
         steps.append(dict(key='verify', label='独立双模型复核', role='validator', status=verify_status))
         state, attention = 'running', None
         if controls and controls[-1]['type'] == 'autopilot.stopped':
@@ -646,6 +737,8 @@ class SessionService:
         elif controls and controls[-1]['type'] == 'autopilot.delivered':
             state = 'verified' if controls[-1]['payload']['independently_verified'] else 'delivered'
         current = run_rows.get('build') or run_rows['spec']
+        if state == 'running' and current['status'] == 'succeeded' and build['status'] == 'verified':
+            state = 'verified'
         if state == 'running' and current['status'] == 'paused':
             state = 'paused'
         if state == 'running' and current['status'] in {'cancelled', 'terminated'}:
@@ -663,9 +756,7 @@ class SessionService:
                     break
         thread_id = record.get('thread_id') or session_id
         with self.store.connect() as db:
-            thread = [json.loads(r['record'])['session_id'] for r in db.execute(
-                'SELECT record FROM autopilot_sessions WHERE tenant=? ORDER BY rowid', (tenant,))
-                if (json.loads(r['record']).get('thread_id') or json.loads(r['record'])['session_id']) == thread_id]
+            thread = [r['session_id'] for r in self._thread_records(db, tenant, thread_id)]
         return dict(schema_version='loom.session/v1', session_id=session_id, title=record['title'], prompt=record['prompt'],
                     request=record.get('request') or record['prompt'], thread_id=thread_id, thread=thread,
                     parent_session_id=record.get('parent_session_id'), activity=activity,

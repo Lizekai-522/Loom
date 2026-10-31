@@ -1,8 +1,8 @@
 {
-  "version": "0.27.0",
+  "version": "0.27.1",
   "stage": "conversation-autopilot-alpha",
   "production_ready": false,
-  "generated_at": "2026-10-31T14:37:47.126483+08:00",
+  "generated_at": "2026-10-31T17:05:45.800863+08:00",
   "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
   "source_file_count_excluding_manifest": 417,
   "files": [
@@ -18,8 +18,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 19657,
-      "sha256": "20e0eb9784bcf47e7afb37b3bcf31208bf94037f23c29c20161cf4ae70b2b606"
+      "bytes": 19778,
+      "sha256": "2003030804524ba689774c99c7a9962985c53287f2cdb1aaa8d0cf25c26866be"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -99,12 +99,12 @@
     {
       "path": "docs/api/README.md",
       "bytes": 15388,
-      "sha256": "54b0abced79d9d61928c94cbf0040b87703baae8c84f0e46b21f9af0cf976b21"
+      "sha256": "538762720b0db4801a0da8719bee5bcd9bcbc0eb599c2b35a268e73af425ffe1"
     },
     {
       "path": "docs/api/openapi.json",
       "bytes": 115155,
-      "sha256": "55c0842ec17e83945cb18331865ce76e6cebd155e38f47f2d3f2032319c165a5"
+      "sha256": "a1e9a8a977f58b7b688cbfc3fc0729ab2d402fe2f16bc93c800eb4155b3415ce"
     },
     {
       "path": "docs/approved-execution.md",
@@ -174,7 +174,7 @@
     {
       "path": "docs/functional-acceptance.json",
       "bytes": 52015,
-      "sha256": "80376750e550a1361c3a8a2b27539804969bcccb0bf41c7c1f2b1894303a225e"
+      "sha256": "47cc0ec238a6e9b4582b1f9ed80ec1cd683aaabbe4b4bf72554c491e61aa09a3"
     },
     {
       "path": "docs/functional-acceptance.md",
@@ -193,8 +193,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 57320,
-      "sha256": "a3ba612baf5d99f7dadb1735046317410efc6ee53e5c6b0098cbdfc905815bd0"
+      "bytes": 59048,
+      "sha256": "75d6bed686beef56a6670d85dc83d57b027c1245450b9736ff5bf69e6138b2c8"
     },
     {
       "path": "docs/launch-four-rounds-2026-10-30.md",
@@ -784,7 +784,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 804,
-      "sha256": "b18e6b84ad80b93f9d62e96d4eb74506dcd13709695c2b24506f97b85234af5d"
+      "sha256": "6fa41b48277108d5b35134ed54e45257cccc204ad9bb55915faa7ca0ea78e0ab"
     },
     {
       "path": "requirements.lock",
@@ -988,8 +988,8 @@
     },
     {
       "path": "scripts/serve_public_preview.py",
-      "bytes": 1908,
-      "sha256": "b694572b0438eb18ead94cbae9c19d0d2085454b751789b70e8d71b2ce5c1ac3"
+      "bytes": 1954,
+      "sha256": "8c73dbb97ef34b3d94f65e2c9cee097804b5fae4c8a84b0dd70e95db1b819c06"
     },
     {
       "path": "scripts/serve_source_fixture.py",
@@ -1029,7 +1029,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "840c001dc1786c71322442b6e6c757fcd06990b6267ca0aea107ca9195284fe3"
+      "sha256": "01e32fadf046727c51050fa44282f3c52f940e6893921a2ae3623092384cec03"
     },
     {
       "path": "src/loom/__main__.py",
@@ -1068,8 +1068,8 @@
     },
     {
       "path": "src/loom/autopilot.py",
-      "bytes": 42867,
-      "sha256": "6b6db0e2f4866a77c7060212f3a1cefa54363bd7be4bc71565e4eb06857c2b76"
+      "bytes": 50290,
+      "sha256": "c6b1a8a4278d544ce575acbd0f2fce07909dc5f6f882536b1a24f7e838ed8b38"
     },
     {
       "path": "src/loom/builtin_resources.py",
@@ -1148,8 +1148,8 @@
     },
     {
       "path": "src/loom/local_executor.py",
-      "bytes": 5280,
-      "sha256": "6f3166a766d8f6baacc7c3abb61961f640baf532be908caa4a8bcbd28004334b"
+      "bytes": 5492,
+      "sha256": "f2eceb773fc24e98f9403bf050f722fa2b15ab8b24f05d29bdb878f0a519825f"
     },
     {
       "path": "src/loom/model_gateway.py",
@@ -1183,8 +1183,8 @@
     },
     {
       "path": "src/loom/public_access.py",
-      "bytes": 15502,
-      "sha256": "f62f97d24dd736ea8de2d5512c012c340aea92c6628f2e375ba4de848f5ba389"
+      "bytes": 17442,
+      "sha256": "b35af8d3c1a669baa921054c72697ad7571b63baed2aa3c6677cf46a5ef8a59c"
     },
     {
       "path": "src/loom/public_audit.py",
@@ -1313,8 +1313,8 @@
     },
     {
       "path": "src/loom/web/chat.js",
-      "bytes": 27059,
-      "sha256": "abf85dc164ad945f1018f4288833f663a671054c4c7a36e800a7d49d3c475678"
+      "bytes": 28534,
+      "sha256": "8498ec5b6e237eeb313dbee2c2eea67025812a1024e133d4fe071c3619221ad8"
     },
     {
       "path": "src/loom/web/console-execution.js",
@@ -1553,8 +1553,8 @@
     },
     {
       "path": "tests/test_autopilot.py",
-      "bytes": 13694,
-      "sha256": "c84171044589f88bbf27c8863ef78f70059e664770795b2237b152f0d023b8dc"
+      "bytes": 20776,
+      "sha256": "0118309202955db572d7274203bb00c1ad1c561c4c1c8701d8ffa2e51dfd0915"
     },
     {
       "path": "tests/test_checkpoints.py",
@@ -1713,8 +1713,8 @@
     },
     {
       "path": "tests/test_public_access.py",
-      "bytes": 14574,
-      "sha256": "2b15a8a2107064272a74259b86bff476ec598450d4d1ca74635a257dc25e53a4"
+      "bytes": 15962,
+      "sha256": "b062e846284eed2a3e37c2819bf1f24a2cea25d911ec15eea75db5a5583a6605"
     },
     {
       "path": "tests/test_public_audit.py",
@@ -2094,14 +2094,14 @@
   ],
   "validation": {
     "full": {
-      "main_tests": 1278,
+      "main_tests": 1291,
       "subtests": 387,
       "failures": 0,
       "skipped": 0,
       "platform": "Linux / Python 3.13.18"
     },
     "target": {
-      "main_tests": 48,
+      "main_tests": 59,
       "subtests": 0,
       "failures": 0,
       "skipped": 0,
@@ -2119,7 +2119,7 @@
     }
   },
   "live_http_checks": 0,
-  "browser_checks": 9,
+  "browser_checks": 11,
   "new_paid_model_requests": 0,
   "real_provider_probe": {
     "passed": true,
@@ -2169,6 +2169,7 @@
   },
   "notes": [
     "Original 62 requirements retained; partial feature increments do not establish production readiness.",
+    "0.27.1 fixes nine red-team findings (verification state, stop/resume episodes, swallowed errors, cancellation, device-token lockout and revocation, N+1 listing, held-out visibility, follow-up prompt length, unloadable verification); all reproduction scripts rerun clean.",
     "Autopilot sessions verified with simulated provider HTTP and a sandbox test double; a real automatic session on the maintainer host is pending.",
     "Held-out acceptance cases are generated by the tester role model (tester-model-heldout); they are not independent dual-model verification.",
     "real_provider_probe is carried over from 0.26.0 and was not repeated in this increment.",

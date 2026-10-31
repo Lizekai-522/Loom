@@ -5,6 +5,8 @@ from hashlib import sha256
 from hmac import compare_digest, new as hmac_new
 from http.cookies import SimpleCookie, CookieError
 import json
+from pathlib import Path
+import os
 import re
 import secrets
 import time
@@ -83,17 +85,56 @@ class PublicPreview:
     forwarding headers never reach the API; a server-held operator is injected
     only after an invite login and exact HTTPS origin checks. No worker routes.
     """
-    def __init__(self, app, config, *, example=None,verified_example=None):
+    def __init__(self, app, config, *, example=None,verified_example=None,revocations=None):
         self.app, self.config = app, config
         self.example = example
         self.verified_example=verified_example
+        # In-memory cache of admitted device tokens. Authority is the HMAC
+        # signature plus expiry, so evicting an entry never locks a device out.
         self.sessions = {}
-        # Expired or logged-out device tokens; a restart forgets this set, but the
-        # browser cookie is deleted on logout and expiry is also signed.
-        self.revoked = set()
+        # Logged-out token hashes -> signed expiry. Persisted when a private
+        # path is configured, so a restart cannot revive a logged-out cookie.
+        self.revocations_path = None if revocations is None else Path(revocations)
+        self.revoked = self._load_revocations()
         self.login_attempts = deque()
         self.writes = deque()
         self.policy = None
+
+    def _load_revocations(self):
+        if self.revocations_path is None:
+            return {}
+        try:
+            raw = self.revocations_path.read_bytes()
+            data = json.loads(raw) if len(raw) <= 1048576 else {}
+            now = time.time()
+            return {k: v for k, v in data.items() if re.fullmatch(r'[0-9a-f]{64}', k) and type(v) in (int, float) and v > now}
+        except (OSError, ValueError, TypeError, AttributeError):
+            return {}
+
+    def _revoke(self, hashed, expiry):
+        now = time.time()
+        self.revoked = {k: v for k, v in self.revoked.items() if v > now}
+        self.revoked[hashed] = expiry
+        self._persist()
+
+    def _persist(self):
+        if self.revocations_path is not None:
+            temporary = self.revocations_path.with_name(self.revocations_path.name + '.' + secrets.token_hex(6) + '.new')
+            try:
+                temporary.write_text(json.dumps(self.revoked), encoding='utf-8')
+                try:
+                    os.chmod(temporary, 0o600)
+                except OSError:
+                    pass
+                os.replace(temporary, self.revocations_path)
+            except OSError:
+                pass
+
+    def _admit(self, hashed, until):
+        if len(self.sessions) >= MAX_SESSIONS:
+            # Evict the entry expiring first; it is re-admitted by signature on its next request.
+            self.sessions.pop(min(self.sessions, key=self.sessions.get), None)
+        self.sessions[hashed] = until
 
     @staticmethod
     def _device_key(config):
@@ -146,8 +187,11 @@ class PublicPreview:
             return await respond(denied(503, 'PUBLIC_PREVIEW_NOT_READY'))
         policy = sha256((config.origin + config.access_code + config.bearer).encode()).hexdigest()
         if policy != self.policy:
+            # Rotation changes the HMAC key, invalidating every earlier token.
             self.sessions.clear()
-            self.revoked.clear()
+            if self.policy is not None:
+                self.revoked = {}
+                self._persist()
             self.policy = policy
         # No trust in X-Forwarded-*; cloudflared preserves the public Host.
         if request.headers.get('host') != urlsplit(config.origin).netloc:
@@ -177,7 +221,7 @@ class PublicPreview:
                 if len(body) > MAX_BODY:
                     return await reply(denied(413, 'PUBLIC_BODY_LIMIT'))
         now = time.monotonic()
-        self.revoked.update(key for key,value in self.sessions.items() if value <= now)
+        # Expired cache entries simply drop out; the signed expiry rejects them anyway.
         self.sessions = {key:value for key,value in self.sessions.items() if value > now}
         if path == '/preview/style.css' and method == 'GET':
             return await reply(Response(STYLE, media_type='text/css'))
@@ -197,10 +241,8 @@ class PublicPreview:
                 valid = False
             if not valid:
                 return await reply(HTMLResponse(LOGIN.replace('<form ', '<p>访问码无效，请核对本机私有体验文件。</p><form '), status_code=401))
-            if len(self.sessions) >= MAX_SESSIONS:
-                return await reply(denied(429, 'PUBLIC_SESSION_LIMIT'))
             session = self._issue(config)
-            self.sessions[sha256(session.encode()).hexdigest()] = now + config.session_seconds
+            self._admit(sha256(session.encode()).hexdigest(), now + config.session_seconds)
             response = RedirectResponse('/console', status_code=303)
             response.set_cookie(COOKIE, session, secure=True, httponly=True, samesite='strict', path='/', max_age=config.session_seconds)
             return await reply(response)
@@ -208,21 +250,24 @@ class PublicPreview:
             cookies = SimpleCookie(request.headers.get('cookie',''))
             session = cookies[COOKIE].value
             hashed = sha256(session.encode()).hexdigest()
-            authenticated = hashed in self.sessions
+            authenticated = hashed in self.sessions and hashed not in self.revoked
             if not authenticated and hashed not in self.revoked and self._device_valid(config, session):
-                # Remembered device after a restart: re-admit for its signed remaining time.
+                # Remembered device after a restart or cache eviction: re-admit for its signed remaining time.
                 remaining = int(session.split('.')[1]) - time.time()
-                if len(self.sessions) < MAX_SESSIONS:
-                    self.sessions[hashed] = now + remaining
-                    authenticated = True
+                self._admit(hashed, now + remaining)
+                authenticated = True
         except (KeyError, ValueError, CookieError, IndexError):
             authenticated = False
         if not authenticated:
             response = RedirectResponse('/preview/login',status_code=303) if method == 'GET' and path in {'/','/console','/console/'} else denied(401,'PUBLIC_SESSION_REQUIRED')
             return await reply(response)
         if path == '/preview/logout' and method == 'POST':
-            self.sessions.pop(sha256(session.encode()).hexdigest(),None)
-            self.revoked.add(sha256(session.encode()).hexdigest())
+            self.sessions.pop(hashed,None)
+            try:
+                expiry = int(session.split('.')[1])
+            except (IndexError, ValueError):
+                expiry = time.time() + config.session_seconds
+            self._revoke(hashed, expiry)
             response = Response(status_code=204)
             response.delete_cookie(COOKIE, secure=True, httponly=True, samesite='strict', path='/')
             return await reply(response)
