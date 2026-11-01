@@ -1,6 +1,6 @@
 # 本地 API 契约
 
-此目录的 `openapi.json` 由当前 FastAPI 应用生成，描述实际可运行的 HTTP 子集。当前版本 **0.28.0**；本机 [控制台](http://127.0.0.1:8796/console) 与 [接口文档](http://127.0.0.1:8796/docs) 同源提供。设计方案附录中的其余接口仍属后续目标，未因列入规范而自动实现。
+此目录的 `openapi.json` 由当前 FastAPI 应用生成，描述实际可运行的 HTTP 子集。当前版本 **0.29.0**；本机 [控制台](http://127.0.0.1:8796/console) 与 [接口文档](http://127.0.0.1:8796/docs) 同源提供。设计方案附录中的其余接口仍属后续目标，未因列入规范而自动实现。
 
 `/health` 返回 version，stage 仍为 `S1-local`，表示 HTTP 内核继续使用单实例 SQLite；`external_writes_enabled=false` 表示此 API 没有执行真实外部写的路由。本机脚本的真实模型调用另见 [本机执行说明](../local-execution.md)。`/integrity` 的 `external_checkpoint: "not_configured"` 表示该 HTTP 实例尚未配置独立检查点；离线 Ed25519 组件不在普通查询时自动签名，使用方法见 [检查点说明](../checkpoints.md)。
 
@@ -13,7 +13,7 @@
 | 本租户持久配额与计数 | `GET /v1/quotas`；只读，实际模型及已登记 Python 工具准入在相应 effect 事务核对，工具不新增模型费用预留 |
 | 本机工具未知态核对 | `POST /v1/runs/{run_id}/tool-effects/{call_id}/reconcile`；具名操作员，公网禁止，不改费用或自动重跑 |
 | 独立验证能力 | `GET /v1/verification-capabilities`；鉴权只读，区分签名核心与真实配置/完成入口，不接受HTTP密钥登记 |
-| 新建自动会话或追问 | `POST /v1/sessions`，正文 `{"prompt":…, "title"?:…, "parent_session_id"?:…, "examples"?:[{"input":…,"expected":…}]}`（examples 最多10个，作为不进入模型提示的终验样例）；需具名操作员（goal.write+plan.approve+control）与 Idempotency-Key。创建即按会话模板批准计划，由私有执行器委托推进；带 parent 时须上一轮已结束，新会话携带原始需求、历次补充与上一版程序，不含留出用例 |
+| 新建自动会话或追问 | `POST /v1/sessions`，正文 `{"prompt":…, "title"?:…, "parent_session_id"?:…, "examples"?:[{"input":…,"expected":…}], "topology"?:"auto|standard|direct"}`（examples 最多10个，作为不进入模型提示的终验样例）；需具名操作员（goal.write+plan.approve+control）与 Idempotency-Key。创建即按会话模板批准计划，由私有执行器委托推进；带 parent 时须上一轮已结束，新会话携带原始需求、历次补充与上一版程序，不含留出用例 |
 | 列出/读取会话 | `GET /v1/sessions`（每个对话线程一行，含轮数）、`GET /v1/sessions/{session_id}`；返回线程、步骤、需求/用例正文、尝试计数、源码、当前活动、停止原因与费用，不含留出用例执行输出 |
 | 停止后继续自动推进 | `POST /v1/sessions/{session_id}/resume`，正文 `{"reason":…}`；只解除会话停止标记，不改变运行状态、预算或未知调用 |
 | 创建 Goal 草案 | `POST /v1/goals` |
@@ -106,3 +106,24 @@ CLI 通过 `loom serve --identities-file <源码和公开outputs之外的私有J
 产品CLI支持新引用任务，默认离线preview，显式approve须现有DB及私有operator/worker配置。自动载入注册表用例，拒绝混用raw development_tests；host验收单独冻结且失败不回流修复。GET suite给出当前execution_reference；API路线仍27条。
 
 完整782主/396子，0失败/跳过，含48真实基础设施。真实run7bf5b872-fae6-4c4d-a154-f2de9470846b，1Flash、3生成+4host用例通过，552tokens/342µUSD上界、预留0、未核对账单，目标submitted/独立review pending。27新+33旧HTTP和17Chromium通过；源码/包/凭据另核。suite图形表单和完整七角色/生产/双签仍未完成。
+
+
+## 0.29.0 平台接口（前端对接）
+
+所有接口均需认证（本机控制台自动携带；Bearer 同其他接口）。写操作必须带 `Idempotency-Key`。“读”=任意已认证身份；“写”=具名主体 goal.write；“操作员”=具名 operator（control）。公网体验只开放其中的读接口。
+
+| 功能 | 接口 | 权限 | 说明 |
+|---|---|---|---|
+| FR-002 Agent 注册/发现/版本 | `GET /v1/agents?role=&skill=&include_retired=`、`GET /v1/agents/{agent_id}`、`POST /v1/agents` | 读 / 读 / 操作员 | 正文 `{agent_id, base_role, version(x.y.z), skills?, tools?, model_alias?, description?, status?}`；只能收窄七个内置角色的技能和工具；同一 agent 新版本号必须更大；版本记录追加写入并哈希链接 |
+| FR-003 能力画像 | `GET /v1/capability-profiles`、`POST /v1/capability-profiles/snapshots`、`GET /v1/agent-routing?role=` | 读 / 操作员 / 读 | 从执行台账统计各角色请求数、成功率、P50/P95 耗时与当前负载；快照写入台账；路由按成功率、耗时、负载给注册 Agent 打分，无注册时回退内置角色 |
+| FR-031 工具选择 | `GET /v1/tool-selection?role=&need=` | 读 | 汇总内置工具、HTTP 插件、MCP 工具并给出允许原因；`execution_authorized` 恒为 false |
+| FR-037 函数调用参数校验 | `POST /v1/function-calls/validate` `{schema, arguments}` | 读 | 受限 JSON Schema 子集（type/properties/required/additionalProperties/items/enum/长度/范围），未知关键字直接拒绝；MCP 与插件调用前均先校验 |
+| FR-004 知识库 | `GET /v1/knowledge?status=`、`POST /v1/knowledge`、`POST /v1/knowledge/{entry_id}/review`、`GET /v1/knowledge-search?q=&limit=` | 读 / 写 / 操作员 / 读 | 提交后为 proposed；必须由另一名操作员审核（作者自审 409）；只有 approved 可被检索；按租户隔离 |
+| FR-005 记忆 | `GET /v1/memory?scope=&scope_id=`、`POST /v1/memory`、`GET /v1/memory-search?q=&session_id=&task_id=` | 读 / 写 / 读 | 作用域 session（对话线程）/task（运行）/tenant；检索顺序为会话→任务→租户；自动会话交付后自动写入会话与任务记忆 |
+| FR-019 拓扑自适应 | `POST /v1/sessions` 新增 `topology: auto|standard|direct`；`GET /v1/topology/report` | 操作员 / 读 | 用户样例≥3个时 auto 选直通（只有实现步骤、1次模型调用、用户样例全部用作验收、约1/3不给实现者）；报告按拓扑对比交付率、平均费用与模型调用次数 |
+| FR-027 一致性 | `POST /v1/consistency` `{samples}` | 读 | 返回多数一致率与低置信标志；自动会话中测试角色用例与用户样例矛盾时停下（`LOW_CONFIDENCE_TESTS`） |
+| FR-032 改图原语 | `POST /v1/goals/{run_id}/plan/repairs` `{expected_revision, operation}` | 写 | `operation.op` 为 rewire（`node_id, depends`）、bypass（`node_id`）、insert_prereq（`node_id, node`）；结果重新做 DAG/合同校验并保存为新草案版本；已批准计划不可改 |
+| FR-036 MCP | `POST /mcp`（JSON-RPC 2.0：initialize、ping、tools/list、tools/call）；`GET/POST /v1/mcp-servers`、`GET /v1/mcp-servers/{name}/tools` | 读（调用写工具需操作员） / 操作员 | Loom 作为 MCP Server 提供 loom_create_session、loom_get_session、loom_list_sessions、loom_search_knowledge、loom_list_agents；外部 MCP Server 只登记 https 公网地址并可发现工具，任务角色不能执行外部 MCP 工具 |
+| FR-038 HTTP 插件 | `GET/POST /v1/plugins`、`POST /v1/plugins/{plugin_id}/invoke` `{endpoint, arguments, dry_run=true}` | 读 / 操作员 / 操作员 | 声明式清单：https 公网主机、仅 GET、路径参数必须在 schema required 中；默认禁用；调用固定主机、不跟随重定向、10 秒超时、响应上限 64KB，只记录状态与摘要 |
+| FR-049 领域包灰度 | `GET /v1/pack-rollouts/{name}`、`POST /v1/pack-rollouts/{name}` `{action: canary|promote|rollback, version?, percent?}`、`GET /v1/pack-rollouts/{name}/resolve?subject=` | 读 / 操作员 / 读 | 金丝雀 1–50%，按主体哈希分桶；promote 后可 rollback 到上一稳定版；已有运行保持冻结的 pack_ref |
+| FR-054 风险抽样 | `GET /v1/evaluation/sampling` | 读 | 汇总自动会话的独立复核结果，给出偏差率与单侧95%上界（零偏差用精确公式，否则 Wilson），并给出证明≤2%所需样本数（149） |

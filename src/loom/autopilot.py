@@ -22,7 +22,9 @@ from uuid import uuid4
 from .artifacts import ArtifactService
 from .builtin_resources import software_workflow
 from .development_suites import DevelopmentSuiteService
+from .adaptation import case_conflicts, choose_topology, sampled
 from .dispatch import DispatchService
+from .knowledge import Memory
 from .execution import freeze_tests
 from .progression import ProgressionService
 from .sandbox import FrozenTest
@@ -97,6 +99,7 @@ MESSAGES = {
     'VERIFICATION_BLOCKED': '独立复核被拦截（额度、配置或结果未知），不会自动重试。',
     'VERIFICATION_UNAVAILABLE': '执行器配置了独立复核但无法加载，已停止，避免把程序误记为“未复核交付”。',
     'PERSISTENT_CONFLICT': '同一步骤连续多次被拒绝（状态反复变化），自动推进已停止以免空转。',
+    'LOW_CONFIDENCE_TESTS': '测试角色设计的用例与你提供的验收样例相矛盾（同样的输入、不同的期望），说明模型可能误解了需求。请补充说明后重试。',
 }
 FAILURE_MESSAGES = {
     'REPEATED_SOURCE': '修复后模型生成了与上一版相同的程序，自动修复已停止。',
@@ -176,7 +179,7 @@ def _write_private(path, data):
 
 
 class SessionService:
-    def __init__(self, store, *, executor_config=None, identities=(), verification=None, initialize=True):
+    def __init__(self, store, *, executor_config=None, identities=(), verification=None, initialize=True, sampling_rate=1.0):
         self.store, self.config, self.identities = store, executor_config, tuple(identities)
         self.verification = verification
         self.workflow = WorkflowService(store)
@@ -185,6 +188,8 @@ class SessionService:
         self.progression = ProgressionService(store)
         self.dispatch = DispatchService(store, config=executor_config, identities=identities)
         self._conflicts = {}
+        self.memory = Memory(store)
+        self.sampling_rate = sampling_rate
         if initialize:
             with store.connect() as db:
                 db.executescript(SCHEMA)
@@ -281,10 +286,29 @@ class SessionService:
             freeze_tests(cases)  # same JSON/size rules as every executor test
         return [dict(input=c.input, expected=c.expected) for c in cases]
 
-    def create(self, identity, key, *, prompt, title=None, parent_session_id=None, examples=None):
+    def _direct_definition(self, prompt, examples):
+        """FR-019 direct topology: the user's examples are the acceptance set;
+        about two thirds are shown to the developer, all of them are checked."""
+        names = [f'user-example-{i + 1}' for i in range(len(examples))]
+        visible, _ = split_cases(names)
+        tests, evaluation = freeze_tests([FrozenTest(n, e['input'], e['expected']) for n, e in zip(names, examples)])
+        shown = [dict(input=e['input'], expected=e['expected']) for n, e in zip(names, examples) if n in visible]
+        instruction = (f'用户需求：\n{_clip(prompt, 8000)}\n\n{RUNTIME_CONTRACT}\n\n用户提供的示例（程序须满足；'
+                       f'另有用户示例留作验收不提供）：\n' + _clip(json.dumps(shown, ensure_ascii=False), 4500))
+        definition = software_workflow()
+        definition['nodes'] = [dict(id='implement', title='编写并测试程序', role='developer', instruction=instruction[:16000],
+                                    evaluation_digest=evaluation,
+                                    limits=dict(cost_limit_microusd=65000, token_limit=205000, max_attempts=1,
+                                                context_limit_bytes=196608))]
+        return definition, tests, evaluation
+
+    def create(self, identity, key, *, prompt, title=None, parent_session_id=None, examples=None, topology='auto'):
         _text(prompt, 'prompt', 4000)
         _text(key, 'idempotency key', 120)
         examples = self._user_examples(examples)
+        topology, topology_reason = choose_topology(prompt, examples, topology)
+        if topology == 'direct' and getattr(self.config, 'auto_acceptance_dir', None) is None:
+            topology, topology_reason = 'standard', 'direct topology needs the executor acceptance directory'
         tenant = identity.tenant_id
         message, thread_id = prompt, None
         if parent_session_id is not None:
@@ -295,16 +319,23 @@ class SessionService:
         _text(title, 'title', 200)
         actor = self._operator(identity)
         base = 'ap-create:' + digest({'key': key, 'subject': identity.subject_id, 'parent': parent_session_id})[:40]
+        budget = dict(cost_limit=70000, token_limit=210000) if topology == 'direct' else SPEC_BUDGET
         goal = self.workflow.create_goal(tenant, base + ':goal', title=title, description=prompt,
-                                         acceptance=list(ACCEPTANCE), actor=actor, **SPEC_BUDGET)
+                                         acceptance=list(ACCEPTANCE), actor=actor, **budget)
         run_id = goal['run_id']
         plan = self.workflow.get_plan(tenant, run_id)
         if plan['revision'] == 0:
-            plan = self.workflow.save_plan(tenant, run_id, base + ':plan', self._spec_definition(prompt), 0, actor=actor)
+            if topology == 'direct':
+                definition, tests, evaluation = self._direct_definition(prompt, examples)
+                _write_private(Path(self.config.auto_acceptance_dir) / f'{evaluation}.json',
+                               {'tests': [dict(name=t.name, input=t.input, expected=t.expected) for t in tests]})
+            else:
+                definition = self._spec_definition(prompt)
+            plan = self.workflow.save_plan(tenant, run_id, base + ':plan', definition, 0, actor=actor)
         if plan['status'] == 'draft':
             self.workflow.approve_plan(tenant, run_id, base + ':approve', plan['revision'], plan['digest'], actor=actor)
         args = dict(run_id=run_id, prompt=prompt, title=title, actor=actor, parent_session_id=parent_session_id, message=message,
-                    examples=examples)
+                    examples=examples, topology=topology)
 
         def apply(db):
             session_id = str(uuid4())
@@ -312,6 +343,7 @@ class SessionService:
             record = dict(schema_version='loom.autopilot-session/v1', session_id=session_id, tenant_id=tenant,
                           title=title, prompt=prompt, request=message, **thread, mode='auto', template=TEMPLATE,
                           **({'acceptance_examples': examples} if examples else {}),
+                          topology=topology, topology_reason=topology_reason,
                           operator_id=identity.subject_id, spec_run_id=run_id,
                           policy=dict(max_repairs=1, min_cases=MIN_CASES, automatic_retry=False,
                                       acceptance_origin='tester-model-heldout'))
@@ -319,9 +351,10 @@ class SessionService:
                                       dict(session_id=session_id, record=record, record_digest=digest(record),
                                            delegated_by=actor, counts_as_success=False), actor, base + ':session')
             db.execute('INSERT INTO autopilot_sessions VALUES(?,?,?,?)', (tenant, session_id, canonical(record), event['hash']))
-            link = dict(session_id=session_id, phase='spec', run_id=run_id)
-            db.execute('INSERT INTO autopilot_links VALUES(?,?,?,?,?,?)',
-                       (tenant, session_id, 'spec', run_id, canonical(link), event['hash']))
+            for phase in (('spec', 'build') if topology == 'direct' else ('spec',)):
+                link = dict(session_id=session_id, phase=phase, run_id=run_id)
+                db.execute('INSERT INTO autopilot_links VALUES(?,?,?,?,?,?)',
+                           (tenant, session_id, phase, run_id, canonical(link), event['hash']))
             return dict(session_id=session_id, run_id=run_id)
         created = self.store._command(tenant, base + ':session', 'autopilot.create_session', args, apply)
         return self.get(tenant, created['session_id'])
@@ -521,6 +554,11 @@ class SessionService:
                 _, req = self.artifacts._candidate(db, tenant, spec_run, requirements['artifact_id'])
                 summary = json.dumps(req, ensure_ascii=False)[:6000]
         names = [case['name'] for case in body['cases']]
+        conflicts = case_conflicts(body['cases'], record.get('acceptance_examples') or [])
+        if conflicts:
+            # The model's tests contradict the user's own examples: low confidence.
+            self._stop(tenant, session_id, spec_run, 'LOW_CONFIDENCE_TESTS', actor, ','.join(conflicts)[:200])
+            return 'stopped'
         try:
             dev, held = split_cases(names)
             cases = {case['name']: case for case in body['cases']}
@@ -604,7 +642,8 @@ class SessionService:
         if node['status'] == 'submitted' and self.verification is UNAVAILABLE:
             self._stop(tenant, session_id, run_id, 'VERIFICATION_UNAVAILABLE', actor, node['task_id'])
             return 'stopped'
-        if node['status'] == 'submitted' and self.verification is not None:
+        review_sampled = sampled(session_id, self.sampling_rate)
+        if node['status'] == 'submitted' and self.verification is not None and review_sampled:
             preview, job = self._verification_state(tenant, run_id, node['task_id'])
             if preview and preview.get('ready'):
                 self.verification.jobs.request(operator, run_id, node['task_id'], f'ap:{session_id}:verify:{node["epoch"]}',
@@ -624,14 +663,39 @@ class SessionService:
         def apply(db):
             self.store._event(db, tenant, run_id, 'autopilot.delivered',
                               dict(session_id=session_id, task_id=node['task_id'], task_status=node['status'],
-                                   independently_verified=node['status'] == 'done', counts_as_success=False), actor, key)
+                                   independently_verified=node['status'] == 'done', review_sampled=review_sampled,
+                                   sampling_rate=self.sampling_rate, counts_as_success=False), actor, key)
             return dict(delivered=True)
         self.store._command(tenant, key, 'autopilot.deliver', args, apply)
+        self._remember_delivery(tenant, session_id, run_id, node, actor)
         return 'delivered'
+
+    def _remember_delivery(self, tenant, session_id, run_id, node, actor):
+        """FR-005: thread and task memory of what was delivered (untrusted data)."""
+        try:
+            with self.store.connect() as db:
+                record, _ = self._session_row(db, tenant, session_id)
+            thread = record.get('thread_id') or session_id
+            summary = f"已交付：{record['title']}；本轮要求：{_clip(record.get('request') or record['prompt'], 300)}；任务 {node['task_id']}，状态 {node['status']}。"
+            self.memory.write(tenant, f'ap:{session_id}:memory:session', scope='session', scope_id=thread,
+                              content=summary, actor=actor, source='autopilot')
+            self.memory.write(tenant, f'ap:{session_id}:memory:task', scope='task', scope_id=run_id,
+                              content=summary, actor=actor, source='autopilot')
+        except LoomError:
+            pass
 
     # ----- read model for the conversation UI ----------------------------
     def list(self, tenant):
         """One sidebar row per thread from records and control events only (no progression)."""
+        rows = self._summaries(tenant)
+        latest, turns = {}, {}
+        for item in rows:
+            latest[item['thread_id']] = item
+            turns[item['thread_id']] = turns.get(item['thread_id'], 0) + 1
+        ordered = sorted(latest.values(), key=lambda item: item['updated_at'] or 0, reverse=True)
+        return [dict(item, turns=turns[item['thread_id']]) for item in ordered]
+
+    def _summaries(self, tenant):
         with self.store.connect() as db:
             records = [json.loads(r['record']) for r in db.execute(
                 'SELECT record FROM autopilot_sessions WHERE tenant=? ORDER BY rowid', (tenant,))]
@@ -662,12 +726,35 @@ class SessionService:
                      'paused' if current == 'paused' else 'terminated' if current in {'cancelled', 'terminated'} else 'running')
             rows.append(dict(session_id=sid, title=record['title'], state=state, created_at=created.get(sid),
                              updated_at=updated.get(sid), thread_id=record.get('thread_id') or sid))
-        latest, turns = {}, {}
-        for item in rows:
-            latest[item['thread_id']] = item
-            turns[item['thread_id']] = turns.get(item['thread_id'], 0) + 1
-        ordered = sorted(latest.values(), key=lambda item: item['updated_at'] or 0, reverse=True)
-        return [dict(item, turns=turns[item['thread_id']]) for item in ordered]
+        return rows
+
+    def outcome_rows(self, tenant):
+        """Per-session topology, state, spend and model calls for comparison reports."""
+        rows = []
+        summaries = {item['session_id']: item for item in self._summaries(tenant)}
+        with self.store.connect() as db:
+            for sid, item in summaries.items():
+                record, links = self._session_row(db, tenant, sid)
+                runs = set(links.values())
+                cost = sum(db.execute('SELECT spent FROM runs WHERE tenant=? AND id=?', (tenant, r)).fetchone()['spent'] for r in runs)
+                calls = sum(db.execute("SELECT count(*) FROM reservations WHERE tenant=? AND run_id=?", (tenant, r)).fetchone()[0] for r in runs)
+                rows.append(dict(session_id=sid, topology=record.get('topology', 'standard'), state=item['state'], cost=cost, model_calls=calls))
+        return rows
+
+    def review_outcomes(self, tenant):
+        """Independent review results recorded by sessions (FR-054 inputs)."""
+        reviewed = deviations = 0
+        with self.store.connect() as db:
+            for r in db.execute("SELECT json_extract(envelope,'$.type') AS type,json_extract(envelope,'$.payload.code') AS code,"
+                                "json_extract(envelope,'$.payload.independently_verified') AS verified FROM events WHERE tenant=? "
+                                "AND run_id IN (SELECT run_id FROM autopilot_links WHERE tenant=events.tenant) "
+                                "AND json_extract(envelope,'$.type') IN ('autopilot.delivered','autopilot.stopped')", (tenant,)):
+                if r['type'] == 'autopilot.delivered' and r['verified']:
+                    reviewed += 1
+                elif r['type'] == 'autopilot.stopped' and r['code'] in {'VERIFICATION_REJECTED', 'VERIFICATION_DISPUTED'}:
+                    reviewed += 1
+                    deviations += 1
+        return reviewed, deviations
 
     def _events(self, db, tenant, run_id):
         return [json.loads(r['envelope']) for r in db.execute(
@@ -698,7 +785,8 @@ class SessionService:
         created_at = events['spec'][0]['ts'] if events['spec'] else None
         updated_at = max((e[-1]['ts'] for e in events.values() if e), default=created_at)
         steps = []
-        role_steps = (('requirements', 'analyst', '分析需求'), ('checks', 'tester', '设计测试用例'))
+        direct = record.get('topology') == 'direct'
+        role_steps = () if direct else (('requirements', 'analyst', '分析需求'), ('checks', 'tester', '设计测试用例'))
         spec_nodes = {n['role']: n for n in (progress.get('spec') or {}).get('nodes', [])}
         for key, role, label in role_steps:
             node = spec_nodes.get(role)
@@ -710,14 +798,14 @@ class SessionService:
                 step['content'] = body
             steps.append(step)
         frozen = next((e['payload'] for e in events['spec'] if e['type'] == 'autopilot.acceptance_frozen'), None)
-        if frozen and isinstance(steps[1]['content'], dict):
+        if frozen and not direct and isinstance(steps[1]['content'], dict):
             # Held-out inputs/answers never leave the private executor directory
             # through this view (shared preview viewers can read sessions).
             held = set(frozen['heldout_case_names'])
             steps[1]['content'] = {**steps[1]['content'], 'cases': [
                 dict(name=c['name'], hidden=True) if c.get('name') in held else c
                 for c in steps[1]['content'].get('cases', [])]}
-        if frozen:
+        if frozen and not direct:
             steps[1]['split'] = dict(development=len(frozen['development_case_names']),
                                      heldout=len(frozen['heldout_case_names']), origin='tester-model-heldout',
                                      heldout_names=list(frozen['heldout_case_names']),
@@ -798,10 +886,12 @@ class SessionService:
                     request=record.get('request') or record['prompt'], thread_id=thread_id, thread=thread,
                     parent_session_id=record.get('parent_session_id'), activity=activity,
                     acceptance_examples=record.get('acceptance_examples') or [],
+                    topology=record.get('topology', 'standard'), topology_reason=record.get('topology_reason'),
                     mode=record['mode'], state=state, attention=attention, created_at=created_at, updated_at=updated_at,
                     current_run_id=links.get('build') or links['spec'], runs=links, steps=steps, spend=spend,
                     executor_configured=self.config is not None,
-                    acceptance_origin='tester-model-heldout' + ('+user-examples' if record.get('acceptance_examples') else ''),
+                    acceptance_origin=('user-examples' if direct else
+                                       'tester-model-heldout' + ('+user-examples' if record.get('acceptance_examples') else '')),
                     independently_verified=state == 'verified',
                     counts_as_success=False)
 

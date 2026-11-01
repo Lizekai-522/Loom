@@ -232,7 +232,8 @@
     const agent = el("div", "msg-agent");
     const body = el("div", "agent-body");
     if (last) {
-      body.append(el("p", "lead", view.parent_session_id ? "收到，我会参考上一版程序重新分析、测试并实现。" : "我会依次分析需求、设计测试、编写程序并在隔离环境验收。"));
+      body.append(el("p", "lead", view.topology === "direct" ? "你给的样例已经说清了行为，我会直接实现，并用你的全部样例验收（其中一部分不给实现者看）。"
+        : view.parent_session_id ? "收到，我会参考上一版程序重新分析、测试并实现。" : "我会依次分析需求、设计测试、编写程序并在隔离环境验收。"));
       if (view.state === "running" && view.activity) {
         const line = el("p", "activity");
         const seconds = Math.max(0, Math.round(Date.now() / 1000 - view.activity.since));

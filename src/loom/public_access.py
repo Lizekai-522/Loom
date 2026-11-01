@@ -163,7 +163,11 @@ class PublicPreview:
                     or re.fullmatch(r'/v1/domain-packs/[a-z][a-z0-9_-]{0,47}/[0-9.]{1,20}(?:/templates/[a-z][a-z0-9_-]{0,47})?', path)
                     or re.fullmatch(r'/console/assets/[A-Za-z0-9_-]+\.(?:css|js)', path)
                     or re.fullmatch(r'/v1/(?:goals|runs)/[A-Za-z0-9:_-]+(?:/[A-Za-z0-9:_-]+)*', path)
-                    or re.fullmatch(r'/v1/sessions/[A-Za-z0-9_-]+', path))
+                    or re.fullmatch(r'/v1/sessions/[A-Za-z0-9_-]+', path)
+                    # Read-only platform registries (agents, profiles, knowledge, memory, reports).
+                    or re.fullmatch(r'/v1/(?:agents(?:/[a-z0-9_-]+)?|capability-profiles|agent-routing|tool-selection|knowledge|'
+                                    r'knowledge-search|memory|memory-search|topology/report|evaluation/sampling|plugins|mcp-servers|'
+                                    r'pack-rollouts/[a-z0-9_-]+(?:/resolve)?)', path))
         if method == 'PUT':
             return bool(re.fullmatch(r'/v1/goals/[A-Za-z0-9_-]+/plan', path))
         if method == 'POST':

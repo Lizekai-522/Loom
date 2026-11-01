@@ -2,7 +2,7 @@
   "schema_version": "loom.functional-acceptance/v1",
   "updated": "2026-11-01",
   "baseline": "0.20.0",
-  "current_increment": "0.28.0",
+  "current_increment": "0.29.0",
   "authoritative_spec": "docs/Loom.md",
   "implementation_plan": "docs/project-plan-2026-10-28.md",
   "rules": [
@@ -41,19 +41,22 @@
       "priority": "M",
       "acceptance": "运行中可热加载新角色定义，无需重启控制面；版本快照写入事件流",
       "source_line": 238,
-      "status": "not_started",
+      "status": "partial",
       "stage": "runtime",
-      "current": "动态注册/发现/热加载与版本快照未接通。",
+      "current": "0.29.0：Agent定义注册/发现/版本（追加写入、哈希链接，只能收窄内置角色），接口 /v1/agents；尚未接入计划执行。",
       "code": [
         "src/loom/workflow.py",
         "src/loom/store.py",
-        "src/loom/quotas.py"
+        "src/loom/quotas.py",
+        "src/loom/agents.py",
+        "src/loom/platform_api.py"
       ],
       "evidence": [
         "tests/test_workflow.py",
         "tests/test_plan_integrity.py",
         "tests/test_store_admission.py",
-        "tests/test_quotas.py"
+        "tests/test_quotas.py",
+        "tests/test_platform.py"
       ],
       "comprehensive_acceptance_passed": false
     },
@@ -63,19 +66,22 @@
       "priority": "M",
       "acceptance": "画像由运行时自动更新；调度决策实际读取画像；画像更新有事件记录",
       "source_line": 239,
-      "status": "not_started",
+      "status": "partial",
       "stage": "runtime",
-      "current": "运行时画像、P50/P95和评分调度未接通。",
+      "current": "0.29.0：从执行台账计算成功率、P50/P95与负载，快照入台账，评分路由 /v1/agent-routing；调度尚未强制采用。",
       "code": [
         "src/loom/workflow.py",
         "src/loom/store.py",
-        "src/loom/quotas.py"
+        "src/loom/quotas.py",
+        "src/loom/agents.py",
+        "src/loom/platform_api.py"
       ],
       "evidence": [
         "tests/test_workflow.py",
         "tests/test_plan_integrity.py",
         "tests/test_store_admission.py",
-        "tests/test_quotas.py"
+        "tests/test_quotas.py",
+        "tests/test_platform.py"
       ],
       "comprehensive_acceptance_passed": false
     },
@@ -85,16 +91,19 @@
       "priority": "M",
       "acceptance": "条目状态含 `quarantined`；隔离条目不参与召回；审核动作有审计",
       "source_line": 240,
-      "status": "not_started",
+      "status": "partial",
       "stage": "knowledge",
-      "current": "知识隔离、独立审核和真实召回未接通。",
+      "current": "0.29.0：知识条目需另一名操作员审核后才可检索，按租户隔离；检索为关键词/双字切分，未接入模型提示。",
       "code": [
         "src/loom/artifacts.py",
-        "src/loom/context_budget.py"
+        "src/loom/context_budget.py",
+        "src/loom/knowledge.py",
+        "src/loom/platform_api.py"
       ],
       "evidence": [
         "tests/test_execution_context.py",
-        "tests/test_context_budget.py"
+        "tests/test_context_budget.py",
+        "tests/test_platform.py"
       ],
       "comprehensive_acceptance_passed": false
     },
@@ -104,16 +113,19 @@
       "priority": "S",
       "acceptance": "三种粒度均可用；跨任务记忆遵循 FR-004 隔离机制",
       "source_line": 241,
-      "status": "not_started",
+      "status": "partial",
       "stage": "knowledge",
-      "current": "会话/任务/跨任务记忆未接通。",
+      "current": "0.29.0：会话/任务/租户三级记忆与检索，自动会话交付后写入；未自动注入后续提示。",
       "code": [
         "src/loom/artifacts.py",
-        "src/loom/context_budget.py"
+        "src/loom/context_budget.py",
+        "src/loom/knowledge.py",
+        "src/loom/platform_api.py"
       ],
       "evidence": [
         "tests/test_execution_context.py",
-        "tests/test_context_budget.py"
+        "tests/test_context_budget.py",
+        "tests/test_platform.py"
       ],
       "comprehensive_acceptance_passed": false
     },
@@ -414,19 +426,22 @@
       "priority": "C",
       "acceptance": "路由器可依据任务特征选择拓扑；与固定拓扑的对比数据可产出",
       "source_line": 267,
-      "status": "not_started",
+      "status": "partial",
       "stage": "workflow",
-      "current": "拓扑自适应与对比评测未接通。",
+      "current": "0.29.0：用户样例≥3时自动选择直通拓扑（单次调用、用户样例全量验收），提供拓扑对比报告；真实对比评测待做。",
       "code": [
         "src/loom/workflow.py",
         "src/loom/policy.py",
         "src/loom/repair.py",
-        "src/loom/execution.py"
+        "src/loom/execution.py",
+        "src/loom/adaptation.py",
+        "src/loom/platform_api.py"
       ],
       "evidence": [
         "tests/test_workflow.py",
         "tests/test_repair.py",
-        "tests/test_reviewed_execution.py"
+        "tests/test_reviewed_execution.py",
+        "tests/test_platform.py"
       ],
       "comprehensive_acceptance_passed": false
     },
@@ -606,22 +621,25 @@
       "priority": "M",
       "acceptance": "输出一致性指标；低置信结果触发不同处置路径",
       "source_line": 281,
-      "status": "not_started",
+      "status": "partial",
       "stage": "assurance",
-      "current": "多次采样一致性和低置信处置未接通。",
+      "current": "0.29.0：多样本一致率接口；测试用例与用户样例矛盾时低置信停止。真实多次采样待做。",
       "code": [
         "src/loom/api.py",
         "src/loom/store.py",
         "src/loom/auth.py",
         "src/loom/operator.py",
         "src/loom/checkpoints.py",
-        "src/loom/recovery_check.py"
+        "src/loom/recovery_check.py",
+        "src/loom/adaptation.py",
+        "src/loom/platform_api.py"
       ],
       "evidence": [
         "tests/test_api.py",
         "tests/test_operator.py",
         "tests/test_recovery_check.py",
-        "tests/test_checkpoints.py"
+        "tests/test_checkpoints.py",
+        "tests/test_platform.py"
       ],
       "comprehensive_acceptance_passed": false
     },
@@ -697,19 +715,22 @@
       "priority": "M",
       "acceptance": "同一任务在不同轮次可选不同工具；选择依据留痕",
       "source_line": 294,
-      "status": "not_started",
+      "status": "partial",
       "stage": "workflow",
-      "current": "动态工具选择未接通。",
+      "current": "0.29.0：跨内置工具、HTTP插件、MCP工具的选择与理由；不授予执行权。",
       "code": [
         "src/loom/workflow.py",
         "src/loom/policy.py",
         "src/loom/repair.py",
-        "src/loom/execution.py"
+        "src/loom/execution.py",
+        "src/loom/agents.py",
+        "src/loom/platform_api.py"
       ],
       "evidence": [
         "tests/test_workflow.py",
         "tests/test_repair.py",
-        "tests/test_reviewed_execution.py"
+        "tests/test_reviewed_execution.py",
+        "tests/test_platform.py"
       ],
       "comprehensive_acceptance_passed": false
     },
@@ -719,19 +740,22 @@
       "priority": "S",
       "acceptance": "支持 Rewire / Bypass / InsertPrereq 等路径级调整",
       "source_line": 295,
-      "status": "not_started",
+      "status": "partial",
       "stage": "workflow",
-      "current": "通用Rewire/Bypass/InsertPrereq未接通。",
+      "current": "0.29.0：Rewire/Bypass/InsertPrereq对草案计划生效并重新校验DAG；已批准运行的现场改图待做。",
       "code": [
         "src/loom/workflow.py",
         "src/loom/policy.py",
         "src/loom/repair.py",
-        "src/loom/execution.py"
+        "src/loom/execution.py",
+        "src/loom/adaptation.py",
+        "src/loom/platform_api.py"
       ],
       "evidence": [
         "tests/test_workflow.py",
         "tests/test_repair.py",
-        "tests/test_reviewed_execution.py"
+        "tests/test_reviewed_execution.py",
+        "tests/test_platform.py"
       ],
       "comprehensive_acceptance_passed": false
     },
@@ -807,19 +831,22 @@
       "priority": "M",
       "acceptance": "按当前 MCP 规范实现（无状态核心）；≥3 个 Server；Server 与客户端均可在无 LLM 情况下单测",
       "source_line": 304,
-      "status": "not_started",
+      "status": "partial",
       "stage": "tools",
-      "current": "MCP客户端、Server及三Server验收未接通。",
+      "current": "0.29.0：Loom作为MCP Server提供5个工具，外部MCP Server登记与工具发现；三Server验收与角色执行外部工具待做。",
       "code": [
         "src/loom/failures.py",
         "src/loom/tool_registry.py",
         "src/loom/tool_recovery.py",
-        "src/loom/sandbox.py"
+        "src/loom/sandbox.py",
+        "src/loom/integrations.py",
+        "src/loom/platform_api.py"
       ],
       "evidence": [
         "tests/test_tool_registry.py",
         "tests/test_tool_recovery.py",
-        "tests/test_sandbox.py"
+        "tests/test_sandbox.py",
+        "tests/test_platform.py"
       ],
       "comprehensive_acceptance_passed": false
     },
@@ -829,19 +856,22 @@
       "priority": "M",
       "acceptance": "工具 schema 类型化；参数校验在调用前完成",
       "source_line": 305,
-      "status": "not_started",
+      "status": "partial",
       "stage": "tools",
-      "current": "通用Function Calling和调用前schema校验未接通。",
+      "current": "0.29.0：调用前受限JSON Schema校验（MCP与插件共用）；通用模型Function Calling接入待做。",
       "code": [
         "src/loom/failures.py",
         "src/loom/tool_registry.py",
         "src/loom/tool_recovery.py",
-        "src/loom/sandbox.py"
+        "src/loom/sandbox.py",
+        "src/loom/agents.py",
+        "src/loom/platform_api.py"
       ],
       "evidence": [
         "tests/test_tool_registry.py",
         "tests/test_tool_recovery.py",
-        "tests/test_sandbox.py"
+        "tests/test_sandbox.py",
+        "tests/test_platform.py"
       ],
       "comprehensive_acceptance_passed": false
     },
@@ -851,19 +881,22 @@
       "priority": "S",
       "acceptance": "任意 HTTP API 可声明式接入",
       "source_line": 306,
-      "status": "not_started",
+      "status": "partial",
       "stage": "tools",
-      "current": "声明式HTTP API插件未接通。",
+      "current": "0.29.0：声明式HTTP插件（https公网、仅GET、默认禁用、SSRF防护、限时限量、调用记账）；写操作仍禁用。",
       "code": [
         "src/loom/failures.py",
         "src/loom/tool_registry.py",
         "src/loom/tool_recovery.py",
-        "src/loom/sandbox.py"
+        "src/loom/sandbox.py",
+        "src/loom/integrations.py",
+        "src/loom/platform_api.py"
       ],
       "evidence": [
         "tests/test_tool_registry.py",
         "tests/test_tool_recovery.py",
-        "tests/test_sandbox.py"
+        "tests/test_sandbox.py",
+        "tests/test_platform.py"
       ],
       "comprehensive_acceptance_passed": false
     },
@@ -1111,22 +1144,25 @@
       "priority": "M",
       "acceptance": "领域包可单独回滚；回滚不影响在途运行",
       "source_line": 324,
-      "status": "not_started",
+      "status": "partial",
       "stage": "assurance",
-      "current": "平台/领域包独立灰度与回滚未接通。",
+      "current": "0.29.0：领域包金丝雀/提升/回滚与按主体分桶解析；平台本身的灰度发布待做。",
       "code": [
         "src/loom/api.py",
         "src/loom/store.py",
         "src/loom/auth.py",
         "src/loom/operator.py",
         "src/loom/checkpoints.py",
-        "src/loom/recovery_check.py"
+        "src/loom/recovery_check.py",
+        "src/loom/integrations.py",
+        "src/loom/platform_api.py"
       ],
       "evidence": [
         "tests/test_api.py",
         "tests/test_operator.py",
         "tests/test_recovery_check.py",
-        "tests/test_checkpoints.py"
+        "tests/test_checkpoints.py",
+        "tests/test_platform.py"
       ],
       "comprehensive_acceptance_passed": false
     },
@@ -1242,22 +1278,25 @@
       "priority": "M",
       "acceptance": "风险分层抽样；被抽中产物复核完成前不可交付；报告样本量与置信区间；高风险错误立即阻断（§4.5.5）",
       "source_line": 284,
-      "status": "not_started",
+      "status": "partial",
       "stage": "assurance",
-      "current": "风险抽样/置信区间/独立评测适配器未接通。",
+      "current": "0.29.0：确定性风险抽样策略与偏差率/单侧95%上界报告；独立评测适配器待做。",
       "code": [
         "src/loom/api.py",
         "src/loom/store.py",
         "src/loom/auth.py",
         "src/loom/operator.py",
         "src/loom/checkpoints.py",
-        "src/loom/recovery_check.py"
+        "src/loom/recovery_check.py",
+        "src/loom/adaptation.py",
+        "src/loom/platform_api.py"
       ],
       "evidence": [
         "tests/test_api.py",
         "tests/test_operator.py",
         "tests/test_recovery_check.py",
-        "tests/test_checkpoints.py"
+        "tests/test_checkpoints.py",
+        "tests/test_platform.py"
       ],
       "comprehensive_acceptance_passed": false
     },

@@ -171,6 +171,7 @@ class SessionInput(Input):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     parent_session_id: str | None = Field(default=None, min_length=1, max_length=100, pattern=r"^[A-Za-z0-9-]+$")
     examples: list[SessionExample] | None = Field(default=None, max_length=10)
+    topology: Literal["auto", "standard", "direct"] = "auto"
 
 
 class VerificationRequestInput(Input):
@@ -308,7 +309,8 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
             raise HTTPException(403, "automatic sessions require a named operator")
         return sessions.create(identity, idempotency_key, prompt=body.prompt, title=body.title,
                                parent_session_id=body.parent_session_id,
-                               examples=None if body.examples is None else [e.model_dump() for e in body.examples])
+                               examples=None if body.examples is None else [e.model_dump() for e in body.examples],
+                               topology=body.topology)
 
     @app.get("/v1/sessions")
     def list_sessions(tenant: Tenant):
@@ -610,4 +612,8 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
                 "head": chain[-1]["hash"] if chain else "0" * 64,
                 "external_checkpoint": "not_configured"}
 
+    from .platform_api import install as install_platform
+    app.state.platform = install_platform(
+        app, store, Tenant=Tenant, Reader=Annotated[Principal, Depends(permitted("read"))], Writer=Writer,
+        Controller=Controller, Key=Key, registry_auth=registry.authorize, sessions=sessions, workflows=workflows, packs=packs)
     return app
