@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from loom.approved_execution import ApprovedExecutionService, ReadOnlyStore
-from loom.auth import load_identities
+from loom.auth import load_identities, named_controllers
 from loom.execution import LocalTaskRunner, freeze_tests
 from loom.local_config import load_project_secrets
 from loom.model_gateway import GatewayError, ModelGateway, load_model_config
@@ -37,7 +37,7 @@ async def run(args):
     if not args.identities_file or not args.secrets_file or not args.sandbox_image:
         raise ValueError('PRIVATE_CONFIGURATION_AND_IMAGE_REQUIRED')
     identities=load_identities(args.identities_file)
-    operators=[i for i in identities if i.tenant_id==args.tenant and 'operator' in i.roles]
+    operators=named_controllers(identities,args.tenant)
     workers=[i for i in identities if i.tenant_id==args.tenant and 'worker' in i.roles]
     if len(operators)!=1 or len(workers)!=1:raise ValueError('UNAMBIGUOUS_OPERATOR_AND_WORKER_REQUIRED')
     routes,roles=load_model_config(args.model_config)

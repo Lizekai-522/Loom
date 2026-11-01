@@ -24,7 +24,7 @@
   }
   const state = {
     principal: null, goals: [], interventions: [], runId: null,
-    goal: null, snapshot: null, plan: null, review: null, tab: "tasks",
+    goal: null, snapshot: null, plan: null, review: null, tab: "conversation",
     busy: false, loading: false, pendingRunId: null, loadedSelection: 0,
     interventionsError: false, noticeKind: null, session: 0, selection: 0, controllers: new Set(), keys: new Map(),
     artifacts: [], artifactStatus: "idle", artifactError: "", artifactId: "", artifactDetail: null,
@@ -74,13 +74,13 @@
   }
 
   function publicError(error) {
-    if (error.status === 401) return window.LoomPreview?.active ? "体验会话已过期，请重新打开体验链接并输入访问码。" : "未启用本机开发入口，请使用项目启动器启动服务，再点击“重新连接”。";
+    if (error.status === 401) return window.LoomPreview?.active ? "体验会话已过期，请重新打开体验链接并输入访问码。" : "项目会话不可用，请重新打开页面或联系服务管理员。";
     if (error.status === 403) return "当前身份没有执行此操作的权限。";
     if (error.status === 404) return "目标已不存在，或不属于当前身份可访问的范围。";
     if (error.status === 409) return "操作被拒绝：运行状态、计划版本或核对条件已改变。可点击工作台“刷新”核对；同页面重提相同内容沿用原幂等键。退出或重载页面后须先核对列表，再决定是否重发。";
     if (error.status === 422) return "提交内容未满足接口约束，请检查必填项、整数上限和计划结构。";
-    if (error.code === "RESPONSE_TOO_LARGE") return "响应超过页面读取上限，请使用本地接口按需查看记录。";
-    if (error.code === "BAD_JSON") return "服务返回了无法解析的内容，请确认本地服务版本。";
+    if (error.code === "RESPONSE_TOO_LARGE") return "响应超过页面读取上限，请使用服务端接口按需查看记录。";
+    if (error.code === "BAD_JSON") return "服务返回了无法解析的内容，请确认服务版本。";
     return "连接中断或请求超时，结果尚未确认。同页面内重提相同内容会沿用原幂等键；退出或重载页面会丢失该键，须先核对目标与事件列表，再决定是否重发。请勿盲目重试。";
   }
 
@@ -128,6 +128,14 @@
   function refreshControls() {
     for (const element of document.querySelectorAll("[data-cap]")) {
       element.disabled = state.busy || state.loading || !has(element.dataset.cap);
+    }
+    $("home-button").disabled = state.busy;
+    $("home-advanced").disabled = state.busy || state.loading || !has("goal.write");
+    $("controls-button").hidden = !state.principal;
+    $("conversation-next").disabled = state.busy || state.loading;
+    $("conversation-source").disabled = state.busy || state.loading;
+    for (const id of ["home-verified-example", "home-role-example", "preview-new-example", "preview-verified-example"]) {
+      const button = $(id); if (button) button.disabled = state.busy || state.loading || !has("goal.write");
     }
     const status = state.snapshot?.status;
     const selected = Boolean(state.runId && state.snapshot);
@@ -203,7 +211,14 @@
     $("goal-form").reset();
     $("goal-dialog").close();
     $("login-button").disabled = false;
-    if (showNotice) notify("已断开本机工作台。点击“重新连接”即可继续。");
+    $("controls-button").hidden = true;
+    document.body.classList.remove("show-controls");
+    $("controls-button").setAttribute("aria-expanded", "false");
+    $("project-prompt").value = "";
+    $("conversation-request").textContent = "";
+    $("conversation-summary").textContent = "";
+    $("conversation-steps").replaceChildren();
+    if (showNotice) notify("已退出项目空间。点击“重新打开”即可继续。");
     $("login-button").focus();
   }
 
@@ -240,7 +255,7 @@
       const row = node("article", "task-row");
       const content = node("div");
       content.append(node("span", "task-title", task.title || task.id));
-      const detail = [label(task.role), task.model_alias, `轮次 ${str(task.epoch, "0")}`, label(task.channel)].filter(Boolean).join(" · ");
+      const detail = [label(task.role), task.validation_source?'指定程序复验 · 无代码生成':task.model_alias, `轮次 ${str(task.epoch, "0")}`, label(task.channel)].filter(Boolean).join(" · ");
       content.append(node("div", "task-detail", detail));
       const artifact = task.artifact;
       if (artifact) {
@@ -348,7 +363,7 @@
         article.append(roleSourceDisplay(roleSource, "unavailable"));
         const currentTask = (review.tasks || []).find((task) => task.id === attempt.task_id);
         if (currentTask && currentTask.epoch !== attempt.epoch) article.append(node("p", "muted", `历史模型来源记录 · 当前任务 轮次 ${str(currentTask.epoch)}`));
-        article.append(node("p", "field-help", "来源记录仅关联本机网关的模型响应，不证明内容正确、供应商账单已核验或独立验收通过。"));
+        article.append(node("p", "field-help", "来源记录仅关联网关的模型响应，不证明内容正确、供应商账单已核验或独立验收通过。"));
       } else if (contextEvent) {
         if (contextValid) {
           article.append(node("p", "mono break-word", `辅助上下文摘要 ${attempt.context_digest}`),
@@ -386,7 +401,7 @@
     const unknown=effects.filter(effect=>effect.registered_tool===true&&unknownStates.has(effect.state));
     if(!unknown.length)return;
     summary.append(node('h3','','工具结果人工核对'),node('p','field-help','未知工具继续占用在途名额。须先停止相关进程并核对日志；登记只处理未知态，不修改模型费用、不自动恢复或重跑，也不证明测试通过。'));
-    if(!has('control')||window.LoomPreview?.active){summary.append(node('p','field-help','请由本机具名操作员处理工具核对。'));return;}
+    if(!has('control')||window.LoomPreview?.active){summary.append(node('p','field-help','请由服务管理员处理工具核对。'));return;}
     const runId=state.runId;
     for(const effect of unknown){
       if(!integer(effect.epoch)||!hashPattern.test(effect.request_hash||'')||!hashPattern.test(effect.call_id||''))continue;
@@ -434,7 +449,35 @@
     $("cost-spent").textContent = amount(state.snapshot.spent);
     $("cost-reserved").textContent = amount(state.snapshot.reserved);
     $("tokens-spent").textContent = count(state.snapshot.tokens_spent);
-    renderTasks(); renderPlan(); renderInterventions(); refreshControls();
+    renderTasks(); renderPlan(); renderInterventions(); renderConversation(); refreshControls();
+  }
+
+  function renderConversation() {
+    const status = state.snapshot?.status;
+    const tasks = state.review?.tasks || state.snapshot?.tasks || [];
+    $("conversation-request").textContent = state.goal?.description || "此运行没有需求描述。";
+    $("conversation-updated").textContent = `核对于 ${new Date().toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"})}`;
+    const submitted = tasks.some(task => task.status === "submitted");
+    const heading = status === "draft" ? "先确认计划，再开始执行"
+      : status === "succeeded" ? "这个项目已通过当前冻结的验收"
+      : status === "awaiting_human" ? "有一项结果需要你处理"
+      : status === "paused" ? "项目已暂停"
+      : status === "cancelled" ? "项目已终止"
+      : status === "failed" ? "执行未通过，请检查证据"
+      : submitted ? "候选已提交，等待独立复核" : "按计划继续推进";
+    $("conversation-title").textContent = heading;
+    $("conversation-summary").textContent = status === "draft"
+      ? "需求已经保存。打开计划，确认任务定义、验收要求和预算；批准后到执行页发起任务。自定义项目需要先提供可执行计划，需求文字本身不会自动生成执行权限。"
+      : `${tasks.filter(task => task.status === "done").length} / ${tasks.length} 个任务已验证。你可以查看每个任务的源码、测试和复核证据，或打开执行页核对下一步。`;
+    $("conversation-next").textContent = status === "draft" ? "审阅计划" : submitted ? "核对独立复核" : "查看下一步";
+    $("conversation-next").dataset.destination = status === "draft" ? "plan" : submitted ? "verification" : "progression";
+    const steps = tasks.length ? tasks.map(task => {
+      const item = node("li", "conversation-step");
+      item.append(node("strong", "", task.title || task.description || task.node_id || task.id), badge(task.status));
+      item.append(node("p", "", `${label(task.role || task.type || "task")} · ${statusNames[task.status] || task.status || "状态待核对"}`));
+      return item;
+    }) : [Object.assign(node("li", "conversation-step"), {textContent: "等待审阅和批准执行计划"})];
+    $("conversation-steps").replaceChildren(...steps);
   }
 
   const hashPattern = /^[0-9a-f]{64}$/;
@@ -530,7 +573,7 @@
   function approvalBody() {
     const item = state.artifactDetail, task = targetTask();
     const listed = state.artifacts.find((candidate) => candidate.artifact_id === state.artifactId);
-    if (!runChecked() || state.busy || !has("control") || !state.principal.roles.includes("operator")
+    if (!runChecked() || state.busy || !has("control") || !(state.principal.roles || []).some((r) => r === "operator" || r === "user")
         || state.snapshot.status !== "open" || state.artifactStatus !== "ready" || state.detailStatus !== "ready"
         || state.contextStatus === "loading" || state.contextBindingChanged || state.artifactsSelection !== state.selection
         || !sameArtifact(item, listed) || item.stale !== false || listed.stale !== false
@@ -553,7 +596,7 @@
     $("context-refresh").disabled = locked || !targetTask() || state.contextStatus === "loading";
     document.querySelectorAll(".artifact-select").forEach((button) => { button.disabled = locked || state.artifactStatus !== "ready"; });
     const allowed = Boolean(approvalBody());
-    $("auxiliary-form").hidden = state.artifactDetail?.kind === "review-findings" || !has("control") || !state.principal?.roles?.includes("operator");
+    $("auxiliary-form").hidden = state.artifactDetail?.kind === "review-findings" || !has("control") || !(state.principal?.roles||[]).some((r) => r === "operator" || r === "user");
     $("auxiliary-reviewed").disabled = !allowed;
     $("auxiliary-approve").disabled = !allowed || !$("auxiliary-reviewed").checked;
     $("auxiliary-help").textContent = state.artifactDetail?.kind === "review-findings" && state.artifactDetail.body?.verdict === "no_findings"
@@ -718,13 +761,14 @@
       const [result, integrity] = await Promise.all([request("GET", `${pathForRun()}/events`), request("GET", `${pathForRun()}/integrity`)]);
       if (generation !== state.selection) return;
       const events = Array.isArray(result.events) ? result.events.slice(-200).reverse() : [];
-      $("integrity-label").textContent = integrity.valid === true ? "事件链核验通过 · 外部检查点未配置" : "事件链核验未通过";
+      $("integrity-label").textContent = integrity.valid === true ? result.redacted===true?'原始事件链在服务端核验通过 · 当前显示脱敏摘要':'事件链核验通过 · 外部检查点未配置' : "事件链核验未通过";
       $("events-state").textContent = events.length ? `最近 ${events.length} 条，最新在前` : "此运行暂无事件。";
       $("event-list").replaceChildren(...events.map((event) => {
         const item = node("li", "event-row");
         const head = node("div", "event-head");
         head.append(node("span", "mono", `#${str(event.seq)}`), node("strong", "", label(event.type)));
-        item.append(head, node("p", "event-meta", [event.timestamp || event.occurred_at, event.actor || event.actor_id].filter(Boolean).join(" · ")));
+        const eventTime=event.timestamp||event.occurred_at||(typeof event.ts==='number'&&Number.isFinite(event.ts)&&Math.abs(event.ts)<8.64e12?new Date(event.ts*1000).toLocaleString('zh-CN'):'');
+        item.append(head, node("p", "event-meta", [eventTime, event.actor || event.actor_id].filter(Boolean).join(" · ")));
         const details = node("details");
         details.append(node("summary", "", "查看事件数据"), node("pre", "", JSON.stringify(event.payload || {}, null, 2)));
         item.append(details);
@@ -820,7 +864,6 @@
       state.goals = Array.isArray(goals.value.goals) ? goals.value.goals : [];
       renderGoals(); renderInterventions();
       if (selectId) await selectRun(selectId);
-      else if (state.goals.length) await selectRun(state.goals[0].run_id);
       else { state.runId = null; state.loadedSelection = 0; state.snapshot = state.goal = state.plan = state.review = null; renderRun(); }
     } catch (error) {
       if (session !== state.session || generation !== state.selection || error.code === "SESSION_CHANGED") return;
@@ -866,7 +909,7 @@
   async function connect() {
     const session = ++state.session;
     $("login-button").disabled = true;
-    notify("正在连接本机工作台…");
+    notify("正在打开项目空间…");
     try {
       const principal = await request("GET", "/v1/me");
       if (session !== state.session) return;
@@ -874,14 +917,14 @@
       state.principal = principal;
       window.LoomPreview?.configure(principal, () => mutate("POST", "/preview/examples", {}, "多角色体验草案已创建，请在“计划”中审阅并批准，再按“推进指引”执行。", async result => { await refreshAll(result.run_id); }),
         () => mutate('POST','/preview/examples/verified',{},'完整体验草案已创建。先在“计划”批准，再到“推进指引”生成与隔离测试，最后进入“独立复核”。',async result=>{await refreshAll(result.run_id);}));
-      $("identity-label").textContent = `${principal.authentication === "public-session" ? "受邀体验 · " : principal.authentication === "local-console" ? "本机开发 · " : ""}${principal.roles.map((role) => roleNames[role] || role).join(" / ")}`;
+      $("identity-label").textContent = `${principal.authentication === "public-session" ? "受邀体验 · " : ""}${principal.roles.map((role) => roleNames[role] || role).join(" / ")}`;
       $("login-panel").hidden = true;
       $("workspace").hidden = false;
       $("logout-button").hidden = $("refresh-button").hidden = false;
       refreshControls();
-      notify(window.LoomPreview?.active ? "已连接公网体验工作台。共享空间最多 20 个目标，单目标预算上限 $1；保守预留，按实际用量记账。" : "已连接本机工作台。");
+      notify(window.LoomPreview?.active ? "受邀体验空间 · 单项目预算上限 $1，按实际用量记账。" : "");
       await refreshAll();
-      $("workspace").focus();
+      $("workspace").focus({preventScroll: true});
     } catch (error) {
       if (session !== state.session) return;
       logout(false);
@@ -895,6 +938,44 @@
     catch { notify("退出未确认，请重试；停止公网进程可使全部体验会话失效。", true); }
   });
   $("refresh-button").addEventListener("click", () => refreshAll());
+  $("theme-button").addEventListener("click", () => {
+    const dark = document.documentElement.dataset.theme !== "dark";
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    $("theme-button").textContent = dark ? "浅色" : "深色";
+    $("theme-button").setAttribute("aria-pressed", String(dark));
+    $("theme-button").setAttribute("aria-label", dark ? "切换浅色外观" : "切换深色外观");
+  });
+  $("controls-button").addEventListener("click", () => {
+    const expanded = document.body.classList.toggle("show-controls");
+    $("controls-button").setAttribute("aria-expanded", String(expanded));
+  });
+  $("home-button").addEventListener("click", () => {
+    if (state.busy) return;
+    ++state.selection;
+    state.runId = state.pendingRunId = null;
+    state.goal = state.snapshot = state.plan = state.review = null;
+    state.loadedSelection = 0; state.loading = false;
+    resetArtifacts(); renderGoals(); renderRun(); switchTab("conversation");
+    $("project-prompt").focus();
+  });
+  $("home-advanced").addEventListener("click", () => {
+    if (!state.busy && !state.loading && has("goal.write")) {
+      $("goal-description").value = $("project-prompt").value;
+      $("goal-dialog").showModal();
+    }
+  });
+  $("conversation-next").addEventListener("click", () => { if (runChecked() && !state.busy) switchTab($("conversation-next").dataset.destination); });
+  $("conversation-source").addEventListener("click", () => { if (runChecked() && !state.busy) switchTab("tasks"); });
+  $("prompt-form").addEventListener("submit", event => {
+    event.preventDefault();
+    const description = $("project-prompt").value.trim();
+    if (!description || !has("goal.write") || state.busy || state.loading) return;
+    const title = description.split(/\r?\n/)[0].slice(0, 80);
+    const tokens = window.LoomPreview?.active ? 3200000 : 2000000;
+    mutate("POST", "/v1/goals", {title, description, acceptance: ["schema.valid", "tests.pass", "report.traceable"], cost_limit_microusd: 1000000, token_limit: tokens}, "项目需求已保存。请审阅计划后再开始执行。", async result => {
+      $("project-prompt").value = ""; state.tab = "conversation"; await refreshAll(result.run_id);
+    });
+  });
   $("goal-search").addEventListener("input", renderGoals);
   $("artifacts-refresh").addEventListener("click", () => { if (!state.busy) loadArtifacts(); });
   $("context-refresh").addEventListener("click", () => { if (!state.busy) loadContext(); });

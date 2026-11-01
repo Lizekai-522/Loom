@@ -217,6 +217,9 @@ class ArtifactService:
 
     def _review_input_in(self, db, tenant, spec):
         from .review_inputs import ReviewInputService
+        if spec.get('review_source') is not None:
+            from .review_sources import resolve_review_source_in
+            return resolve_review_source_in(self.store,db,tenant,spec)[0]
         if spec.get("review_subject") is None:
             raise Conflict("review candidate requires an exact frozen subject")
         return ReviewInputService(self.store).resolve_reference_in(db, tenant, spec["review_subject"])
@@ -434,9 +437,19 @@ class ArtifactService:
                     raise ExecutionContextError("CONTEXT_SUITE_INVALID") from None
                 raise
             context["development_suite"] = target["development_suite"]
-        if target.get("review_subject") is not None:
+        if target.get('validation_source') is not None:
+            from .validation_inputs import resolve_validation_input_in
+            try:
+                context['review_input'],context['validation_binding']=resolve_validation_input_in(self.store,db,tenant,target)
+            except (Conflict,InvalidInput,NotFound):
+                if execution:raise ExecutionContextError('CONTEXT_VALIDATION_INVALID') from None
+                raise
+        if target.get("review_subject") is not None or target.get('review_source') is not None:
             try:
                 context["review_input"] = self._review_input_in(db, tenant, target)
+                if target.get('review_source') is not None:
+                    from .review_sources import resolve_review_source_in
+                    context['review_source_binding']=resolve_review_source_in(self.store,db,tenant,target)[1]
                 for item in items:
                     if item["kind"] == "review-findings":
                         self._check_review_body_in(db, tenant, target, item["body"])
@@ -453,7 +466,7 @@ class ArtifactService:
             raise ExecutionContextError("CONTEXT_BINDING_INVALID") from None
         try:
             target = self._contract(db, claim.tenant_id, claim.run_id, claim.task_id)
-            if not target.get("input_artifacts") and not target.get("development_suite") and not target.get("review_subject"):
+            if not target.get("input_artifacts") and not target.get("development_suite") and not target.get("review_subject") and not target.get('validation_source') and not target.get('review_source'):
                 return None
             if "artifacts.read" not in target["tools"]:
                 raise ExecutionContextError("CONTEXT_BINDING_INVALID")
@@ -519,6 +532,8 @@ class ArtifactService:
             if current.get("review_input") is not None:
                 suite_fields["review_subject"] = current["review_input"]["subject"]
                 suite_fields["review_input_digest"] = current["review_input"]["input_digest"]
+            if current.get('review_source_binding') is not None:
+                suite_fields['review_source_binding']=current['review_source_binding']
             if current.get("development_suite") is not None:
                 suite_hash = digest(current["development_suite"])
                 if ("development_suite_ref_digest" in request
@@ -590,7 +605,7 @@ class ArtifactService:
             # _command's cached legacy receipt must not be a validation bypass.
             with self.store.transaction() as db:
                 target = self._contract(db, claim.tenant_id, claim.run_id, claim.task_id)
-                if target.get("input_artifacts") or target.get("development_suite") or target.get("review_subject"):
+                if target.get("input_artifacts") or target.get("development_suite") or target.get("review_subject") or target.get('validation_source') or target.get('review_source'):
                     raise ExecutionContextError("CONTEXT_SNAPSHOT_CHANGED")
             return self.store.submit_output(claim, key, output)
         snapshot, snapshot_digest = self._snapshot_receipt_binding(snapshot)
@@ -676,8 +691,22 @@ class ArtifactService:
             if tariff.model!=model.model_id or reservation['actual_cost']!=tariff.cost(model.usage.prompt_tokens,model.usage.completion_tokens):
                 raise Conflict('Pro usage accounting differs from the approved tariff')
         body = decode_role_output(output["kind"], model.content)
-        if output["kind"] == "review-findings" and body["subject"] != spec.get("review_subject"):
-            raise RoleOutputError()
+        if output["kind"] == "review-findings":
+            subject=spec.get('review_subject')
+            if spec.get('review_source') is not None:
+                # Historical origin must stay readable after source revocation.
+                # Current consumption independently resolves the live selector.
+                rows=db.execute("SELECT envelope,hash FROM events WHERE tenant=? AND run_id=? AND json_extract(envelope,'$.type')='execution.context_bound' AND json_extract(envelope,'$.payload.call_id')=?",
+                    (tenant,run_id,call_id)).fetchall()
+                if len(rows)!=1:raise RoleOutputError()
+                event=json.loads(rows[0]['envelope']);bound=event['payload'];binding=bound.get('review_source_binding') or {}
+                self._event_matches(db,tenant,run_id,rows[0]['hash'],'execution.context_bound','local-executor',bound)
+                if (bound.get('task_id')!=task_id or bound.get('epoch')!=epoch or bound.get('plan_digest')!=spec['plan_digest']
+                        or bound.get('reservation_id')!=reservation_id or bound.get('prompt_digest')!=request['prompt_digest']
+                        or bound.get('context_digest')!=request.get('context_digest') or binding.get('source')!=spec['review_source']
+                        or bound.get('review_subject')!=binding.get('subject')):raise RoleOutputError()
+                subject=binding.get('subject')
+            if body["subject"]!=subject:raise RoleOutputError()
         provenance = {"schema_version": "loom.model-provenance/v1", "call_id": call_id,
             "reservation_id": reservation_id, "task_id": task_id, "epoch": epoch,
             "plan_digest": spec["plan_digest"], "role": spec["role"], "role_output": output,

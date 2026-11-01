@@ -102,7 +102,7 @@ def test_dispatch_unknown_tool_resolution_does_not_repeat_or_change_model_billin
 
 def test_api_role_tenant_strict_input_and_review_classification(tmp_path):
     store=Store(tmp_path/'resolve.db');claim,identifier,kwargs=setup(store)
-    with TestClient(create_app(store,{'a':'legacy-fixture-only-0000'},identities=(OP,WORKER))) as client:
+    with TestClient(create_app(store,{'a':'legacy-fixture-only-0000'},identities=(OP,WORKER),legacy_developer_keys=True)) as client:
         path=f'/v1/runs/{claim.run_id}/tool-effects/{identifier}/reconcile'
         for headers in ({},{'Authorization':'Bearer '+WORKER.token},{'Authorization':'Bearer legacy-fixture-only-0000'}):
             assert client.post(path,json=kwargs,headers={**headers,'Idempotency-Key':'denied'}).status_code in (401,403)

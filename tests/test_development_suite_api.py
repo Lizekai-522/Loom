@@ -34,9 +34,9 @@ def api(tmp_path):
     artifacts = ArtifactService(store)
     candidate = artifacts.save_candidate(claim, "candidate", "public-checks", body, actor="subject:worker")
     identities = tuple(LocalIdentity("b" if role == "other" else "a", role,
-                       frozenset({"viewer" if role == "other" else "operator" if role == "operator2" else role}), TOKENS[role])
+                       frozenset({"viewer" if role == "other" else "user" if role in ("operator", "operator2") else role}), TOKENS[role])
                        for role in ("operator", "worker", "viewer", "other", "operator2"))
-    with TestClient(create_app(store, {"a": TOKENS["legacy"]}, identities=identities)) as client:
+    with TestClient(create_app(store, {"a": TOKENS["legacy"]}, identities=identities,legacy_developer_keys=True)) as client:
         root = f"/v1/runs/{run}/artifacts/{candidate['artifact_id']}"
         def request(method, path, data=None, role="operator", key="freeze"):
             headers = {"Authorization": "Bearer "+TOKENS[role]} if role else {}

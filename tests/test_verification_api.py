@@ -20,9 +20,10 @@ def verification_api(node_case,tmp_path):
     b=node_case('developer');execute(b)
     identities=tmp_path/'identities.json'
     identities.write_text(json.dumps(dict(schema_version='loom.local-identities/v1',identities=[dict(tenant_id=i.tenant_id,subject_id=i.subject_id,roles=sorted(i.roles),token=i.token) for i in (OP,WORKER)])),encoding='utf-8')
+    identities.chmod(0o600)  # POSIX private-file check; no-op on Windows
     path=script.configure(tmp_path/'keys',tenant='a',identities=identities,model_config=ROOT/'configs/models.dual.example.json',model_secrets=tmp_path/'missing-model-key.json',db=b['store'].path,pool_limit=2000000)
     config=LocalExecutorConfig('fixture',identities,tmp_path/'missing-model-key.json',ROOT/'configs/models.dual.example.json',None,{},verification_config=path)
-    b.update(config=config,client=TestClient(create_app(b['store'],{'a':'legacy-test-key-long-enough'},identities=(OP,WORKER),executor_config=config)),task=b['run']+':work',verification_config=load_verification_config(path))
+    b.update(config=config,client=TestClient(create_app(b['store'],{'a':'legacy-test-key-long-enough'},identities=(OP,WORKER),executor_config=config,legacy_developer_keys=True)),task=b['run']+':work',verification_config=load_verification_config(path))
     return b
 
 def headers(identity=OP,key=None):return {'Authorization':'Bearer '+identity.token,**({'Idempotency-Key':key} if key else {})}
@@ -69,6 +70,7 @@ def test_public_boundary_allows_only_request_not_signature_or_key_upload():
 def test_runtime_historical_proofs_are_cryptographically_checked(verification_case,tmp_path):
     b=verification_case
     identities=tmp_path/'proof-identities.json';identities.write_text(json.dumps(dict(schema_version='loom.local-identities/v1',identities=[dict(tenant_id=i.tenant_id,subject_id=i.subject_id,roles=sorted(i.roles),token=i.token) for i in (OP,WORKER)])),encoding='utf-8')
+    identities.chmod(0o600)
     path_=script.configure(tmp_path/'proof-keys',tenant='a',identities=identities,model_config=ROOT/'configs/models.dual.example.json',model_secrets=tmp_path/'missing-project-key.json',db=b['store'].path,pool_limit=2000000)
     config=load_verification_config(path_);b['signing'],b['trusted']=config.load_signers()
     result,_=asyncio.run(run_job(b));assert result['state']=='verified'

@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from .artifact_schemas import ARTIFACT_ROLES, ArtifactInput, DevelopmentSuiteReference, RoleOutput, ReviewSubjectReference
 from .policy import GateRules, TaskContract, gate_p
 from .pack_refs import PackName, PackReference
+from .contract import parse_requester, record_requester
 from .store import BudgetExceeded, Conflict, InvalidInput, NotFound, PlanBindingConflict, Store, canonical, digest
 
 
@@ -83,6 +84,16 @@ class RebindPolicy(StrictModel):
         return value
 
 
+class ValidationSource(StrictModel):
+    schema_version: Literal['loom.validation-source/v1']
+    source_node: Identifier
+
+
+class ReviewSource(StrictModel):
+    schema_version: Literal['loom.review-source/v1']
+    source_node: Identifier
+
+
 class TaskNode(StrictModel):
     id: Identifier
     title: str = Field(min_length=1, max_length=500)
@@ -102,6 +113,8 @@ class TaskNode(StrictModel):
     role_output: RoleOutput | None = Field(default=None, exclude_if=lambda value: value is None)
     development_suite: DevelopmentSuiteReference | None = Field(default=None, exclude_if=lambda value: value is None)
     review_subject: ReviewSubjectReference | None = Field(default=None, exclude_if=lambda value: value is None)
+    validation_source: ValidationSource | None = Field(default=None, exclude_if=lambda value: value is None)
+    review_source: ReviewSource | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @field_validator("title", "instruction")
     @classmethod
@@ -117,6 +130,18 @@ class TaskNode(StrictModel):
         expected = "verification" if self.role == "validator" else "business"
         if self.channel != expected:
             raise ValueError("task channel does not match its authorized role")
+        if self.review_source is not None:
+            if (self.role!='reviewer' or self.review_subject is not None or self.validation_source is not None
+                    or self.evaluation_digest is not None or self.repair is not None or self.development_suite is not None
+                    or self.input_artifacts or self.role_output is None or self.role_output.kind!='review-findings'
+                    or self.review_source.source_node not in self.depends or self.limits.max_attempts!=1):
+                raise ValueError('review source requires a direct program dependency and one read-only reviewer attempt')
+        if self.validation_source is not None:
+            if (self.role!='validator' or self.evaluation_digest is None or self.limits.max_attempts!=1
+                    or self.role_output is not None or self.review_subject is not None or self.repair is not None
+                    or self.development_suite is not None or self.input_artifacts
+                    or self.validation_source.source_node not in self.depends):
+                raise ValueError('validator requires one direct program dependency, frozen tests and a single read-only attempt')
         if self.repair is not None:
             if self.role not in {"developer", "fixer"} or self.evaluation_digest is None:
                 raise ValueError("Rebind requires an executable role and frozen acceptance tests")
@@ -132,7 +157,7 @@ class TaskNode(StrictModel):
                     or self.repair.development_digest != self.development_suite.development_digest
                     or self.evaluation_digest == self.development_suite.development_digest):
                 raise ValueError("reviewed development suite requires distinct frozen acceptance and matching Rebind policy")
-        if self.role_output is not None and self.role_output.kind == "review-findings" and self.review_subject is None:
+        if self.role_output is not None and self.role_output.kind == "review-findings" and self.review_subject is None and self.review_source is None:
             raise ValueError("review findings require an exact implementation reference")
         if self.review_subject is not None:
             if self.role == "reviewer":
@@ -169,6 +194,17 @@ class WorkflowDefinition(StrictModel):
         if len(nodes) != len(self.nodes):
             raise ValueError("duplicate task node ID")
         for node in self.nodes:
+            if node.review_source is not None:
+                source=nodes.get(node.review_source.source_node)
+                role=next(role for role in self.roles if role.id==node.role)
+                if (source is None or source.role not in {'developer','fixer'} or source.evaluation_digest is None
+                        or 'artifacts.read' not in role.tools):
+                    raise ValueError('review source must reference a frozen program node and allow reading its artifacts')
+            if node.validation_source is not None:
+                source=nodes.get(node.validation_source.source_node)
+                if (source is None or source.role not in {'developer','fixer'}
+                        or source.evaluation_digest is None or source.evaluation_digest!=node.evaluation_digest):
+                    raise ValueError('validator must reference a program node with the same frozen acceptance digest')
             if node.review_subject is not None:
                 role = next(role for role in self.roles if role.id == node.role)
                 if "artifacts.read" not in role.tools:
@@ -317,6 +353,7 @@ class WorkflowService:
         if (type(cost_limit) is not int or type(token_limit) is not int
                 or not 0 <= cost_limit <= 1_000_000_000_000 or not 0 <= token_limit <= 1_000_000_000):
             raise InvalidInput("goal budgets must be bounded nonnegative integers")
+        parse_requester(description)  # malformed requested-by prefixes fail before any write
         args = dict(title=title, description=description, acceptance=acceptance,
                     cost_limit=cost_limit, token_limit=token_limit, ruleset="kernel-v1", scope="local-workspace")
         if actor is not None:
@@ -334,6 +371,8 @@ class WorkflowService:
             result = {"run_id": run_id, "goal_id": goal_id, "intent_id": intent_id, "anchor_digest": anchor,
                       "ruleset": "kernel-v1", "status": "draft", "plan_revision": 0}
             self.store._event(db, tenant, run_id, "run.created", {**result, **args, "managed_workflow": True}, audit_actor, key)
+            # Requester attribution is parsed and stored at creation time, inside this transaction.
+            record_requester(self.store, db, tenant, run_id, description)
             self.store._event(db, tenant, run_id, "goal.created", {"goal_id": goal_id, "anchor": anchor,
                               "title": title, "description": description}, audit_actor)
             self.store._event(db, tenant, run_id, "intent.created", {"intent_id": intent_id, "goal_id": goal_id,

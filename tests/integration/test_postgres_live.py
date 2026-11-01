@@ -150,6 +150,8 @@ class PostgreSQLLiveTests(unittest.TestCase):
             admin.execute("DROP SCHEMA IF EXISTS loom CASCADE")
             migration = (PROJECT / "migrations/postgres/001_core.sql").read_text(encoding="utf-8")
             admin.execute(migration, prepare=False)
+            # Contract tables (requester attribution, execution-domain policy) follow the core schema.
+            admin.execute((PROJECT / "migrations/postgres/002_contract.sql").read_text(encoding="utf-8"), prepare=False)
             for role_name, group in (("loom_test_app_a", "loom_app"), ("loom_test_app_b", "loom_app"), ("loom_test_audit_a", "loom_auditor")):
                 account = cls.config["test_users"][role_name]
                 if not admin.execute("SELECT 1 FROM pg_roles WHERE rolname=%s", (account["user"],)).fetchone():
@@ -233,8 +235,31 @@ class PostgreSQLLiveTests(unittest.TestCase):
         tables = self.admin.execute("""SELECT c.relname,c.relrowsecurity,c.relforcerowsecurity
             FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
             WHERE n.nspname='loom' AND c.relkind='r'""").fetchall()
-        self.assertEqual(len(tables), 21)
+        self.assertEqual(len(tables), 23)
         self.assertTrue(all(rls and forced for _, rls, forced in tables))
+
+    def test_contract_tables_are_tenant_isolated_and_append_only(self):
+        with connect_private(self.pg, self.config, autocommit=True) as owner:
+            owner.execute("INSERT INTO loom.goal_requesters(tenant_id,run_id,requester,source) VALUES (%s,%s,'alice','description-prefix')",
+                          (TENANT_A, RUN_A))
+            owner.execute("INSERT INTO loom.goal_requesters(tenant_id,run_id,requester,source) VALUES (%s,%s,NULL,'none')",
+                          (TENANT_B, RUN_B))
+        try:
+            for user, expected in (("loom_test_app_a", [("alice",)]), ("loom_test_app_b", [(None,)])):
+                with self.subTest(user=user), connect_private(self.pg, self.config, user=user) as app:
+                    self.assertEqual(app.execute("SELECT requester FROM loom.goal_requesters").fetchall(), expected)
+                    with self.assertRaises(self.pg.errors.InsufficientPrivilege):
+                        app.execute("INSERT INTO loom.goal_requesters(tenant_id,run_id,requester,source) VALUES (%s,%s,NULL,'none')",
+                                    (TENANT_A, uuid4()))
+            self.expect_database_error("P0001", lambda: self.admin.execute("UPDATE loom.goal_requesters SET requester='mallory'"))
+            self.expect_database_error("23514", lambda: self.admin.execute(
+                "INSERT INTO loom.goal_requesters(tenant_id,run_id,requester,source) VALUES (%s,%s,NULL,'description-prefix')",
+                (TENANT_A, RUN_A)))
+        finally:
+            with connect_private(self.pg, self.config, autocommit=True) as cleanup:
+                cleanup.execute("ALTER TABLE loom.goal_requesters DISABLE TRIGGER goal_requesters_append_only")
+                cleanup.execute("DELETE FROM loom.goal_requesters")
+                cleanup.execute("ALTER TABLE loom.goal_requesters ENABLE TRIGGER goal_requesters_append_only")
 
     def test_two_tenant_business_logins_see_only_their_own_rows(self):
         for user, expected in (("loom_test_app_a", TENANT_A), ("loom_test_app_b", TENANT_B)):

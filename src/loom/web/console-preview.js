@@ -5,9 +5,13 @@ window.LoomPreview = {
   configure(principal, newExample,newVerifiedExample) {
     this.active = principal.authentication === "public-session";
     if (!this.active) return;
-    document.querySelector(".environment").textContent = "临时公网体验 · 共享测试空间";
+    document.querySelector(".environment").textContent = "受邀体验空间";
     document.getElementById("logout-button").textContent = "退出体验";
-    document.title = "Loom · 公网体验工作台";
+    document.title = "Loom · 项目空间";
+    for (const [id, callback] of [["home-verified-example",newVerifiedExample],["home-role-example",newExample]]) {
+      const button = document.getElementById(id); button.hidden = false;
+      button.onclick = () => { if (!button.disabled) callback(); };
+    }
     const cost = document.getElementById("goal-cost-limit");
     const tokens = document.getElementById("goal-token-limit");
     if (cost) { cost.value = "1000000"; cost.max = "1000000"; }

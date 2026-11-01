@@ -15,12 +15,13 @@ from loom.auth import AuthConfigError, AuthRegistry, LocalIdentity, Principal, l
 OPERATOR_KEY = "fixture-operator-credential-not-a-real-key"
 WORKER_KEY = "fixture-worker-credential-not-a-real-key"
 VIEWER_KEY = "fixture-viewer-credential-not-a-real-key"
+USER_KEY = "fixture-human-user-credential-not-a-real-key"
 LEGACY_KEY = "fixture-legacy-credential-only"
 
 
 def identity(role="operator", *, tenant="a", subject=None, token=None):
     return LocalIdentity(tenant, subject or role, frozenset({role}), token or {
-        "operator": OPERATOR_KEY, "worker": WORKER_KEY, "viewer": VIEWER_KEY
+        "operator": OPERATOR_KEY, "worker": WORKER_KEY, "viewer": VIEWER_KEY, "user": USER_KEY
     }[role])
 
 
@@ -40,8 +41,10 @@ def private_file(directory, data):
 
 
 @pytest.mark.parametrize("role,allowed", [
-    ("operator", {"read", "goal.write", "plan.approve", "control", "suite.approve", "pack.publish"}),
-    ("worker", {"read", "task.claim", "task.submit"}),
+    # Plan v2.2 5.3: only the human user approves; instances assemble and execute.
+    ("user", {"read", "goal.write", "plan.approve", "control", "run.pause", "suite.approve", "pack.publish"}),
+    ("operator", {"read", "goal.write", "control", "run.pause", "pack.publish"}),
+    ("worker", {"read", "task.claim", "task.submit", "run.pause"}),
     ("viewer", {"read"}),
 ])
 def test_named_roles_enforce_exact_capabilities(role, allowed):
@@ -54,11 +57,25 @@ def test_named_roles_enforce_exact_capabilities(role, allowed):
         assert registry.authorize(principal, action) is (action in allowed)
 
 
+def test_legacy_keys_never_derive_developer_without_the_explicit_transition_switch():
+    # Criterion F3: an old tenant key cannot obtain the developer role by default.
+    with pytest.raises(AuthConfigError):
+        AuthRegistry({"a": LEGACY_KEY}, (identity(), identity("worker")))
+
+
+def test_human_user_cannot_be_combined_with_instance_roles():
+    for roles in ({"user", "operator"}, {"user", "worker"}, {"user", "viewer"}):
+        with pytest.raises(AuthConfigError):
+            LocalIdentity("a", "mixed", frozenset(roles), "mixed-role-public-fixture-token-000000000")
+
+
 def test_legacy_routes_remain_compatible_without_control_rights():
-    registry = AuthRegistry({"a": LEGACY_KEY}, (identity(), identity("worker")))
+    registry = AuthRegistry({"a": LEGACY_KEY}, (identity(), identity("worker")), legacy_developer_keys=True)
     legacy = registry.authenticate(LEGACY_KEY)
     assert legacy.roles == frozenset({"developer"})
-    assert registry.capabilities(legacy) == ["goal.write", "plan.approve", "read", "task.claim", "task.submit"]
+    # Criterion B4: even through the switch the developer subject holds no approval capability.
+    assert registry.capabilities(legacy) == ["goal.write", "read", "task.claim", "task.submit"]
+    assert not registry.authorize(legacy, "plan.approve")
     assert not registry.authorize(legacy, "control")
     assert not registry.authorize(legacy, "suite.approve")
     assert not registry.authorize(registry.authenticate(WORKER_KEY), "goal.write")

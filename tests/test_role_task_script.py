@@ -106,7 +106,7 @@ class RoleScriptTests(unittest.IsolatedAsyncioTestCase):
                 return httpx.Response(201, json={"run_id": run_id})
             raise AssertionError("unexpected save/approve/claim")
         client_type = httpx.Client
-        identities = tuple(LocalIdentity("first-round", role, frozenset({role}), "role-script-public-sentinel-" + role + "-000000") for role in ("operator", "worker"))
+        identities = tuple(LocalIdentity("first-round", role, frozenset({role}), "role-script-public-sentinel-" + role + "-000000") for role in ("operator", "worker", "user"))
         with patch.object(script, "load_identities", return_value=identities), \
              patch.object(script, "load_project_secrets", return_value={"DEEPSEEK_API_KEY": "role-script-public-test-sentinel-only"}), \
              patch.object(script, "load_model_config", return_value=((ModelRoute("deepseek-flash"),), {})), \
@@ -123,7 +123,7 @@ class RoleScriptTests(unittest.IsolatedAsyncioTestCase):
     async def test_pre_dispatch_stop_reports_no_model_and_stops_before_design(self):
         self.args.approve = True
         store = Store(self.args.db)
-        identities = tuple(LocalIdentity("first-round", role, frozenset({role}), "role-script-stop-sentinel-" + role + "-000000") for role in ("operator", "worker"))
+        identities = tuple(LocalIdentity("first-round", role, frozenset({role}), "role-script-stop-sentinel-" + role + "-000000") for role in ("operator", "worker", "user"))
         called=[]
         class StoppedRunner:
             async def run_role(self, claim, **kwargs):
@@ -176,7 +176,7 @@ class RoleScriptTests(unittest.IsolatedAsyncioTestCase):
         """Real local API/store/runner, public test sentinels, Mock HTTP only."""
         self.args.approve=True
         store=Store(self.args.db)
-        identities=tuple(LocalIdentity("first-round",role,frozenset({role}),"role-cli-public-fixture-"+role+"-000000") for role in ("operator","worker"))
+        identities=tuple(LocalIdentity("first-round",role,frozenset({role}),"role-cli-public-fixture-"+role+"-000000") for role in ("operator", "worker", "user"))
         provider_requests=[]
         def provider(request):
             provider_requests.append(request)

@@ -12,10 +12,13 @@ import unittest
 from fastapi.testclient import TestClient
 
 from loom.api import create_app
+from loom.auth import LocalIdentity
 from loom.store import Store
 
 
 PACK = Path(__file__).resolve().parents[1] / "packs/software-dev/workflow-v1.json"
+# Approval is a human decision: legacy developer keys create and execute, a named user approves.
+HUMAN_TOKEN = "goal-api-human-user-fixture-token-0000-"
 
 
 class GoalApiTests(unittest.TestCase):
@@ -25,7 +28,8 @@ class GoalApiTests(unittest.TestCase):
         self.client = TestClient(create_app(self.store, {
             "tenant-a": "goal-api-public-fixture-token-a",
             "tenant-b": "goal-api-public-fixture-token-b",
-        }))
+        }, identities=tuple(LocalIdentity("tenant-" + t, "human-" + t, frozenset({"user"}), HUMAN_TOKEN + t) for t in "ab"),
+            legacy_developer_keys=True))
         self.definition = json.loads(PACK.read_text(encoding="utf-8"))
         self.body = {"title": "Fix arithmetic in a local workspace",
                      "description": "Private-to-tenant-a goal description; implement and verify the authorized change.",
@@ -36,8 +40,8 @@ class GoalApiTests(unittest.TestCase):
         self.client.close()
         self.tmp.cleanup()
 
-    def headers(self, key=None, tenant="a"):
-        headers = {"Authorization": "Bearer goal-api-public-fixture-token-" + tenant}
+    def headers(self, key=None, tenant="a", human=False):
+        headers = {"Authorization": "Bearer " + (HUMAN_TOKEN if human else "goal-api-public-fixture-token-") + tenant}
         if key is not None:
             headers["Idempotency-Key"] = key
         return headers
@@ -56,7 +60,7 @@ class GoalApiTests(unittest.TestCase):
         return response.json()
 
     def approve(self, run, saved, key="approve"):
-        response = self.client.post(f"/v1/goals/{run}/plan/approve", headers=self.headers(key),
+        response = self.client.post(f"/v1/goals/{run}/plan/approve", headers=self.headers(human=True, key=key),
                                     json={"expected_revision": saved["revision"], "expected_digest": saved["digest"]})
         self.assertEqual(response.status_code, 200, response.text)
         return response.json()
@@ -132,7 +136,7 @@ class GoalApiTests(unittest.TestCase):
                                       ("approve", 1, "0" * 64),
                                       ("different-approval-key", 1, saved["digest"])):
             with self.subTest(key=key, revision=revision):
-                response = self.client.post(f"/v1/goals/{run}/plan/approve", headers=self.headers(key),
+                response = self.client.post(f"/v1/goals/{run}/plan/approve", headers=self.headers(human=True, key=key),
                                             json={"expected_revision": revision, "expected_digest": digest})
                 self.assertEqual(response.status_code, 409, response.text)
         self.assertEqual(self.events(run), before)
@@ -150,7 +154,7 @@ class GoalApiTests(unittest.TestCase):
                                                    (current["revision"], first["digest"]),
                                                    (first["revision"], current["digest"]))):
             with self.subTest(revision=revision, digest=digest):
-                response = self.client.post(f"/v1/goals/{run}/plan/approve", headers=self.headers("stale-" + str(index)),
+                response = self.client.post(f"/v1/goals/{run}/plan/approve", headers=self.headers(human=True, key="stale-" + str(index)),
                                             json={"expected_revision": revision, "expected_digest": digest})
                 self.assertEqual(response.status_code, 409, response.text)
         stale_save = self.client.put(f"/v1/goals/{run}/plan", headers=self.headers("stale-save"),
@@ -258,7 +262,8 @@ class GoalApiTests(unittest.TestCase):
         cases += [("GET", f"/v1/runs/{run}{suffix}", None) for suffix in ("", "/events", "/replay", "/integrity")]
         for index, (method, path, body) in enumerate(cases):
             with self.subTest(method=method, path=path):
-                response = self.client.request(method, path, headers=self.headers("foreign-" + str(index), "b"), json=body)
+                response = self.client.request(method, path, headers=self.headers("foreign-" + str(index), "b",
+                                               human=path.endswith("/approve")), json=body)
                 self.assertEqual(response.status_code, 404, response.text)
                 self.assertNotIn(self.body["description"], response.text)
                 self.assertNotIn(saved["digest"], response.text)
@@ -340,7 +345,7 @@ class GoalApiTests(unittest.TestCase):
                 run = self.create("budget-goal-" + field, body={**self.body, field: limit})["run_id"]
                 saved = self.save(run, "budget-save-" + field)
                 before = self.events(run)
-                response = self.client.post(f"/v1/goals/{run}/plan/approve", headers=self.headers("budget-approve-" + field),
+                response = self.client.post(f"/v1/goals/{run}/plan/approve", headers=self.headers(human=True, key="budget-approve-" + field),
                                             json={"expected_revision": saved["revision"], "expected_digest": saved["digest"]})
                 self.assertEqual(response.status_code, 409, response.text)
                 self.assertEqual(response.json()["code"], "BUDGET_EXCEEDED")

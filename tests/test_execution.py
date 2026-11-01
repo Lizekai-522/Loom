@@ -410,8 +410,27 @@ class ExecutionTests(unittest.IsolatedAsyncioTestCase):
             await dispatched.wait()
 
         self.store.renew_claim = renewal
+        yield_turn = asyncio.sleep
         with patch("loom.execution.asyncio.sleep", new=wait_until_dispatched):
-            result = await asyncio.wait_for(runner.run_python(claim, self.suite), timeout=2)
+            # This fault is event-driven; SQLite preparation is synchronous and
+            # its fsync latency is not a heartbeat deadline. Bound scheduler
+            # turns instead of including disk preparation in a two-second race.
+            operation = asyncio.create_task(runner.run_python(claim, self.suite))
+            try:
+                for _ in range(32):
+                    if operation.done():
+                        break
+                    await yield_turn(0)
+                self.assertTrue(dispatched.is_set(), "provider must be in flight before heartbeat loss")
+                self.assertTrue(operation.done(), "lost heartbeat must fence and cancel the provider")
+                result = operation.result()
+            finally:
+                if not operation.done():
+                    operation.cancel()
+                    try:
+                        await operation
+                    except asyncio.CancelledError:
+                        pass
         self.assertEqual(result["reason"], "EXECUTION_LEASE_LOST")
         self.assertTrue(result["billing_uncertain"])
         self.assertEqual(self.rows("effects", claim.run_id)[0]["state"], "indeterminate")

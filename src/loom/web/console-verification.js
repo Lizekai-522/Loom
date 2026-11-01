@@ -60,7 +60,13 @@ window.LoomVerificationPanel = function ({state,$,node,has,request,publicError,r
       if(preview?.preview_digest!==old){$("verification-reviewed").checked=false;commandKey='verification:'+crypto.randomUUID();}
       $("verification-state").textContent='已核对当前条件。读取与下载不会调用模型。';
     }catch(e){if(generation===version&&bound===binding){preview=history=null;$("verification-state").textContent=publicError(e);}}
-    finally{if(generation===version&&bound===binding){busy=false;render();if(current()&&history?.requests.some(j=>['queued','running'].includes(j.state)))timer=setTimeout(load,2500);}}
+    finally{if(generation===version&&bound===binding){
+      busy=false;render();
+      if(current()&&history?.requests.some(j=>['queued','running'].includes(j.state)))timer=setTimeout(load,2500);
+      else if(current()&&!state.busy&&history?.task_status&&
+        ['verified','rejected','disputed'].includes(history.requests.at(-1)?.state)&&
+        history.task_status!==state.review?.tasks?.find(task=>task.id===id)?.status)void refresh();
+    }}
   }
   async function submit(event){
     event.preventDefault();controls();if($("verification-submit").disabled)return;

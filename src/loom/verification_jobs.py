@@ -10,7 +10,7 @@ import sqlite3
 from uuid import uuid4
 
 from .artifacts import ArtifactService
-from .auth import LocalIdentity,Principal
+from .auth import LocalIdentity,Principal, is_controller
 from .operator import _text
 from .policy import ArtifactSubmission
 from .review_inputs import ReviewInputService
@@ -47,9 +47,12 @@ class VerificationJobs:
                     statement+=line
                     if sqlite3.complete_statement(statement):db.execute(statement);statement=''
 
-    def _binding_in(self,db,tenant,run_id,task_id):
+    def _binding_in(self,db,tenant,run_id,task_id,*,allow_verified_read=False):
         run=self.store._run(db,tenant,run_id)
-        if run['status']!='open':raise Conflict('VERIFICATION_RUN_NOT_OPEN')
+        if run['status']!='open':
+            task=db.execute('SELECT status FROM tasks WHERE tenant=? AND run_id=? AND id=?',(tenant,run_id,task_id)).fetchone()
+            if not (allow_verified_read and run['status'] in {'succeeded','paused','awaiting_human'} and task is not None and task['status']=='done'):
+                raise Conflict('VERIFICATION_RUN_NOT_OPEN')
         view=self.reviews._preview_in(db,tenant,run_id,task_id,True)
         if view['execution_summary']['hard_criteria_passed'] is not True:raise Conflict('VERIFICATION_HOST_TESTS_NOT_PASSED')
         if db.execute("SELECT 1 FROM reservations WHERE tenant=? AND task_id=? AND state='reserved'",(tenant,task_id)).fetchone():
@@ -114,7 +117,7 @@ class VerificationJobs:
             return {**result,'preview_digest':digest(result)}
 
     def request(self,identity,run_id,task_id,key,*,expected_preview_digest,reason):
-        if not isinstance(identity,(LocalIdentity,Principal)) or 'operator' not in identity.roles:raise InvalidInput('named operator required')
+        if not isinstance(identity,(LocalIdentity,Principal)) or not is_controller(identity):raise InvalidInput('named operator required')
         _text(key,200,'command key');_text(reason,2000,'reason')
         args=dict(run_id=run_id,task_id=task_id,actor='subject:'+identity.subject_id,expected_preview_digest=expected_preview_digest,reason=reason)
         def apply(db):
@@ -136,16 +139,19 @@ class VerificationJobs:
 
     def attestations(self,tenant,job_id):
         with self.store.connect() as db:
-            db.execute('BEGIN');row=self._row(db,tenant,job_id);state=self._state(db,row);result=[]
-            for item in db.execute('SELECT * FROM verification_attestations WHERE tenant=? AND job_id=?',(tenant,job_id)):
-                try:
-                    signed=json.loads(item['record']);event=db.execute('SELECT hash FROM events WHERE id=?',(item['event_id'],)).fetchone()
-                    if event is None or event['hash']!=item['event_hash'] or signed['body']['binding']!=state['binding'] or signed['body']['receipt']['model_id']!=item['model_id']:raise ValueError
-                    self.reviews.artifacts._event_matches(db,tenant,row['run_id'],item['event_hash'],'verification.attested','verification-engine',
-                        dict(job_id=job_id,attestation=signed,attestation_digest=digest(signed)))
-                    result.append(signed)
-                except (ValueError,KeyError,TypeError):raise Conflict('VERIFICATION_LEDGER_INVALID') from None
-            return result
+            db.execute('BEGIN');return self._attestations_in(db,tenant,job_id)
+
+    def _attestations_in(self,db,tenant,job_id):
+        row=self._row(db,tenant,job_id);state=self._state(db,row);result=[]
+        for item in db.execute('SELECT * FROM verification_attestations WHERE tenant=? AND job_id=?',(tenant,job_id)):
+            try:
+                signed=json.loads(item['record']);event=db.execute('SELECT hash FROM events WHERE id=?',(item['event_id'],)).fetchone()
+                if event is None or event['hash']!=item['event_hash'] or signed['body']['binding']!=state['binding'] or signed['body']['receipt']['model_id']!=item['model_id']:raise ValueError
+                self.reviews.artifacts._event_matches(db,tenant,row['run_id'],item['event_hash'],'verification.attested','verification-engine',
+                    dict(job_id=job_id,attestation=signed,attestation_digest=digest(signed)))
+                result.append(signed)
+            except (ValueError,KeyError,TypeError):raise Conflict('VERIFICATION_LEDGER_INVALID') from None
+        return result
 
     def pending(self,tenant):
         with self.store.connect() as db:

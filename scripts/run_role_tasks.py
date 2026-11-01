@@ -139,7 +139,7 @@ async def run(args, private, progress=None):
     workflows = WorkflowService(store)
     identities = load_identities(args.identities_file)
     selected = {role: next((item for item in identities if item.tenant_id == args.tenant and role in item.roles), None)
-                for role in ("operator", "worker")}
+                for role in ("operator", "worker", "user")}
     if any(item is None for item in selected.values()):
         raise CheckFailure("MATCHED_NAMED_IDENTITIES_REQUIRED")
     if selected["operator"].subject_id == selected["worker"].subject_id:
@@ -179,7 +179,7 @@ async def run(args, private, progress=None):
                 raise CheckFailure("API_DATABASE_CONTRACT_MISMATCH")
             goal_path, base = "/v1/goals/" + run_id, "/v1/runs/" + run_id
             plan = request("operator", "PUT", goal_path + "/plan", {"definition": definition.model_dump(mode="json"), "expected_revision": 0}, prefix + ":plan")
-            approved = request("operator", "POST", goal_path + "/plan/approve", {"expected_revision": plan["revision"], "expected_digest": plan["digest"]}, prefix + ":approve")
+            approved = request("user", "POST", goal_path + "/plan/approve", {"expected_revision": plan["revision"], "expected_digest": plan["digest"]}, prefix + ":approve")
             worker = selected["worker"].subject_id
             def claim_node(node):
                 data = request("worker", "POST", base + "/claim", {"worker_id": worker, "lease_seconds": 90})["claim"]

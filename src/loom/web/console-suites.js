@@ -8,7 +8,7 @@ window.LoomSuitePanel = function ({state, $, node, has, request, mutate, notify,
   let binding = "", generation = 0, pending = false, preview = null, frozen = null, draft = null;
   let selected = [], error = "", receiptId = "";
   const currentItem = () => state.artifactDetail;
-  const operator = () => has("suite.approve") && state.principal?.roles?.includes("operator");
+  const operator = () => has("suite.approve") && (state.principal?.roles||[]).some((r) => r === "operator" || r === "user");
   const ready = () => runChecked() && !state.busy && state.detailStatus === "ready"
     && state.artifactStatus === "ready" && state.artifactsSelection === state.selection
     && state.snapshot?.status === "open" && currentItem()?.stale === false

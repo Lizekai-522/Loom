@@ -4,8 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <title>Loom · 本机工作台</title>
+  <title>Loom · 项目空间</title>
   <link rel="stylesheet" href="/console/assets/console.css">
+  <link rel="stylesheet" href="/console/assets/product.css">
   <script src="/console/assets/console-zh.js" defer></script>
   <script src="/console/assets/console-suites.js" defer></script>
   <script src="/console/assets/console-review-decisions.js" defer></script>
@@ -19,39 +20,53 @@
 <body>
   <a class="skip-link" href="#workspace">跳到工作区</a>
   <header class="topbar">
-    <a class="brand" href="/console" aria-label="Loom 工作台首页">LOOM<span>工作台</span></a>
-    <span class="environment">本机实例</span>
-    <div class="top-actions"><span id="identity-label" class="muted"></span><button id="refresh-button" class="quiet" hidden>刷新</button><button id="logout-button" class="quiet" hidden>断开</button></div>
+    <a class="brand" href="/console" aria-label="Loom 项目空间首页"><span class="brand-mark" aria-hidden="true">L</span>Loom</a>
+    <span class="environment">项目空间</span>
+    <div class="top-actions"><a class="back-to-chat" href="/console">← 返回会话</a><span id="identity-label" class="muted"></span><button id="theme-button" class="quiet" type="button" aria-label="切换深色外观" aria-pressed="false">深色</button><button id="controls-button" class="quiet" type="button" aria-expanded="false" aria-controls="actions-panel" hidden>运行详情</button><button id="refresh-button" class="quiet" hidden>刷新</button><button id="logout-button" class="quiet" hidden>退出</button></div>
   </header>
   <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
   <section id="login-panel" class="login-panel" aria-labelledby="login-title">
-    <div class="eyebrow">运行与人工处理</div>
-    <h1 id="login-title">正在连接本机工作台</h1>
-    <p class="muted">自动进入本机开发环境，查看目标、审阅计划并处理运行。</p>
+    <div class="eyebrow">LOOM</div>
+    <h1 id="login-title">正在打开项目空间</h1>
+    <p class="muted">读取你的项目与运行状态…</p>
     <form id="login-form" class="login-form">
-      <p class="field-help">正在自动连接本机开发实例，无需输入访问凭据。</p>
-      <button id="login-button" type="submit" class="primary">重新连接</button>
+      <p class="field-help">页面将自动进入，无需连接本地工作台。</p>
+      <button id="login-button" type="submit" class="primary">重新打开</button>
     </form>
-    <p class="local-note">Flash 已接通 · 独立复核条件进入后核对 · 最终验收保持独立验证约束</p>
+    <p class="local-note">需求 · 实现 · 测试 · 独立复核</p>
   </section>
   <main id="workspace" class="workspace" tabindex="-1" hidden>
     <aside class="sidebar" aria-labelledby="goals-title">
-      <div class="section-heading"><h2 id="goals-title">目标</h2><button id="new-goal-button" class="small" data-cap="goal.write">新建</button></div>
-      <label class="sr-only" for="goal-search">筛选目标</label><input id="goal-search" class="search" type="search" placeholder="筛选标题或运行 ID" autocomplete="off">
+      <button id="home-button" type="button" class="sidebar-home">＋ 开始新项目</button>
+      <div class="section-heading"><h2 id="goals-title">最近项目</h2><button id="new-goal-button" class="small" data-cap="goal.write">新建</button></div>
+      <label class="sr-only" for="goal-search">搜索项目</label><input id="goal-search" class="search" type="search" placeholder="搜索项目…" autocomplete="off">
       <p id="goals-state" class="muted" aria-live="polite">正在读取目标…</p>
       <ul id="goal-list" class="goal-list"></ul>
       <div class="sidebar-footer"><span>人工待办</span><strong id="intervention-count">—</strong><button id="show-interventions" class="text-button">查看</button></div>
     </aside>
     <section class="content" aria-labelledby="run-title">
-      <div id="empty-selection" class="empty-state"><div class="eyebrow">工作区</div><h1>选择一个目标</h1><p>查看任务、冻结计划和事件，或创建一个新的目标草案。</p></div>
+      <div id="empty-selection" class="empty-state product-home">
+        <div class="home-intro"><span class="home-monogram" aria-hidden="true">L</span><p class="eyebrow">从想法到经过验证的结果</p><h1>今天想用 Loom 构建什么？</h1><p>描述你的目标。一起规划、执行，再逐步验证。</p></div>
+        <form id="prompt-form" class="composer">
+          <label class="sr-only" for="project-prompt">描述你的项目需求</label><textarea id="project-prompt" rows="4" maxlength="32000" placeholder="描述你要实现的功能、输入输出和验收要求…" required></textarea>
+          <div class="composer-footer"><span class="model-label"><span class="status-dot" aria-hidden="true"></span>DeepSeek Flash <span class="muted">· Pro 独立复核</span></span><button id="prompt-submit" class="primary" type="submit" data-cap="goal.write">创建项目 <span aria-hidden="true">↑</span></button></div>
+        </form>
+        <p class="composer-help">先创建需求草案，审阅并批准计划后执行。模型调用受项目预算约束。</p>
+        <div id="home-examples" class="home-examples" aria-label="开始体验"><button id="home-verified-example" type="button" hidden>运行完整词频示例 <span aria-hidden="true">↗</span></button><button id="home-role-example" type="button" hidden>体验多角色协作 <span aria-hidden="true">↗</span></button><button id="home-advanced" type="button">自定义预算与验收 <span aria-hidden="true">↗</span></button></div>
+        <div class="home-bottom"><span>计划可审阅</span><span>容器隔离执行</span><span>结果有据可查</span></div>
+      </div>
       <div id="run-content" hidden>
         <header class="run-header"><div><div class="eyebrow">目标运行</div><h1 id="run-title"></h1><p id="run-id" class="mono muted"></p></div><span id="run-status" class="badge"></span></header>
         <p id="run-description" class="run-description"></p>
         <dl class="budget-strip"><div><dt>已记账费用</dt><dd id="cost-spent">—</dd></div><div><dt>当前预留</dt><dd id="cost-reserved">—</dd></div><div><dt>已用 词元</dt><dd id="tokens-spent">—</dd></div><div><dt>任务进度</dt><dd id="task-count">—</dd></div></dl>
         <p class="field-help">费用为平台记账，不能代替供应商账单。测试通过的候选仍需独立复核。</p>
         <nav class="tabs" aria-label="运行内容">
-          <button class="tab active" data-tab="tasks" aria-current="page">任务</button><button class="tab" data-tab="progression">推进指引</button><button class="tab" data-tab="plan">计划</button><button class="tab" data-tab="artifacts">产物 / 输入预览</button><button class="tab" data-tab="verification">独立复核</button><button class="tab" data-tab="events">事件</button><button class="tab" data-tab="interventions">人工待办</button>
+          <button class="tab active" data-tab="conversation" aria-current="page">概览</button><button class="tab" data-tab="tasks">任务与源码</button><button class="tab" data-tab="progression">执行</button><button class="tab" data-tab="plan">计划</button><button class="tab" data-tab="artifacts">产物</button><button class="tab" data-tab="verification">独立复核</button><button class="tab" data-tab="events">事件</button><button class="tab" data-tab="interventions">待办</button>
         </nav>
+        <section id="tab-conversation" class="tab-panel conversation-panel" aria-label="项目概览">
+          <article class="message message-user"><div class="message-caption">你的需求</div><p id="conversation-request"></p></article>
+          <article class="message message-assistant"><div class="message-caption"><span class="mini-monogram" aria-hidden="true">L</span>Loom <span id="conversation-updated" class="muted"></span></div><h2 id="conversation-title">正在读取项目状态</h2><p id="conversation-summary"></p><ol id="conversation-steps" class="conversation-steps"></ol><div class="conversation-actions"><button id="conversation-next" class="primary" type="button">查看下一步</button><button id="conversation-source" type="button">查看任务与源码</button></div><p class="field-help">以下状态来自运行台账。候选提交、测试通过与独立验收分别记录。</p></article>
+        </section>
         <section id="tab-tasks" class="tab-panel" aria-label="任务列表"><div class="section-heading"><h2>执行状态</h2><span id="tasks-hint" class="muted"></span></div><div id="task-list" class="task-list"></div><section id="source-panel" class="suite-panel" aria-label="源码与版本导出" hidden></section></section>
         <section id="tab-progression" class="tab-panel" aria-label="七角色推进指引" hidden>
           <div class="section-heading"><h2>七角色推进指引</h2><button id="progression-refresh" type="button">重新核对下一步</button></div>
@@ -116,7 +131,7 @@
             <div id="suite-frozen"></div>
             <form id="suite-draft-form" class="approval-form" hidden>
               <h3>准备新的执行计划</h3>
-              <p class="field-help">生成可导入新目标的计划草案。请先在本机冻结并保存独立的宿主终验用例，将验收摘要填在下方。终验用例正文不应写入模型需求；此页面不会生成测试结果。</p>
+              <p class="field-help">生成可导入新目标的计划草案。请先在服务端冻结并保存独立的宿主终验用例，将验收摘要填在下方。终验用例正文不应写入模型需求；此页面不会生成测试结果。</p>
               <label for="suite-draft-title">新任务标题</label><input id="suite-draft-title" maxlength="500" required>
               <label for="suite-draft-instruction">开发需求（仅公开内容）</label><textarea id="suite-draft-instruction" rows="4" maxlength="16000" required></textarea>
               <label for="suite-host-digest">冻结的宿主终验摘要</label><input id="suite-host-digest" class="mono" minlength="64" maxlength="64" pattern="[0-9a-f]{64}" required autocomplete="off" spellcheck="false">
@@ -138,7 +153,7 @@
             <p class="field-help">正文上限 32 KiB，完整预览上限 64 KiB。这是静态 UTF-8 字节限制，不是精确词元预算；数据齐备不表示任务可执行或验收通过。</p>
           </div>
         </section>
-        <section id="tab-events" class="tab-panel" aria-label="事件记录" hidden><div class="section-heading"><h2>事件记录</h2><span id="integrity-label" class="muted"></span></div><p id="events-state" class="muted"></p><ol id="event-list" class="event-list"></ol><p class="field-help">页面最多展示最近 200 条。完整事件仍保存在本机台账。</p></section>
+        <section id="tab-events" class="tab-panel" aria-label="事件记录" hidden><div class="section-heading"><h2>事件记录</h2><span id="integrity-label" class="muted"></span></div><p id="events-state" class="muted"></p><ol id="event-list" class="event-list"></ol><p class="field-help">页面最多展示最近 200 条。完整事件仍保存在服务端台账。</p></section>
         <section id="tab-interventions" class="tab-panel" aria-label="人工待办" hidden><div class="section-heading"><h2>人工待办</h2><span class="muted">核对后再推进</span></div><div id="intervention-list"></div><div id="review-summary"></div></section>
       </div>
     </section>

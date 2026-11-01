@@ -16,11 +16,12 @@ def main():
     private=args.work_root.resolve()/'loom-public-preview'
     identities=load_identities(private/'identities.json')
     operator=next(i for i in identities if 'operator' in i.roles)
+    human=next(i for i in identities if 'user' in i.roles)
     def access():
         raw=(private/'access.json').read_bytes()
         if len(raw)>4096:raise ValueError('invalid access config')
         data=json.loads(raw)
-        return PreviewAccess(data['origin'],data['access_code'],operator.token)
+        return PreviewAccess(data['origin'],data['access_code'],human.token)
     access()
     port=json.loads((private/'access.json').read_bytes())['port']
     store=PreviewStore(private/'preview.db');executor=load_executor_config(private/'executor.json')
@@ -30,7 +31,7 @@ def main():
     def verified_example(key):
         return create_verified_example(store,Path(__file__).resolve().parents[1],next(iter(executor.host_tests)),operator,'preview-verified:'+key)
     # No access log: login bodies and session cookies never enter request logs.
-    uvicorn.run(PublicPreview(app,access,example=example,verified_example=verified_example),host='127.0.0.1',port=port,proxy_headers=False,access_log=False,log_level='warning')
+    uvicorn.run(PublicPreview(app,access,example=example,verified_example=verified_example,revocations=private/'device-revocations.json'),host='127.0.0.1',port=port,proxy_headers=False,access_log=False,log_level='warning')
 
 
 if __name__=='__main__':main()

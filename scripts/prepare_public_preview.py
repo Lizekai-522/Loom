@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import secrets
 
-from bootstrap_local import write_private
+from bootstrap_local import enable_auto_acceptance, ensure_human_user, write_private
 from loom.auth import load_identities
 from loom.execution import freeze_tests
 from loom.executor_config import load_executor_config
@@ -51,7 +51,7 @@ def prepare(work_root, port=8799):
     identity_path=private/'identities.json'
     if not identity_path.exists():
         write_private(identity_path,dict(schema_version='loom.local-identities/v1',identities=[dict(tenant_id='public-preview',subject_id='preview-'+role,roles=[role],token=secrets.token_urlsafe(32)) for role in ('operator','worker')]))
-    identities=load_identities(identity_path)
+    identities=ensure_human_user(identity_path,'public-preview','preview-user')
     tests=[FrozenTest('counts',{'text':'Cat dog CAT bird dog','limit':3},{'total':5,'top':[{'word':'cat','count':2},{'word':'dog','count':2},{'word':'bird','count':1}]}),
            FrozenTest('empty',{'text':''},{'total':0,'top':[]}),
            FrozenTest('ascii',{'text':'你好 A1b__A!','limit':1},{'total':3,'top':[{'word':'a','count':2}]}),
@@ -65,11 +65,14 @@ def prepare(work_root, port=8799):
     executor=private/'executor.json'
     if not executor.exists():
         write_private(executor,dict(schema_version='loom.local-executor/v1',executor_id='public-preview',identities_file=str(identity_path),secrets_file=str(work/'loom-private/model-secrets.json'),model_config=str(repo/'configs/models.example.json'),sandbox_image=(work/'loom-sandbox-image.id').read_text().strip(),host_tests={evaluation:str(host)}))
+    enable_auto_acceptance(executor,private/'auto-acceptance')
     load_executor_config(executor)
     config_path=private/'access.json'
     if not config_path.exists():write_private(config_path,dict(origin='https://unconfigured.invalid',access_code=secrets.token_urlsafe(32),port=port))
     config=json.loads(config_path.read_bytes());operator=next(i for i in identities if 'operator' in i.roles)
-    PreviewAccess(config['origin'],config['access_code'],operator.token)
+    # Invited visitors are people: their browser acts as the human user session.
+    human=next(i for i in identities if 'user' in i.roles)
+    PreviewAccess(config['origin'],config['access_code'],human.token)
     store=PreviewStore(private/'preview.db')
     # Repeatable startup restores the same draft, never creates new paid work.
     goal=create_example(store,repo,evaluation,operator,'initial-preview-example-v2')

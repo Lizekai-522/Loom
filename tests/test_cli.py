@@ -20,7 +20,8 @@ class CliTests(unittest.TestCase):
                 port = sock.getsockname()[1]
             token = secrets.token_urlsafe(24)
             environment = dict(os.environ, LOOM_TENANT_KEYS=json.dumps({"smoke": token}))
-            proc = subprocess.Popen([sys.executable, "-m", "loom", "serve", "--port", str(port), "--db", str(Path(directory) / "smoke.db")],
+            proc = subprocess.Popen([sys.executable, "-m", "loom", "serve", "--port", str(port), "--db", str(Path(directory) / "smoke.db"),
+                                     "--legacy-developer-keys"],
                                     env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                     creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
             try:

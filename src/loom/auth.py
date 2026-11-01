@@ -2,6 +2,12 @@
 
 This module is a local authentication boundary, not OIDC, a password service,
 or proof of independent people. Legacy developer keys never gain control rights.
+
+Approval is a human decision (monsoon-harness plan v2.2, section 5.3): only a
+named ``user`` session principal holds ``plan.approve``/``suite.approve``.
+Instance principals (``operator``/``worker``) assemble and execute but never
+approve, and old tenant keys no longer derive ``developer`` unless the
+deployment explicitly opts into the transition switch.
 """
 from __future__ import annotations
 
@@ -17,13 +23,46 @@ from types import MappingProxyType
 
 _ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}")
 _TOKEN = re.compile(r"[!-~]{32,4096}")
-_ROLES = frozenset({"operator", "worker", "viewer"})
+_ROLES = frozenset({"user", "operator", "worker", "viewer"})
+HUMAN_ROLE = "user"
+CONTROLLER_ROLES = frozenset({"user", "operator"})
 _PERMISSIONS = MappingProxyType({
-    "operator": frozenset({"read", "goal.write", "plan.approve", "control", "suite.approve", "pack.publish"}),
-    "worker": frozenset({"read", "task.claim", "task.submit"}),
+    # Named human user session: the only holder of approval capabilities.
+    "user": frozenset({"read", "goal.write", "plan.approve", "control", "run.pause", "suite.approve", "pack.publish"}),
+    # Instance principal that submits goals/plans and assembles approval requests.
+    "operator": frozenset({"read", "goal.write", "control", "run.pause", "pack.publish"}),
+    # Executor principal: may pause/resume to ask for a person, never terminate.
+    "worker": frozenset({"read", "task.claim", "task.submit", "run.pause"}),
     "viewer": frozenset({"read"}),
-    "developer": frozenset({"read", "goal.write", "plan.approve", "task.claim", "task.submit"}),
+    # Only through the explicit legacy transition switch; never approves.
+    "developer": frozenset({"read", "goal.write", "task.claim", "task.submit"}),
 })
+
+
+def is_controller(identity) -> bool:
+    """A named principal allowed to own delegated execution (operator or user)."""
+    roles = getattr(identity, "roles", None)
+    return type(roles) is frozenset and bool(roles & CONTROLLER_ROLES)
+
+
+def named_controllers(identities, tenant):
+    """Controllers for delegated execution: the instance operator(s) if any,
+    otherwise the human user(s). Callers still require exactly one."""
+    same = [i for i in identities if getattr(i, "tenant_id", None) == tenant]
+    operators = [i for i in same if "operator" in i.roles]
+    return operators or [i for i in same if HUMAN_ROLE in i.roles]
+
+
+def is_human(principal) -> bool:
+    """Decidable named-human test: a registered ``user`` session principal only.
+
+    The ``user`` role cannot be combined with instance roles and can never be
+    derived from a legacy tenant key, so all three plan conditions hold.
+    """
+    roles = getattr(principal, "roles", None)
+    subject = getattr(principal, "subject_id", "")
+    return (type(roles) is frozenset and roles == frozenset({HUMAN_ROLE})
+            and isinstance(subject, str) and not subject.startswith("legacy:"))
 
 
 class AuthConfigError(ValueError):
@@ -66,6 +105,8 @@ class LocalIdentity:
         _require(_identifier(self.tenant_id) and _identifier(self.subject_id))
         _require(type(self.roles) is frozenset and bool(self.roles) and self.roles <= _ROLES)
         _require(not {"operator", "worker"} <= self.roles)
+        # A human session is never also an instance principal.
+        _require(HUMAN_ROLE not in self.roles or self.roles == frozenset({HUMAN_ROLE}))
         _require(isinstance(self.token, str) and _TOKEN.fullmatch(self.token) is not None)
 
 
@@ -78,8 +119,13 @@ class AuthRegistry:
 
     __slots__ = ("_records", "_principals")
 
-    def __init__(self, tenant_keys: Mapping[str, str], identities: Sequence[LocalIdentity] = ()):
+    def __init__(self, tenant_keys: Mapping[str, str], identities: Sequence[LocalIdentity] = (), *,
+                 legacy_developer_keys: bool = False):
         _require(isinstance(tenant_keys, Mapping) and isinstance(identities, (list, tuple)))
+        _require(type(legacy_developer_keys) is bool)
+        # Old tenant keys may derive the (non-approving) developer role only when
+        # the deployment explicitly enables the transition switch.
+        _require(legacy_developer_keys or not tenant_keys)
         _require(len(tenant_keys) + len(identities) <= 128)
         records, tokens, subjects = [], set(), set()
         for tenant, token in tenant_keys.items():

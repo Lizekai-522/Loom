@@ -40,22 +40,31 @@ class LocalExecutorConfig:
     host_tests:dict[str,Path]
     source_path:Path|None=None
     verification_config:Path|None=None
+    # Private directory for autopilot held-out acceptance files, keyed by digest.
+    # Content is re-frozen and must match the plan digest; never a public path.
+    auto_acceptance_dir:Path|None=None
 
     def binding(self,role,evaluation_digest):
-        raw=self.model_config.read_bytes()
-        if len(raw)>262144:raise InvalidInput('model configuration exceeds limit')
-        return digest(dict(executor_id=self.executor_id,model_config_sha256=sha256(raw).hexdigest(),
-            sandbox_image=self.sandbox_image if role in {'developer','fixer'} else None,evaluation_digest=evaluation_digest,max_output_tokens=1024))
+        model_hash=None
+        if role!='validator':
+            raw=self.model_config.read_bytes()
+            if len(raw)>262144:raise InvalidInput('model configuration exceeds limit')
+            model_hash=sha256(raw).hexdigest()
+        return digest(dict(executor_id=self.executor_id,model_config_sha256=model_hash,
+            sandbox_image=self.sandbox_image if role in {'developer','fixer','validator'} else None,evaluation_digest=evaluation_digest,max_output_tokens=1024))
 
     def tests_for(self,spec):
         if spec['role'] in {'analyst','architect','tester','reviewer'}:return None
         registry=self.host_tests
         if self.source_path is not None:
             current=load_executor_config(self.source_path)
-            if any(getattr(current,k)!=getattr(self,k) for k in ('executor_id','identities_file','secrets_file','model_config','sandbox_image','verification_config')):
+            if any(getattr(current,k)!=getattr(self,k) for k in ('executor_id','identities_file','secrets_file','model_config','sandbox_image','verification_config','auto_acceptance_dir')):
                 raise InvalidInput('local executor configuration changed; restart required')
             registry=current.host_tests
         path=registry.get(spec['evaluation_digest'])
+        if path is None and self.auto_acceptance_dir is not None and spec['evaluation_digest'] is not None:
+            candidate=self.auto_acceptance_dir/(spec['evaluation_digest']+'.json')
+            if candidate.is_file():path=candidate
         if path is None:raise InvalidInput('HOST_TESTS_NOT_REGISTERED')
         tests=load_host_tests(path)
         if freeze_tests(tests)[1]!=spec['evaluation_digest']:raise InvalidInput('HOST_TESTS_CHANGED')
@@ -68,7 +77,8 @@ def load_executor_config(path):
         if len(raw)>65536:raise ValueError
         data=strict_json(raw)
         expected={'schema_version','executor_id','identities_file','secrets_file','model_config','sandbox_image','host_tests'}
-        if (type(data) is not dict or set(data) not in (expected,expected|{'verification_config'}) or data['schema_version']!='loom.local-executor/v1'
+        optional={'verification_config','auto_acceptance_dir'}
+        if (type(data) is not dict or not expected<=set(data)<=expected|optional or data['schema_version']!='loom.local-executor/v1'
             or type(data['executor_id']) is not str or not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}',data['executor_id'])
             or data['sandbox_image'] is not None and not re.fullmatch(r'sha256:[0-9a-f]{64}',data['sandbox_image'])
             or type(data['host_tests']) is not dict or len(data['host_tests'])>128):raise ValueError
@@ -80,5 +90,6 @@ def load_executor_config(path):
             if not re.fullmatch('[0-9a-f]{64}',key):raise ValueError
             paths[key]=resolve(value)
         verifier=resolve(data['verification_config']) if data.get('verification_config') is not None else None
-        return LocalExecutorConfig(data['executor_id'],resolve(data['identities_file']),resolve(data['secrets_file']),resolve(data['model_config']),data['sandbox_image'],paths,source,verifier)
+        auto=resolve(data['auto_acceptance_dir']) if data.get('auto_acceptance_dir') is not None else None
+        return LocalExecutorConfig(data['executor_id'],resolve(data['identities_file']),resolve(data['secrets_file']),resolve(data['model_config']),data['sandbox_image'],paths,source,verifier,auto)
     except (OSError,TypeError,ValueError,RecursionError):raise InvalidInput('invalid local executor configuration') from None

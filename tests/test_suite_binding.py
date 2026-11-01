@@ -151,9 +151,9 @@ def test_http_legacy_can_edit_draft_but_only_named_operator_can_approve_suite_pl
     b=binding
     token="suite-binding-api-public-fixture-operator-00000000"
     legacy="suite-binding-api-public-fixture-legacy-00000000"
-    identity=LocalIdentity("a","operator",frozenset({"operator"}),token)
+    identity=LocalIdentity("a","operator",frozenset({"user"}),token)
     saved=b["workflow"].save_plan("a",b["target"],"target-plan",b["definition"],0)
-    with TestClient(create_app(b["store"],{"a":legacy},identities=(identity,))) as client:
+    with TestClient(create_app(b["store"],{"a":legacy},identities=(identity,),legacy_developer_keys=True)) as client:
         path=f"/v1/goals/{b['target']}/plan/approve"
         data={"expected_revision":saved["revision"],"expected_digest":saved["digest"]}
         assert client.post(path,json=data,headers={"Authorization":"Bearer "+legacy,"Idempotency-Key":"legacy-approve"}).status_code==403

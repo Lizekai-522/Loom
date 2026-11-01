@@ -243,7 +243,7 @@ def test_review_plan_approval_requires_operator_and_current_source(handoff):
 def test_review_api_shows_bound_source_and_only_operator_approves_input(handoff):
     b = handoff; result = asyncio.run(generate(b, reviewer_claim(b)))
     identities = (OP, WORKER, LocalIdentity('a', 'viewer', frozenset({'viewer'}), 'reviewer-fixture-viewer-00000000'))
-    with TestClient(create_app(b['store'], {'a': 'reviewer-fixture-legacy-00000000'}, identities=identities)) as client:
+    with TestClient(create_app(b['store'], {'a': 'reviewer-fixture-legacy-00000000'}, identities=identities,legacy_developer_keys=True)) as client:
         headers = lambda i: {'Authorization': 'Bearer ' + i.token, 'Idempotency-Key': 'http-approve-findings'}
         response = client.get('/v1/runs/' + b['target'] + '/review', headers=headers(identities[2]))
         task = next(t for t in response.json()['tasks'] if t['role'] == 'reviewer')

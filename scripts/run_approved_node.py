@@ -1,4 +1,4 @@
-"""统一预览/执行已批准节点：六种执行角色，独立验证保持待配置。"""
+"""统一预览/执行已批准节点；终验只复验指定程序，不生成代码。"""
 import argparse
 import asyncio
 import json
@@ -6,7 +6,7 @@ from pathlib import Path
 
 from loom.approved_execution import ApprovedExecutionService, ReadOnlyStore
 from loom.artifacts import ArtifactService
-from loom.auth import load_identities
+from loom.auth import load_identities, named_controllers
 from loom.execution import LocalTaskRunner, freeze_tests
 from loom.local_config import load_project_secrets
 from loom.model_gateway import ModelGateway, GatewayError, load_model_config
@@ -35,7 +35,8 @@ async def run(args):
     with readonly.connect() as db:
         db.execute('BEGIN')
         spec=ArtifactService(readonly,initialize=False)._contract(db,args.tenant,args.run_id,args.run_id+':'+args.node_id)
-    if spec['role']=='validator':raise Conflict('independent validator remains pending configuration')
+    validator=spec['role']=='validator' and bool(spec.get('validation_source'))
+    if spec['role']=='validator' and not validator:raise Conflict('independent validator remains pending configuration')
     structured=spec['role'] in {'analyst','architect','tester','reviewer'}
     if structured and args.tests_file:raise ValueError('STRUCTURED_ROLE_HAS_NO_HOST_TESTS')
     if not structured and not args.tests_file:raise ValueError('FROZEN_HOST_TESTS_REQUIRED')
@@ -44,38 +45,44 @@ async def run(args):
     preview=ApprovedExecutionService(readonly).preview(*params,max_output_tokens=args.max_output_tokens)
     if not args.execute:return preview
     if args.preview_digest!=preview['preview_digest']:raise ValueError('CURRENT_PREVIEW_REQUIRED')
-    if not args.identities_file or not args.secrets_file:raise ValueError('PRIVATE_CONFIGURATION_REQUIRED')
+    if not args.identities_file or (not validator and not args.secrets_file):raise ValueError('PRIVATE_CONFIGURATION_REQUIRED')
     identities=load_identities(args.identities_file)
-    operators=[i for i in identities if i.tenant_id==args.tenant and 'operator' in i.roles]
+    operators=named_controllers(identities,args.tenant)
     workers=[i for i in identities if i.tenant_id==args.tenant and 'worker' in i.roles]
     if len(operators)!=1 or len(workers)!=1:raise ValueError('UNAMBIGUOUS_OPERATOR_AND_WORKER_REQUIRED')
-    routes,roles=load_model_config(args.model_config)
-    secrets=load_project_secrets(args.secrets_file,allowed_names={r.key_env for r in routes})
     sandbox=None
     if not structured:
         if not args.sandbox_image:raise ValueError('APPROVED_IMAGE_REQUIRED')
         sandbox=DockerSandbox(SandboxConfig(args.sandbox_image))
-        await asyncio.to_thread(sandbox.preflight)
-    async with ModelGateway(routes,role_aliases=roles,environ=secrets) as gateway:
-        readiness=gateway.readiness(preview['model_alias'])
-        if not readiness.ready:raise GatewayError(readiness.reason)
+        if not validator:await asyncio.to_thread(sandbox.preflight)
+    if validator:
+        from loom.validator_execution import ValidatorTaskRunner
         store=Store(args.db)
         claim=ApprovedExecutionService(store).claim(*params,args.preview_digest,operator=operators[0],worker=workers[0],max_output_tokens=args.max_output_tokens)
-        if structured:result=await RoleTaskRunner(store,gateway).run_role(claim,max_output_tokens=args.max_output_tokens)
-        else:
-            runner=LocalTaskRunner(store,gateway,sandbox)
-            result=await (runner.run_python_cycle(claim,tests,max_output_tokens=args.max_output_tokens) if spec.get('repair')
-                          else runner.run_python(claim,tests,max_output_tokens=args.max_output_tokens))
-        # The report is metadata only. Program/role bodies remain in the ledger.
-        safe={k:result[k] for k in ('task_id','status','artifact_id','artifact_content_hash','content_hash','model_call_id',
-            'schema_validated','model_source_recorded','hard_criteria_passed','execution_context_digest','usage',
-            'usage_cost_upper_microusd','billing_uncertain','stop_reason','reason','verified') if k in result}
-        safe.setdefault('verified',False)
-        return dict(passed=result.get('status')=='submitted' and (structured or result.get('hard_criteria_passed') is True),
-            mode='existing-plan-node-execution',run_id=args.run_id,task_id=claim.task_id,role=spec['role'],
-            execution_kind=preview['execution_kind'],plan_digest=args.expected_plan_digest,execution=safe,
-            creates_new_goal=False,verified=False,counts_as_success=False,full_workflow_completed=False,
-            independent_second_model='pending_configuration')
+        result=await ValidatorTaskRunner(store,sandbox).run(claim,tests)
+    else:
+        routes,roles=load_model_config(args.model_config)
+        secrets=load_project_secrets(args.secrets_file,allowed_names={r.key_env for r in routes})
+        async with ModelGateway(routes,role_aliases=roles,environ=secrets) as gateway:
+            readiness=gateway.readiness(preview['model_alias'])
+            if not readiness.ready:raise GatewayError(readiness.reason)
+            store=Store(args.db)
+            claim=ApprovedExecutionService(store).claim(*params,args.preview_digest,operator=operators[0],worker=workers[0],max_output_tokens=args.max_output_tokens)
+            if structured:result=await RoleTaskRunner(store,gateway).run_role(claim,max_output_tokens=args.max_output_tokens)
+            else:
+                runner=LocalTaskRunner(store,gateway,sandbox)
+                result=await (runner.run_python_cycle(claim,tests,max_output_tokens=args.max_output_tokens) if spec.get('repair')
+                              else runner.run_python(claim,tests,max_output_tokens=args.max_output_tokens))
+    # The report is metadata only. Program/role bodies remain in the ledger.
+    safe={k:result[k] for k in ('task_id','status','artifact_id','artifact_content_hash','content_hash','model_call_id',
+        'schema_validated','model_source_recorded','hard_criteria_passed','execution_context_digest','usage',
+        'usage_cost_upper_microusd','billing_uncertain','stop_reason','reason','verified','generation_model_used') if k in result}
+    safe.setdefault('verified',False)
+    return dict(passed=result.get('status')=='submitted' and (structured or result.get('hard_criteria_passed') is True),
+        mode='existing-plan-node-execution',run_id=args.run_id,task_id=claim.task_id,role=spec['role'],
+        execution_kind=preview['execution_kind'],plan_digest=args.expected_plan_digest,execution=safe,
+        creates_new_goal=False,verified=False,counts_as_success=False,full_workflow_completed=False,
+        independent_second_model='pending_configuration')
 
 
 def main():

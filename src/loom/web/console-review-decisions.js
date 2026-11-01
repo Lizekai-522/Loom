@@ -5,7 +5,7 @@ window.LoomReviewDecisions = function ({state, $, node, has, request, publicErro
   const states = {awaiting_operator: "待操作员处理", awaiting_independent_models: "等待独立模型复核", fixer_input_approved: "已批准修复输入"};
   let binding = "", generation = 0, pending = false, preview = null, history = [], error = "", receipt = null, attempt = null;
   const item = () => state.artifactDetail;
-  const operator = () => has("control") && state.principal?.roles?.includes("operator");
+  const operator = () => has("control") && (state.principal?.roles||[]).some((r) => r === "operator" || r === "user");
   const ready = () => runChecked() && !state.busy && state.detailStatus === "ready" && state.artifactStatus === "ready"
     && state.artifactsSelection === state.selection && sameArtifact(item(), state.artifacts.find((c) => c.artifact_id === state.artifactId));
   const path = () => `/v1/runs/${encodeURIComponent(state.runId)}/artifacts/${encodeURIComponent(state.artifactId)}`;

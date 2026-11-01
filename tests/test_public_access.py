@@ -10,12 +10,13 @@ import pytest
 
 from loom.api import create_app
 from loom.auth import LocalIdentity
-from loom.public_access import COOKIE, PreviewAccess, PreviewStore, PublicPreview
+from loom.public_access import COOKIE, MAX_SESSIONS, PreviewAccess, PreviewStore, PublicPreview
 from loom.store import Conflict
 from loom.workflow import WorkflowService
 
 ORIGIN='https://loom-preview.example'
-OP=LocalIdentity('preview','operator',frozenset({'operator'}),'preview-test-operator-00000000000000000')
+# Invited visitors are people, so the injected server-held identity is the human user session.
+OP=LocalIdentity('preview','operator',frozenset({'user'}),'preview-test-operator-00000000000000000')
 CONFIG=PreviewAccess(ORIGIN,'public_fixture_access_code_000000000000000',OP.token)
 HEADERS={'Origin':ORIGIN,'Idempotency-Key':'one'}
 GOAL=dict(title='公网测试',description='仅测试，无真实模型调用',acceptance=['tests.pass'],cost_limit_microusd=100000,token_limit=10000)
@@ -128,7 +129,11 @@ def test_logout_expiry_restart_and_policy_rotation_invalidate_sessions(public):
     assert client.post('/preview/logout',headers={'Origin':ORIGIN}).status_code==204
     assert client.get('/v1/me').status_code==401
     login(client);app.sessions={k:time.monotonic()-1 for k in app.sessions}
-    assert client.get('/v1/me').status_code==401
+    # Cache expiry alone re-admits by signature; the signed expiry is the real limit.
+    from unittest.mock import patch
+    real=time.time
+    with patch('loom.public_access.time.time',lambda:real()+CONFIG.session_seconds+1):
+        assert client.get('/v1/me').status_code==401
     login(client);app.config=lambda:replace(CONFIG,access_code='new_private_access_code_000000000000000')
     assert client.get('/v1/me').status_code==401
 
@@ -179,9 +184,11 @@ def test_example_endpoint_is_explicit_idempotent_and_bounded(public):
 
 
 def test_shared_preview_limits_login_sessions_and_write_flood(public):
-    client,app,_=public;client.get('/preview/login');app.sessions={str(i):time.monotonic()+100 for i in range(16)}
-    assert client.post('/preview/login',data={'code':CONFIG.access_code},headers={'Origin':ORIGIN}).status_code==429
-    app.sessions.clear();login(client)
+    client,app,_=public;client.get('/preview/login');app.sessions={str(i):time.monotonic()+100+i for i in range(MAX_SESSIONS)}
+    # A full cache evicts the earliest-expiring entry instead of locking new devices out for 30 days.
+    login(client)
+    assert len(app.sessions)==MAX_SESSIONS and '0' not in app.sessions
+    assert client.get('/v1/me').status_code==200
     app.writes.extend([time.monotonic()]*60)
     assert client.post('/v1/goals',json=GOAL,headers=HEADERS).status_code==429
     assert client.get('/v1/goals').status_code==200
@@ -196,3 +203,52 @@ def test_windows_chinese_launchers_have_power_shell_compatible_encoding():
     root=Path(__file__).resolve().parents[1]
     for name in ('start_local_dev.ps1','start_public_preview.ps1','stop_public_preview.ps1'):
         assert (root/'scripts'/name).read_bytes().startswith(b'\xef\xbb\xbf'),name
+
+
+def test_remembered_device_survives_restart_but_not_logout_or_rotation(public,tmp_path):
+    client,app,store=public;login(client)
+    cookie=client.cookies.get(COOKIE)
+    assert cookie.startswith('v1.') and CONFIG.access_code not in cookie and OP.token not in cookie
+    # Simulated process restart: in-memory sessions are gone, the signed device token is not.
+    app.sessions.clear();app.revoked.clear()
+    assert client.get('/v1/me').status_code==200
+    restarted=PublicPreview(create_app(store,{},identities=(OP,),local_console=False),lambda:CONFIG)
+    other=TestClient(restarted,base_url=ORIGIN);other.cookies.set(COOKIE,cookie,domain='loom-preview.example')
+    assert other.get('/v1/me').status_code==200
+    forged=cookie[:-4]+('0000' if not cookie.endswith('0000') else '1111')
+    third=TestClient(PublicPreview(create_app(store,{},identities=(OP,),local_console=False),lambda:CONFIG),base_url=ORIGIN)
+    third.cookies.set(COOKIE,forged,domain='loom-preview.example')
+    assert third.get('/v1/me').status_code==401
+    rotated=TestClient(PublicPreview(create_app(store,{},identities=(OP,),local_console=False),
+        lambda:replace(CONFIG,access_code='rotated_private_access_code_00000000000')),base_url=ORIGIN)
+    rotated.cookies.set(COOKIE,cookie,domain='loom-preview.example')
+    assert rotated.get('/v1/me').status_code==401
+    assert client.post('/preview/logout',headers={'Origin':ORIGIN}).status_code==204
+    client.cookies.set(COOKIE,cookie,domain='loom-preview.example')
+    assert client.get('/v1/me').status_code==401
+
+
+def test_session_routes_are_reachable_through_preview(public):
+    client,_,_=public;login(client)
+    assert client.get('/v1/sessions').json()=={'items':[]}
+    created=client.post('/v1/sessions',json={'prompt':'写一个加一程序'},headers={'Origin':ORIGIN,'Idempotency-Key':'s1'})
+    assert created.status_code==201 and created.json()['state']=='running'
+    assert client.get('/v1/sessions/'+created.json()['session_id']).status_code==200
+
+
+def test_logout_survives_restart_when_revocations_are_persisted(public,tmp_path):
+    client,app,store=public
+    path=tmp_path/'device-revocations.json'
+    first=PublicPreview(create_app(store,{},identities=(OP,),local_console=False),lambda:CONFIG,revocations=path)
+    c1=TestClient(first,base_url=ORIGIN);login(c1);cookie=c1.cookies.get(COOKIE)
+    assert c1.post('/preview/logout',headers={'Origin':ORIGIN}).status_code==204
+    restarted=PublicPreview(create_app(store,{},identities=(OP,),local_console=False),lambda:CONFIG,revocations=path)
+    c2=TestClient(restarted,base_url=ORIGIN);c2.cookies.set(COOKIE,cookie,domain='loom-preview.example')
+    assert c2.get('/v1/me').status_code==401
+    assert cookie.split('.')[2] not in path.read_text() and CONFIG.access_code not in path.read_text()
+
+
+def test_full_cache_never_locks_out_remembered_devices(public):
+    client,app,store=public;login(client);cookie=client.cookies.get(COOKIE)
+    app.sessions={str(i):time.monotonic()+100 for i in range(MAX_SESSIONS)}
+    assert client.get('/v1/me').status_code==200

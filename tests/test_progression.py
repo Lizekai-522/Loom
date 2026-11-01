@@ -68,7 +68,7 @@ def test_metadata_has_no_candidate_bodies_code_prompts_or_hidden_tests(node_case
 
 def test_progression_auth_tenant_bound_and_get_only(node_case):
     b=node_case('analyst');viewer=LocalIdentity('a','viewer',frozenset({'viewer'}),'progress-viewer-public-fixture-00000000')
-    with TestClient(create_app(b['store'],{'b':'progress-other-public-fixture-00000000'},identities=(OP,WORKER,viewer))) as client:
+    with TestClient(create_app(b['store'],{'b':'progress-other-public-fixture-00000000'},identities=(OP,WORKER,viewer),legacy_developer_keys=True)) as client:
         path='/v1/runs/'+b['run']+'/progression'
         assert client.get(path).status_code==401
         assert client.get(path,headers={'Authorization':'Bearer progress-other-public-fixture-00000000'}).status_code==404

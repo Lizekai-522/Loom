@@ -141,7 +141,7 @@ class WorkflowScriptTests(unittest.IsolatedAsyncioTestCase):
         store = Store(self.args.db)
         remote = Store(self.temp / "other.db") if wrong_database else store
         identities = tuple(LocalIdentity("first-round", role, frozenset({role}), "workflow-fixture-only-" + role + "-00000000")
-                           for role in ("operator", "worker"))
+                           for role in ("operator", "worker", "user"))
         calls, api_calls = [], []
         sandbox = FakeSandbox(passed=mode != "host-failure")
         bodies = (REQUIREMENTS, DESIGN, CHECKS, {"source": SOURCE})

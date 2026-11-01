@@ -152,7 +152,7 @@ def test_cross_tenant_cross_run_unsubmitted_and_worker_claims_rejected(review_ca
 def test_http_permissions_source_opt_in_and_pure_validation(review_case):
     b = review_case; ready(b)
     path = f'/v1/runs/{b["run"]}/tasks/{b["claim"].task_id}'
-    with TestClient(create_app(b["store"], {"a": "review-api-public-fixture-a", "b": "review-api-public-fixture-b"})) as client:
+    with TestClient(create_app(b["store"], {"a": "review-api-public-fixture-a", "b": "review-api-public-fixture-b"},legacy_developer_keys=True)) as client:
         headers = {"Authorization": "Bearer review-api-public-fixture-a"}
         assert client.get(path + "/review-input").status_code == 401
         assert client.get(path + "/review-input", headers={"Authorization": "Bearer review-api-public-fixture-b"}).status_code == 404

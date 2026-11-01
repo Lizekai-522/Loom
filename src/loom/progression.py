@@ -4,6 +4,7 @@ import json
 from .approved_execution import ApprovedExecutionService
 from .artifacts import ArtifactService
 from .execution import FLASH_CONTEXT_LIMIT, cost_upper_microusd
+from .model_pricing import FLASH, prompt_token_bound
 from .review_decisions import ReviewDecisionService
 from .store import Conflict, InvalidInput, NotFound, digest
 
@@ -40,7 +41,7 @@ class ProgressionService:
                     item.update(action='view_plan',stage='plan_approval_required');nodes.append(item);continue
                 try:spec=self.artifacts._contract(db,tenant,run_id,task['id'])
                 except (Conflict,InvalidInput,NotFound):nodes.append(item);continue
-                item.update(role=spec['role'],node_id=spec['node_id'],evaluation_digest=spec['evaluation_digest'],requires_host_tests=spec['role'] in {'developer','fixer'},
+                item.update(role=spec['role'],node_id=spec['node_id'],evaluation_digest=spec['evaluation_digest'],requires_host_tests=spec['role'] in {'developer','fixer','validator'},
                     blocked_by=[i for i in json.loads(task['depends']) if i not in done])
                 own=next(((row,body,current) for row,body,current in candidates if row['source_task_id']==task['id'] and row['source_epoch']==task['epoch']),None)
                 if own and own[2]:item['artifact_id']=own[0]['id']
@@ -56,7 +57,7 @@ class ProgressionService:
                 elif task['status']!='pending' or task['epoch']!=0:item.update(stage='attempt_requires_review',action='view_interventions')
                 elif run['status']!='open':item.update(stage='run_control_required',action='view_interventions')
                 elif unknown or reserved:item.update(stage='effect_reconciliation_required',action='view_interventions')
-                elif spec['role']=='validator':item.update(stage='independent_model_pending',action='view_interventions')
+                elif spec['role']=='validator' and not spec.get('validation_source'):item.update(stage='independent_model_pending',action='view_interventions')
                 elif item['blocked_by']:item.update(stage='hard_dependencies_blocked',action='view_evidence')
                 else:
                     try:
@@ -71,10 +72,12 @@ class ProgressionService:
                                     if candidate['kind']=='review-findings' and body['verdict']=='no_findings':
                                         item.update(stage='no_fix_findings',action='review_decision',artifact_id=candidate['id'])
                                     else:item['suggested_inputs'].append(dict(artifact_id=candidate['id'],kind=candidate['kind'],source_node=candidate['source_node']))
-                        elif (spec['limits']['cost_limit_microusd']<cost_upper_microusd(FLASH_CONTEXT_LIMIT,1024)
-                              or spec['limits']['token_limit']<FLASH_CONTEXT_LIMIT+1024
-                              or run['cost_limit']-run['spent']-run['reserved']<cost_upper_microusd(FLASH_CONTEXT_LIMIT,1024)
-                              or run['token_limit']-run['tokens_spent']-run['tokens_reserved']<FLASH_CONTEXT_LIMIT+1024):
+                        elif spec['role']=='validator':
+                            item.update(stage='host_tests_required',action='view_execution',ready_for_preview=True)
+                        elif (spec['limits']['cost_limit_microusd']<cost_upper_microusd(prompt_token_bound(spec,FLASH),1024)
+                              or spec['limits']['token_limit']<prompt_token_bound(spec,FLASH)+1024
+                              or run['cost_limit']-run['spent']-run['reserved']<cost_upper_microusd(prompt_token_bound(spec,FLASH),1024)
+                              or run['token_limit']-run['tokens_spent']-run['tokens_reserved']<prompt_token_bound(spec,FLASH)+1024):
                             item.update(stage='budget_insufficient',action='view_interventions')
                         elif spec['role'] in {'analyst','architect','tester','reviewer'}:
                             preview=ApprovedExecutionService(self.store)._check_in(db,tenant,run_id,spec['node_id'],plan['plan_digest'],None,1024)[1]

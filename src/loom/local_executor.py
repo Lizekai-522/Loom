@@ -2,6 +2,7 @@
 import asyncio
 
 from .auth import load_identities
+from .autopilot import UNAVAILABLE,SessionService
 from .dispatch import DispatchService
 from .execution import LocalTaskRunner
 from .executor_status import ExecutorStatus
@@ -18,8 +19,25 @@ class LocalExecutor:
         self.identities=load_identities(config.identities_file)
         self.requests=DispatchService(store,config=config,identities=self.identities)
         self.status=ExecutorStatus(store,config,self.identities)
+        verification=None
+        if getattr(config,'verification_config',None) is not None:
+            try:
+                from .verification_config import load_verification_config
+                from .verification_runtime import VerificationRuntime
+                verification=VerificationRuntime(store,load_verification_config(config.verification_config))
+            except Exception:
+                # Configured but unloadable: sessions stop instead of delivering as unverified.
+                verification=UNAVAILABLE
+        self.autopilot=SessionService(store,executor_config=config,identities=self.identities,verification=verification)
+
+    def advance_sessions(self):
+        """Delegated audited steps only; never calls a model or the sandbox."""
+        try:return self.autopilot.tick()
+        except Exception:return []
 
     async def drain_one(self):
+        # DB-only work, kept off the event loop so heartbeats stay fresh.
+        await asyncio.to_thread(self.advance_sessions)
         states=self.requests.pending()
         # A previous process may have committed output before saving its request
         # receipt. Recover only from the ledger, never by repeating a model call.
@@ -34,6 +52,15 @@ class LocalExecutor:
             worker=self.requests._identity(tenant,'worker',current['worker_id'])
             with self.store.connect() as db:spec=self.requests.artifacts._contract(db,tenant,run_id,current['task_id'])
             if self.config.binding(spec['role'],spec['evaluation_digest'])!=current['runtime_binding']:raise Conflict('local policy changed')
+            if current['role']=='validator':
+                from .validator_execution import ValidatorTaskRunner
+                if not self.config.sandbox_image:raise Conflict('immutable image not configured')
+                sandbox=DockerSandbox(SandboxConfig(self.config.sandbox_image))
+                await asyncio.to_thread(sandbox.preflight)
+                claim,tests,spec=self.requests.start(tenant,run_id,request_id,operator=operator,worker=worker)
+                claimed=True
+                await ValidatorTaskRunner(self.store,sandbox).run(claim,tests)
+                return self.requests.finish(tenant,run_id,request_id)
             routes,roles=load_model_config(self.config.model_config)
             if self.config.binding(spec['role'],spec['evaluation_digest'])!=current['runtime_binding']:raise Conflict('local policy changed')
             secrets=load_project_secrets(self.config.secrets_file,allowed_names={r.key_env for r in routes})

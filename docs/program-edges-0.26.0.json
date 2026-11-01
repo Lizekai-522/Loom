@@ -1,0 +1,77 @@
+{
+  "passed": true,
+  "version": "0.26.0",
+  "run_id": "83e2feb5-2577-46e6-8532-6b4986ea212d",
+  "edge_cases": 12,
+  "source_matches_accepted_export": true,
+  "source_sha256": "b14029ba658804aee7f50752b0f837208f7d498e978e7852ec85cf7b3c7dc178",
+  "tests_sha256": "f43e2f05b51db402f202b167428a694200d65f9b18c110fa4f47590a2d2bba75",
+  "cases": [
+    {
+      "name": "invalid-0",
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "name": "invalid-1",
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "name": "invalid-2",
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "name": "invalid-3",
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "name": "invalid-4",
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "name": "invalid-5",
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "name": "invalid-6",
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "name": "upper-limit",
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "name": "punctuation-ascii",
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "name": "digits-underscores",
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "name": "tie-limit-one",
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "name": "multiline",
+      "passed": true,
+      "status": "passed"
+    }
+  ],
+  "real_docker": true,
+  "provider_requests": 0,
+  "original_goal_evaluation_unchanged": true,
+  "original_goal_verdict_unchanged": true,
+  "automatic_retry": false,
+  "production_ready": false
+}

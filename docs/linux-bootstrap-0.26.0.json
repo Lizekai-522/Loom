@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "version": "0.26.0",
+  "linux_bootstrap_tests": 5,
+  "network_disabled": true,
+  "real_provider_requests": 0,
+  "state_permissions_checked": true,
+  "actual_signing_keys_generated": true,
+  "existing_state_overwrite_refused": true,
+  "systemd_cloud_host_tested": false,
+  "first_harness_failure": "The isolated check image initially omitted source pack/config assets; corrected read-only mounts restored the documented source distribution layout.",
+  "production_ready": false
+}

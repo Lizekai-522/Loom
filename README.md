@@ -1,6 +1,10 @@
 # Loom
 
-基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.23.0**增加审查意见的独立双签验收：同时核对意见正文、被审原始产物、冻结需求和宿主摘要，绑定同一文件摘要。隐藏终验资料继续隔离，验证通过仍不自动授权修复。保留0.22.0正常安装包与领域版本资产。[审查验收](docs/reviewer-verification.md) · [全功能计划](docs/full-function-plan-2026-10-30.md) · [62项验收表](docs/functional-acceptance.md) · [本轮验证](docs/validation-0.23.0.md) · [四轮上线计划](docs/launch-four-rounds-2026-10-30.md) · [配额说明](docs/quotas.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
+2026-11-02 主分支集成检查：复核 0.30.0 代码分支并保留原主分支历史；修复函数参数校验漏查数组尾部、非法规则触发异常和浏览器样例旧身份配置，校正会话创建权限与批准提示。原有完整回归 1334 主/387 子、修复后专项 61 项、真实基础设施 89 主/16 子、浏览器 16 项通过。基础设施中的模型接口为测试替身，本轮新增真实模型调用为 0；外部集成 DNS 目标限制与实际云端验收仍待完成。合并不代表完整 62 项或生产门槛全部通过。
+
+基于Loom v2.1及[第四轮复审后项目策划书](docs/project-plan-2026-10-28.md)的Agent编排项目。**0.30.0**以仓库 PR #1 方案 v2.2 为准完成 Loom 侧批次三：批准只能由具名人类用户（`user` 角色）做出，实例主体不再代批；自动会话的需求与测试设计仍自动推进，实现计划等你一次点击批准（附样例≥3个时创建即批准、全程自动）；新增事件游标、续租、副作用登记、发起人归集、执行域策略与模板参数契约接口，旧式租户密钥需显式开关；**0.29.0**补齐此前未开始的13项需求的首版实现与接口（动态Agent、能力画像、知识与记忆、拓扑自适应、一致性、工具选择、改图原语、MCP、函数调用校验、HTTP插件、灰度回滚、风险抽样），均为部分实现待综合验收；**0.28.0**按请求字节上限计算模型预留（自动会话单次成本上界降约5–7倍），并支持在会话中附上自己的验收样例作为不进入模型提示的独立终验；**0.27.1**修复红队审查发现的复核状态、停止恢复、取消、公网设备与留出用例可见性问题；**0.27.0**把首页改为对话式自动会话：在 `/console` 用一句话描述程序，Loom 自动分析需求、设计测试、编写代码并在隔离环境用留出用例验收，只在预算不足、调用结果未知或验收失败时停下；交付后可以在同一会话继续补充修改要求，参考上一版程序重新实现。公网体验输入一次访问码后记住设备 30 天，服务重启后仍有效。0.26.0 的项目空间保留在 `/console/expert`，用于审阅计划、证据和人工待办。留出用例由测试角色模型生成，不等同于独立双模型复核。
+
+0.26.0新增中文项目空间：窄项目侧栏、需求输入区、会话式运行概览、任务与源码、可展开控制面板和深浅色外观。页面自动进入，不要求连接本地工作台。新增[Linux 云端部署包](deployment/README.md)，目标为电脑关机后继续运行；当前尚待购买服务器和云端验收。[全功能计划](docs/full-function-plan-2026-10-30.md) · [62项验收表](docs/functional-acceptance.md) · [本轮验证](docs/validation-0.26.0.md)。主分支集成与完整生产交付分别验收。 · [四轮上线计划](docs/launch-four-rounds-2026-10-30.md) · [配额说明](docs/quotas.md) · [公网体验](docs/public-preview.md) · [本机启动](docs/local-dispatch.md)
 
 0.17.4历史重测967主/382子、Chromium63项，三份源码下载与权威原始字节一致；0.17.5测试与真实基础设施证据单独登记。[历史验证](docs/validation.md)
 
@@ -8,13 +12,14 @@
 
 ## 当前可以做什么
 
+- **自动会话**：`POST /v1/sessions` 一句话创建；创建请求由具名人类用户（`user`）发出并在请求内批准需求与测试设计计划，私有执行器复用已有审计入口自动推进（精确输入、发起执行、冻结开发套件、留出验收、配置后申请独立复核）；实现计划由人通过 `POST /v1/sessions/{id}/approve` 一次批准，执行器从不代批；任何非例行状态即停止。`parent_session_id` 创建追问轮次，携带原始需求、历次补充和上一版程序（不含留出用例）。
 - 将 Goal / Intent / Task、完整事件信封、幂等回执与 outbox 持久化到 SQLite。
 - 从 HTTP 创建 Goal 草案，保存带 revision/digest 的计划，按审阅版本批准后在单一事务中创建任务；草案不可领取，批准后旧增任务入口和计划修改均被拒绝。
 - 冻结 analyst、architect、tester、developer、reviewer、fixer、validator 的不同技能/工具权限、模型路由、依赖、指令、预算与判据摘要；七角色规划存在不表示七角色真实执行已经完成。
 - 按依赖和优先级派发任务，原子预占共享容量，保留验证通道，拒绝旧 epoch 提交。
 - Gate-P 使用受信范围、Anchor 和判据注册表；Gate-V 校验明确的双签成功状态与内容/规则/证据版本绑定。
 - Worker HTTP 提交仅进入 `submitted`，无法直接置 `done` 或放行下游。可信验证入口不作为外部 HTTP 路由开放。
-- 以具名本地主体区分 operator、worker、viewer；operator 不能认领/提交任务，worker 不能批准计划或人工控制，具名 Worker 的 worker_id 必须匹配认证主体。旧租户 key 仍作为 legacy developer 兼容本地 fixture，但没有 control 权限。
+- 以具名本地主体区分 user（人类用户会话，唯一可批准计划/套件）、operator（实例主体：提交目标与计划、人工控制，不能批准）、worker（认领/提交，可暂停/恢复请求人工介入，不能终止）、viewer；具名 Worker 的 worker_id 必须匹配认证主体。旧租户 key 默认拒绝，仅在 `--legacy-developer-keys` 过渡开关下作为无批准、无 control 权限的 legacy developer 兼容本地 fixture。
 - 在 `/console` 创建目标、导入/保存/批准计划、查看任务和人工待办；查看证据时只将匹配当前 task/epoch/content hash 的真实事件作为执行证据，不信任候选自报通过。
 - 用事务、幂等回执与审计事件持久化暂停/恢复/终止和有依据的未知模型调用核对；未知调用及未核对预留不会自动退款，终止不计成功。核对后也不会自动发起模型或放行依赖。
 - 按 run 原子预留金额/token 上界，结算可幂等；实际用量超过预留时记录超支并挂起，避免隐藏账单。
@@ -39,6 +44,7 @@ Python 3.11+，建议使用独立虚拟环境。以下 PowerShell 命令在本�
 
 ```powershell
 python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade "pip>=26.2.2"
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock
 .\.venv\Scripts\python.exe -m pip install --no-deps -e .
 .\.venv\Scripts\python.exe scripts/check_spec.py
@@ -58,7 +64,7 @@ python -m venv .venv
 & '../../work/loom-venv/Scripts/python.exe' '../../work/launch_loom_first_round.py'
 ```
 
-控制台入口为 <http://127.0.0.1:8796/console>，接口文档为 <http://127.0.0.1:8796/docs>。本机开发模式自动进入操作员界面，无需输入访问凭据；浏览器不接收Bearer或模型API密钥。静态资源无CDN，CSP禁止外部及内联脚本。重载或断开会清除待确认幂等键，须先核对列表再重发。[控制台](docs/console.md) · [本机身份](docs/local-auth.md)
+控制台入口为 <http://127.0.0.1:8796/console>，接口文档为 <http://127.0.0.1:8796/docs>。本机开发模式自动以唯一的具名用户（user）进入，无需输入访问凭据；浏览器不接收Bearer或模型API密钥。静态资源无CDN，CSP禁止外部及内联脚本。重载或断开会清除待确认幂等键，须先核对列表再重发。[控制台](docs/console.md) · [本机身份](docs/local-auth.md)
 
 以下是独立安装后的通用启动方式，私有身份文件须按文档预先创建，路径位于源码及公开 outputs 之外；示例路径需替换为自己的私有文件。API health 的 stage 仍为 S1-local，表示 SQLite 本机内核边界：
 

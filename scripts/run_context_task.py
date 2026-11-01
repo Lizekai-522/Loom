@@ -77,7 +77,7 @@ async def run(args, private, progress=None):
     workflows = WorkflowService(store)
     identities = load_identities(args.identities_file)
     selected = {role: next((item for item in identities if item.tenant_id == args.tenant and role in item.roles), None)
-                for role in ("operator", "worker")}
+                for role in ("operator", "worker", "user")}
     if any(value is None for value in selected.values()):
         raise CheckFailure("MATCHED_NAMED_IDENTITIES_REQUIRED")
     private.extend(item.token for item in identities)
@@ -119,7 +119,7 @@ async def run(args, private, progress=None):
             goal_path = "/v1/goals/" + run_id
             base = "/v1/runs/" + run_id
             plan = request("operator", "PUT", goal_path + "/plan", {"definition": definition.model_dump(mode="json"), "expected_revision": 0}, prefix + ":plan")
-            approved = request("operator", "POST", goal_path + "/plan/approve", {
+            approved = request("user", "POST", goal_path + "/plan/approve", {
                 "expected_revision": plan["revision"], "expected_digest": plan["digest"]}, prefix + ":approve")
             worker = selected["worker"].subject_id
             source = request("worker", "POST", base + "/claim", {"worker_id": worker, "lease_seconds": 90})["claim"]

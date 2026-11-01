@@ -19,7 +19,8 @@ def main():
     serve.add_argument("--db", default="artifacts/dev.db")
     serve.add_argument("--port", type=int, default=8796)
     serve.add_argument("--identities-file", type=Path, help="private named local identities; never put tokens in command arguments")
-    serve.add_argument("--local-console", action="store_true", help="本机开发模式：无需输入凭据，使用唯一已配置操作员；仅限回环访问")
+    serve.add_argument("--local-console", action="store_true", help="本机开发模式：无需输入凭据，使用唯一已配置的具名用户（user）；仅限回环访问")
+    serve.add_argument("--legacy-developer-keys", action="store_true", help="过渡开关：允许 LOOM_TENANT_KEYS 旧式密钥派生 developer（不含批准能力）；默认关闭")
     serve.add_argument("--executor-config",type=Path,help="本机执行器私有配置；页面只登记请求，由独立本机进程执行")
     relay = commands.add_parser("queue-drain", help="publish pending events to a dedicated JetStream stream")
     relay.add_argument("--db", required=True)
@@ -58,7 +59,8 @@ def main():
             identities = load_identities(args.identities_file) if args.identities_file else ()
             from .executor_config import load_executor_config
             executor_config=load_executor_config(args.executor_config) if args.executor_config else None
-            app = create_app(Store(args.db), keys, identities=identities, local_console=args.local_console,executor_config=executor_config)
+            app = create_app(Store(args.db), keys, identities=identities, local_console=args.local_console,executor_config=executor_config,
+                             legacy_developer_keys=args.legacy_developer_keys)
         except (ValueError, AuthConfigError) as exc:
             parser.error(str(exc))
         # Bind exclusively to loopback. Internet/production serving is out of scope.
