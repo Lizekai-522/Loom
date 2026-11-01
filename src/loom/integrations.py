@@ -26,10 +26,10 @@ MAX_RESPONSE = 65536
 MCP_PROTOCOL = '2025-06-18'
 
 
-def _https_base(url):
+def _https_base(url, label='base_url'):
     parts = urlsplit(url) if isinstance(url, str) else None
     require(parts is not None and parts.scheme == 'https' and parts.hostname and not parts.username and not parts.password
-            and not parts.query and not parts.fragment and len(url) <= 500, 'base_url must be a plain https URL')
+            and not parts.query and not parts.fragment and len(url) <= 500, f'{label} must be a plain https URL')
     host = parts.hostname.lower()
     # Named public hosts only: no IP literals, localhost or internal suffixes (SSRF guard).
     try:
@@ -39,7 +39,7 @@ def _https_base(url):
         literal = False
     require(not literal and '.' in host and host != 'localhost'
             and not host.endswith(('.local', '.internal', '.localhost', '.lan', '.home.arpa')),
-            'base_url must name a public host, not an IP address or internal name')
+            f'{label} must name a public host, not an IP address or internal name')
     return url.rstrip('/'), host
 
 
@@ -131,7 +131,7 @@ class McpServers:
 
     def register(self, tenant, key, *, name, url, actor):
         require(isinstance(name, str) and PLUGIN_ID.fullmatch(name), 'name must be a lowercase identifier')
-        base, host = _https_base(url)
+        base, host = _https_base(url, 'url')
         record = dict(schema_version='loom.mcp-server/v1', name=name, url=base, host=host, executable_by_roles=False)
         return self.ledger.append(tenant, key, self.KIND, name, record, actor)['record']
 
