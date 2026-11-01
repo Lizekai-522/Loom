@@ -51,13 +51,17 @@ CREATE TRIGGER IF NOT EXISTS autopilot_links_no_delete BEFORE DELETE ON autopilo
 TEMPLATE = 'loom.autopilot.python-json/v1'
 RUNTIME_CONTRACT = ('运行约定：用 Python 3 标准库实现一个程序 main.py；从标准输入读取一个 JSON 值，'
                     '向标准输出写恰好一个 JSON 结果，不输出解释或调试文本；无网络、无文件读写。')
-ROLE_LIMITS = dict(cost_limit_microusd=330000, token_limit=1060000, max_attempts=1)
-SPEC_BUDGET = dict(cost_limit=700000, token_limit=2200000)
-BUILD_LIMITS = dict(cost_limit_microusd=700000, token_limit=2200000, max_attempts=2, context_limit_bytes=65536)
-BUILD_BUDGET = dict(cost_limit=750000, token_limit=2300000)
+# Request byte limits let reservations use a byte-derived prompt bound instead of
+# the full 1M-token context (model_pricing.prompt_token_bound): ~41k µUSD per role
+# call and ~61k per build attempt at Flash peak rates, versus ~316k before.
+ROLE_LIMITS = dict(cost_limit_microusd=45000, token_limit=140000, max_attempts=1, context_limit_bytes=131072)
+SPEC_BUDGET = dict(cost_limit=90000, token_limit=280000)
+BUILD_LIMITS = dict(cost_limit_microusd=130000, token_limit=410000, max_attempts=2, context_limit_bytes=196608)
+BUILD_BUDGET = dict(cost_limit=135000, token_limit=420000)
 ACCEPTANCE = ['schema.valid', 'tests.pass', 'report.traceable']
 MIN_CASES = 2
 MAX_PROMPT = 15000
+MAX_USER_EXAMPLES = 10
 CONFLICT_LIMIT = 5
 
 # Progression stages that need a person. Everything else is routine or waiting.
@@ -102,6 +106,10 @@ FAILURE_MESSAGES = {
     'SANDBOX_UNAVAILABLE_OR_REJECTED': '隔离执行环境不可用或拒绝运行，请检查 Docker。',
     'REPAIR_ATTEMPTS_EXHAUSTED': '已用完允许的修复次数，公开检查仍未通过。',
     'UNRESOLVED_CALL_REQUIRES_HUMAN': '有调用结果未知，需要先人工核对。',
+    'TASK_CONTEXT_LIMIT_EXCEEDED': '这一步的请求超过了允许的长度（需求、上一版程序或测试用例太长），请精简需求后新建会话。',
+    'PROVIDER_USAGE_OVER_RESERVATION': '模型实际用量超过了预留上限，已暂停并保留账目，需要人工核对。',
+    'ACCEPTANCE_TESTS_FAILED': '程序没有通过留出验收用例，请查看证据后决定下一步。',
+    'MODEL_ROLE_OUTPUT_INVALID': '模型返回的需求或测试设计不符合格式，没有采用。',
 }
 MESSAGES.update(FAILURE_MESSAGES)
 FINAL_STATES = {'terminated', 'delivered', 'verified'}
@@ -139,6 +147,12 @@ ACTIVITY = {
     'autopilot.acceptance_frozen': '已留出验收用例',
     'workflow.plan_approved': '计划已自动批准',
 }
+
+
+def _unique(name, taken):
+    while name in taken:
+        name += '-u'
+    return name
 
 
 def split_cases(names):
@@ -251,9 +265,26 @@ class SessionService:
                           "ORDER BY rowid", (tenant, thread_id, thread_id)).fetchall()
         return [json.loads(r['record']) for r in rows]
 
-    def create(self, identity, key, *, prompt, title=None, parent_session_id=None):
+    @staticmethod
+    def _user_examples(examples):
+        """User-written acceptance examples: independent of every model, hidden from prompts."""
+        if examples is None:
+            return []
+        if not isinstance(examples, list) or len(examples) > MAX_USER_EXAMPLES:
+            raise InvalidInput(f'at most {MAX_USER_EXAMPLES} acceptance examples')
+        cases = []
+        for index, item in enumerate(examples):
+            if not isinstance(item, dict) or set(item) != {'input', 'expected'}:
+                raise InvalidInput('each acceptance example needs exactly input and expected')
+            cases.append(FrozenTest(f'user-example-{index + 1}', item['input'], item['expected']))
+        if cases:
+            freeze_tests(cases)  # same JSON/size rules as every executor test
+        return [dict(input=c.input, expected=c.expected) for c in cases]
+
+    def create(self, identity, key, *, prompt, title=None, parent_session_id=None, examples=None):
         _text(prompt, 'prompt', 4000)
         _text(key, 'idempotency key', 120)
+        examples = self._user_examples(examples)
         tenant = identity.tenant_id
         message, thread_id = prompt, None
         if parent_session_id is not None:
@@ -272,13 +303,15 @@ class SessionService:
             plan = self.workflow.save_plan(tenant, run_id, base + ':plan', self._spec_definition(prompt), 0, actor=actor)
         if plan['status'] == 'draft':
             self.workflow.approve_plan(tenant, run_id, base + ':approve', plan['revision'], plan['digest'], actor=actor)
-        args = dict(run_id=run_id, prompt=prompt, title=title, actor=actor, parent_session_id=parent_session_id, message=message)
+        args = dict(run_id=run_id, prompt=prompt, title=title, actor=actor, parent_session_id=parent_session_id, message=message,
+                    examples=examples)
 
         def apply(db):
             session_id = str(uuid4())
             thread = {} if thread_id is None else dict(thread_id=thread_id, parent_session_id=parent_session_id)
             record = dict(schema_version='loom.autopilot-session/v1', session_id=session_id, tenant_id=tenant,
                           title=title, prompt=prompt, request=message, **thread, mode='auto', template=TEMPLATE,
+                          **({'acceptance_examples': examples} if examples else {}),
                           operator_id=identity.subject_id, spec_run_id=run_id,
                           policy=dict(max_repairs=1, min_cases=MIN_CASES, automatic_retry=False,
                                       acceptance_origin='tester-model-heldout'))
@@ -418,9 +451,10 @@ class SessionService:
     def _failure_code(self, tenant, run_id):
         with self.store.connect() as db:
             row = db.execute("SELECT envelope FROM events WHERE tenant=? AND run_id=? "
-                             "AND json_extract(envelope,'$.type')='failure.classified' ORDER BY seq DESC LIMIT 1",
+                             "AND json_extract(envelope,'$.type') IN ('failure.classified','execution.blocked') ORDER BY seq DESC LIMIT 1",
                              (tenant, run_id)).fetchone()
-        code = json.loads(row['envelope'])['payload'].get('code') if row else None
+        payload = json.loads(row['envelope'])['payload'] if row else {}
+        code = payload.get('code') or payload.get('reason')
         if code == 'ACCEPTANCE_TESTS_FAILED':
             return 'ACCEPTANCE_FAILED'
         if code in FAILURE_MESSAGES:
@@ -490,7 +524,9 @@ class SessionService:
         try:
             dev, held = split_cases(names)
             cases = {case['name']: case for case in body['cases']}
-            tests, evaluation = freeze_tests([FrozenTest(n, cases[n]['input'], cases[n]['expected']) for n in held])
+            user = [FrozenTest(_unique(f'user-example-{i + 1}', names), e['input'], e['expected'])
+                    for i, e in enumerate(record.get('acceptance_examples') or [])]
+            tests, evaluation = freeze_tests([FrozenTest(n, cases[n]['input'], cases[n]['expected']) for n in held] + user)
         except (InvalidInput, TypeError, ValueError) as error:
             self._stop(tenant, session_id, spec_run, 'TOO_FEW_CASES' if str(error) == 'TOO_FEW_CASES' else 'PUBLIC_CHECKS_INVALID', actor)
             return 'stopped'
@@ -507,11 +543,11 @@ class SessionService:
                        {'tests': [dict(name=t.name, input=t.input, expected=t.expected) for t in tests]})
         acceptance_args = dict(session_id=session_id, suite_id=frozen['suite_id'], evaluation_digest=evaluation,
                                heldout_case_names=held, development_case_names=dev, artifact_id=checks['artifact_id'],
-                               content_hash=row['content_hash'])
+                               content_hash=row['content_hash'], user_example_count=len(user))
 
         def record_acceptance(db):
             event = self.store._event(db, tenant, spec_run, 'autopilot.acceptance_frozen',
-                                      {**acceptance_args, 'acceptance_origin': 'tester-model-heldout',
+                                      {**acceptance_args, 'acceptance_origin': 'tester-model-heldout' + ('+user-examples' if user else ''),
                                        'independent_maintainer_tests': False, 'hidden_from_developer': True,
                                        'counts_as_success': False}, actor, base + ':acceptance')
             return dict(event_hash=event['hash'])
@@ -684,7 +720,8 @@ class SessionService:
         if frozen:
             steps[1]['split'] = dict(development=len(frozen['development_case_names']),
                                      heldout=len(frozen['heldout_case_names']), origin='tester-model-heldout',
-                                     heldout_names=list(frozen['heldout_case_names']))
+                                     heldout_names=list(frozen['heldout_case_names']),
+                                     user_examples=frozen.get('user_example_count', 0))
         build = dict(key='implement', label='编写并测试程序', role='developer', run_id=links.get('build'),
                      task_id=None, status='waiting', attempts=[], source=None)
         if 'build' in links and progress.get('build'):
@@ -760,10 +797,12 @@ class SessionService:
         return dict(schema_version='loom.session/v1', session_id=session_id, title=record['title'], prompt=record['prompt'],
                     request=record.get('request') or record['prompt'], thread_id=thread_id, thread=thread,
                     parent_session_id=record.get('parent_session_id'), activity=activity,
+                    acceptance_examples=record.get('acceptance_examples') or [],
                     mode=record['mode'], state=state, attention=attention, created_at=created_at, updated_at=updated_at,
                     current_run_id=links.get('build') or links['spec'], runs=links, steps=steps, spend=spend,
                     executor_configured=self.config is not None,
-                    acceptance_origin='tester-model-heldout', independently_verified=state == 'verified',
+                    acceptance_origin='tester-model-heldout' + ('+user-examples' if record.get('acceptance_examples') else ''),
+                    independently_verified=state == 'verified',
                     counts_as_success=False)
 
     @staticmethod

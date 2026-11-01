@@ -12,7 +12,7 @@ from .artifact_schemas import ARTIFACT_ROLES, ARTIFACT_SCHEMAS, BODY_MODELS, Rol
 from .execution import LocalTaskRunner
 from .model_gateway import GatewayError, ModelGateway
 from .context_budget import check_context_budget
-from .model_pricing import role_tariff
+from .model_pricing import prompt_token_bound, role_tariff
 from .store import BudgetExceeded, Claim, InvalidInput, Store, canonical, digest
 
 
@@ -103,8 +103,8 @@ class RoleTaskRunner:
                    "response_contract": "role-artifact/v1"}
         try:
             grant = self.execution._admit_effect(claim, snapshot, reservation_id,
-                max_cost=tariff.cost(tariff.context_limit, max_output_tokens),
-                max_tokens=tariff.context_limit + max_output_tokens,
+                max_cost=tariff.cost(prompt_token_bound(spec, tariff), max_output_tokens),
+                max_tokens=prompt_token_bound(spec, tariff) + max_output_tokens,
                 operation_id=f"model-generation:{claim.epoch}", request=request)
         except BudgetExceeded:
             return self.execution._block(claim, "BUDGET_EXHAUSTED")

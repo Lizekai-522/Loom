@@ -20,6 +20,7 @@ from .repair import RebindService, RepairStopped
 from .sandbox import DockerSandbox, FrozenTest, SandboxError
 from .tool_registry import PYTHON_TESTS, run_python_tool
 from .context_budget import check_context_budget
+from .model_pricing import FLASH, prompt_token_bound
 from .quotas import QuotaExceeded,QuotaService
 from .store import BudgetExceeded, Claim, Conflict, InvalidInput, NotFound, StaleClaim, Store, canonical, digest
 from .workflow import WorkflowService
@@ -340,10 +341,11 @@ class LocalTaskRunner:
             return self._block(claim, error.code)
         await asyncio.to_thread(self.sandbox.preflight)
         reservation_id = f"python:{claim.task_id}:{claim.epoch}"
-        reserved_tokens = FLASH_CONTEXT_LIMIT + max_output_tokens
+        bound = prompt_token_bound(spec, FLASH)
+        reserved_tokens = bound + max_output_tokens
         try:
             grant = self._admit_effect(claim, snapshot, reservation_id,
-                max_cost=cost_upper_microusd(FLASH_CONTEXT_LIMIT, max_output_tokens), max_tokens=reserved_tokens,
+                max_cost=cost_upper_microusd(bound, max_output_tokens), max_tokens=reserved_tokens,
                 operation_id=f"model-generation:{claim.epoch}",
                 request={"route": route.alias, "model": route.model, "prompt_digest": digest(messages),
                          "max_output_tokens": max_output_tokens, "evaluation_digest": evaluation_digest,
@@ -543,8 +545,9 @@ class LocalTaskRunner:
             raise GatewayError(readiness.reason)
         service = RebindService(self.store)
         goal = self.workflows.get_goal(claim.tenant_id, claim.run_id)
-        reserved_tokens = FLASH_CONTEXT_LIMIT + max_output_tokens
-        reserved_cost = cost_upper_microusd(FLASH_CONTEXT_LIMIT, max_output_tokens)
+        bound = prompt_token_bound(spec, FLASH)
+        reserved_tokens = bound + max_output_tokens
+        reserved_cost = cost_upper_microusd(bound, max_output_tokens)
 
         async def evaluate(owner, source, tests, snapshot,phase):
             def work():

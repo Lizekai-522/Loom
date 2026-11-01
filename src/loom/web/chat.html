@@ -44,7 +44,12 @@
         </div>
         <div id="conversation" hidden></div>
       </section>
+      <div class="examples-box" id="examples-box" hidden>
+        <label for="examples-input">验收样例（可选，最多 10 个；实现者看不到，用来独立检验结果）</label>
+        <textarea id="examples-input" rows="3" maxlength="20000" spellcheck="false" placeholder='每行一个：输入 JSON => 期望输出 JSON&#10;{"value": 1} => {"answer": 2}'></textarea>
+      </div>
       <form class="composer" id="composer">
+        <button id="toggle-examples" class="ghost examples-toggle" type="button" aria-expanded="false" aria-controls="examples-box" title="添加你自己的验收样例">＋ 样例</button>
         <label class="sr-only" for="prompt">描述你的需求</label>
         <textarea id="prompt" rows="1" maxlength="4000" placeholder="描述你想要的程序…" title="Enter 发送，Shift+Enter 换行" autocomplete="off"></textarea>
         <button id="send" class="send" type="submit" aria-label="发送">发送</button>

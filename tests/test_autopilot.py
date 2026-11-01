@@ -104,7 +104,7 @@ def test_one_sentence_runs_to_delivery_without_manual_steps(case):
     assert view['state'] == 'delivered', view['attention']
     assert [s['status'] for s in view['steps'][:3]] == ['submitted', 'submitted', 'submitted']
     assert view['steps'][3]['status'] == 'not_configured'
-    assert view['steps'][1]['split'] == dict(development=3, heldout=1, origin='tester-model-heldout', heldout_names=['negative'])
+    assert view['steps'][1]['split'] == dict(development=3, heldout=1, origin='tester-model-heldout', heldout_names=['negative'], user_examples=0)
     assert view['steps'][2]['source'] == GOOD
     assert [a['phase'] for a in view['steps'][2]['attempts']] == ['development', 'acceptance']
     assert view['independently_verified'] is False and view['counts_as_success'] is False
@@ -369,3 +369,53 @@ def test_long_follow_up_chains_stay_within_instruction_limits(case):
         assert service.get('a', current['session_id'])['state'] == 'delivered'
     listed = service.list('a')
     assert len(listed) == 1 and listed[0]['turns'] == 4 and listed[0]['state'] == 'delivered'
+
+
+def test_user_examples_join_heldout_acceptance_and_never_reach_prompts(case):
+    c = case
+    service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER))
+    created = service.create(PRINCIPAL, 'examples', prompt='写一个加一程序',
+                             examples=[{'input': {'value': 41}, 'expected': {'answer': 42}}])
+    assert created['acceptance_examples'] == [{'input': {'value': 41}, 'expected': {'answer': 42}}]
+    requests, sandbox, _ = run_until_idle(c, [REQUIREMENTS, CHECKS, {'source': GOOD}], [True, True])
+    view = service.get('a', created['session_id'])
+    assert view['state'] == 'delivered' and view['steps'][1]['split']['user_examples'] == 1
+    assert view['acceptance_origin'] == 'tester-model-heldout+user-examples'
+    # Acceptance ran on tester held-out + the user's example; no model ever saw 41/42.
+    assert [len(tests) for _, tests in sandbox.inputs] == [3, 2]
+    assert [t.name for t in sandbox.inputs[1][1]] == ['negative', 'user-example-1']
+    assert all('41' not in '\n'.join(m['content'] for m in r['messages']) for r in requests)
+
+
+@pytest.mark.parametrize('examples', [[{'input': 1}], ['x'], [{'input': 1, 'expected': 2}] * 11,
+                                      [{'input': 'x' * 20000, 'expected': 1}]])
+def test_invalid_user_examples_are_rejected_before_any_goal(case, examples):
+    c = case
+    service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER))
+    with pytest.raises(InvalidInput):
+        service.create(PRINCIPAL, 'bad-examples', prompt='写一个加一程序', examples=examples)
+    assert service.list('a') == []
+
+
+def test_autopilot_reserves_from_byte_limits_not_full_context(case):
+    from loom.model_pricing import FLASH, REQUEST_TOKEN_OVERHEAD
+    c = case
+    service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER))
+    created = service.create(PRINCIPAL, 'cheap', prompt='写一个加一程序')
+    run_until_idle(c, [REQUIREMENTS, CHECKS, {'source': GOOD}], [True, True])
+    view = service.get('a', created['session_id'])
+    reserved = [e['payload']['cost'] for run in view['runs'].values() for e in c['store'].events('a', run) if e['type'] == 'budget.reserved']
+    assert reserved[:2] == [FLASH.cost(131072 + REQUEST_TOKEN_OVERHEAD, 1024)] * 2
+    assert reserved[2] == FLASH.cost(196608 + REQUEST_TOKEN_OVERHEAD, 1024)
+    assert max(reserved) < 70000 and view['spend']['cost_limit_microusd'] == 225000
+
+
+def test_http_session_accepts_examples(case):
+    c = case
+    client = TestClient(create_app(c['store'], {}, identities=(OP, WORKER), executor_config=c['config']))
+    response = client.post('/v1/sessions', json={'prompt': '加一', 'examples': [{'input': {'value': 1}, 'expected': {'answer': 2}}]},
+                           headers={'Authorization': 'Bearer ' + OP.token, 'Idempotency-Key': 'ex-http'})
+    assert response.status_code == 201 and response.json()['acceptance_examples'][0]['expected'] == {'answer': 2}
+    bad = client.post('/v1/sessions', json={'prompt': '加一', 'examples': [{'input': 1}]},
+                      headers={'Authorization': 'Bearer ' + OP.token, 'Idempotency-Key': 'ex-bad'})
+    assert bad.status_code == 422

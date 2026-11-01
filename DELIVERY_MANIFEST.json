@@ -1,10 +1,10 @@
 {
-  "version": "0.27.1",
-  "stage": "conversation-autopilot-alpha",
+  "version": "0.28.0",
+  "stage": "conversation-autopilot-beta",
   "production_ready": false,
-  "generated_at": "2026-10-31T17:05:45.800863+08:00",
+  "generated_at": "2026-11-01T16:18:20.662359+08:00",
   "source_spec_sha256": "33945a2f01a92dd573c35220427107e9da342891d6cbbc53447d5d69c103b5a7",
-  "source_file_count_excluding_manifest": 417,
+  "source_file_count_excluding_manifest": 418,
   "files": [
     {
       "path": ".gitignore",
@@ -18,8 +18,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 19778,
-      "sha256": "2003030804524ba689774c99c7a9962985c53287f2cdb1aaa8d0cf25c26866be"
+      "bytes": 19973,
+      "sha256": "8ebb608c22173c7ce291cdb5970a5e1356ba8076d94be1ac1f8c0ab7e4a75194"
     },
     {
       "path": "configs/host-tests.example.json",
@@ -98,13 +98,13 @@
     },
     {
       "path": "docs/api/README.md",
-      "bytes": 15388,
-      "sha256": "538762720b0db4801a0da8719bee5bcd9bcbc0eb599c2b35a268e73af425ffe1"
+      "bytes": 15580,
+      "sha256": "36f24ad635867a2aba3a122d8ce7dd24c0b5a142501365ba4a26cc322692eeb0"
     },
     {
       "path": "docs/api/openapi.json",
-      "bytes": 115155,
-      "sha256": "a1e9a8a977f58b7b688cbfc3fc0729ab2d402fe2f16bc93c800eb4155b3415ce"
+      "bytes": 115937,
+      "sha256": "8edc237ed798cea13483da5b5a724a45730abe4d174bcae951dfffdaef8d5c03"
     },
     {
       "path": "docs/approved-execution.md",
@@ -173,13 +173,13 @@
     },
     {
       "path": "docs/functional-acceptance.json",
-      "bytes": 52015,
-      "sha256": "47cc0ec238a6e9b4582b1f9ed80ec1cd683aaabbe4b4bf72554c491e61aa09a3"
+      "bytes": 52225,
+      "sha256": "ca185acbb74c5d548c5a447191e5535d7c3807faa963850876f984c773c28c9f"
     },
     {
       "path": "docs/functional-acceptance.md",
-      "bytes": 7368,
-      "sha256": "3d122b844e8e6a28952ece8d4b2c6ca624c4c449430a0b00d3108e24086d7812"
+      "bytes": 7535,
+      "sha256": "2bb03f8ecc73159850e2d7ff6ec400af4b31349fdf4db89a07228a43034a6588"
     },
     {
       "path": "docs/github-reuse.md",
@@ -193,8 +193,8 @@
     },
     {
       "path": "docs/implementation-plan.md",
-      "bytes": 59048,
-      "sha256": "75d6bed686beef56a6670d85dc83d57b027c1245450b9736ff5bf69e6138b2c8"
+      "bytes": 60536,
+      "sha256": "f4e5be50588ea813c3cfead00ccdc204b3529f9079a31038be653bc550e9948b"
     },
     {
       "path": "docs/launch-four-rounds-2026-10-30.md",
@@ -784,7 +784,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 804,
-      "sha256": "6fa41b48277108d5b35134ed54e45257cccc204ad9bb55915faa7ca0ea78e0ab"
+      "sha256": "d40717996f8e97824bffb6da1ec7f150ab8e33835293927cefcdff689a33f199"
     },
     {
       "path": "requirements.lock",
@@ -1029,7 +1029,7 @@
     {
       "path": "src/loom/__init__.py",
       "bytes": 73,
-      "sha256": "01e32fadf046727c51050fa44282f3c52f940e6893921a2ae3623092384cec03"
+      "sha256": "0833ce61b5cc43776dc09f1bc993e728ed53eeb5fe8a19e8d31c03e39c601848"
     },
     {
       "path": "src/loom/__main__.py",
@@ -1038,13 +1038,13 @@
     },
     {
       "path": "src/loom/api.py",
-      "bytes": 33109,
-      "sha256": "c83baf82b51b8d32bf22b3ac6f756a141bde3f96a33feb583a4ada4a7be0c9da"
+      "bytes": 33449,
+      "sha256": "ed94fdd781435be6147d783f94f6d559e3f689e8236789503c42aa35386f9669"
     },
     {
       "path": "src/loom/approved_execution.py",
-      "bytes": 11743,
-      "sha256": "4f48de498e5286fecb442e5074504d5e57ad217640e35179309b1198565e3f65"
+      "bytes": 11782,
+      "sha256": "7ae055ab5ce190038e725d7b045e3aa503da36bf03bb90e6f1716c59f4663d27"
     },
     {
       "path": "src/loom/artifact_schemas.py",
@@ -1068,8 +1068,8 @@
     },
     {
       "path": "src/loom/autopilot.py",
-      "bytes": 50290,
-      "sha256": "c6b1a8a4278d544ce575acbd0f2fce07909dc5f6f882536b1a24f7e838ed8b38"
+      "bytes": 52835,
+      "sha256": "4fa14d8b6d6a7a2027567aaa3d4f9c92ec4c75d07077ff99c681372956e03268"
     },
     {
       "path": "src/loom/builtin_resources.py",
@@ -1113,8 +1113,8 @@
     },
     {
       "path": "src/loom/execution.py",
-      "bytes": 42487,
-      "sha256": "e07a18b2dc54da0594f2830d9b3dd279fd0dd33bf14f4c48086b2821f99061b5"
+      "bytes": 42580,
+      "sha256": "807756809398610e7087a9ad9859a3f376e5f4391a835adeb1d02aebc2a6d587"
     },
     {
       "path": "src/loom/executor_config.py",
@@ -1158,8 +1158,8 @@
     },
     {
       "path": "src/loom/model_pricing.py",
-      "bytes": 1159,
-      "sha256": "88095bf48d7bf00f2cb5acf5095c9dfb116d2e2d763195d3439bac6e05d9ab44"
+      "bytes": 2168,
+      "sha256": "0b0d97f55b27b73af668c7bd7ef81af6854f762f0750fd6f79f20adc3cdb7e80"
     },
     {
       "path": "src/loom/operator.py",
@@ -1178,8 +1178,8 @@
     },
     {
       "path": "src/loom/progression.py",
-      "bytes": 8560,
-      "sha256": "38cd0f41999ee4b09b7b2e6ff3352cfbb31b4435f6777798ba70f9ce4df430cd"
+      "bytes": 8657,
+      "sha256": "c3f623d1eb661ab5a57ed11c217b2a8e3acb5fca8e5acd8a66d88f6d2216aeb6"
     },
     {
       "path": "src/loom/public_access.py",
@@ -1238,8 +1238,8 @@
     },
     {
       "path": "src/loom/role_execution.py",
-      "bytes": 8839,
-      "sha256": "aad63b08684f8791e864fbf5442b81345f9757c42b448e7e2603212eca748ec6"
+      "bytes": 8883,
+      "sha256": "f0ea0efa9dffa183b973a6b7839d708bf5cceec6f5552ae0db90732a25f851df"
     },
     {
       "path": "src/loom/role_summary.py",
@@ -1303,18 +1303,18 @@
     },
     {
       "path": "src/loom/web/chat.css",
-      "bytes": 11738,
-      "sha256": "eb5117d99afb0775e70b6157e213c3f3b34f33a197da8a87a837c166f3325be0"
+      "bytes": 12338,
+      "sha256": "d0be14184240c9912810182dcde30eea6ca81ac1b75644bc6f56ff29ac07b498"
     },
     {
       "path": "src/loom/web/chat.html",
-      "bytes": 3418,
-      "sha256": "6a0ffab4b28f0e4b307a2fbe11606e981d74b4ebf05b3ee17da08dbe7ac70b55"
+      "bytes": 4005,
+      "sha256": "03e58964aea8704b9b239a1dbc039a22de35c2700f3a78f3eee7f297055de691"
     },
     {
       "path": "src/loom/web/chat.js",
-      "bytes": 28534,
-      "sha256": "8498ec5b6e237eeb313dbee2c2eea67025812a1024e133d4fe071c3619221ad8"
+      "bytes": 30442,
+      "sha256": "8e14fcec5c4f101a24d990ab4502e9c88cd2f9d0a54b614c3eaeac7b991928ce"
     },
     {
       "path": "src/loom/web/console-execution.js",
@@ -1553,8 +1553,8 @@
     },
     {
       "path": "tests/test_autopilot.py",
-      "bytes": 20776,
-      "sha256": "0118309202955db572d7274203bb00c1ad1c561c4c1c8701d8ffa2e51dfd0915"
+      "bytes": 24036,
+      "sha256": "45b8d70d3ec630ae7ca6fff4cf181831cb5f8ac85a398767e43e987e95f43ae5"
     },
     {
       "path": "tests/test_checkpoints.py",
@@ -1750,6 +1750,11 @@
       "path": "tests/test_repair.py",
       "bytes": 30238,
       "sha256": "15b38b151945a865f7ecdbd8b7a3347285fcb74ee7bd847b61fb08605f85d958"
+    },
+    {
+      "path": "tests/test_reservation_bound.py",
+      "bytes": 3240,
+      "sha256": "eeef76fbf1e845314357916e42670592da4746979c5e08f5d3e7a4e39b714d36"
     },
     {
       "path": "tests/test_review_decisions.py",
@@ -2094,20 +2099,21 @@
   ],
   "validation": {
     "full": {
-      "main_tests": 1291,
+      "main_tests": 1304,
       "subtests": 387,
       "failures": 0,
       "skipped": 0,
       "platform": "Linux / Python 3.13.18"
     },
     "target": {
-      "main_tests": 59,
+      "main_tests": 72,
       "subtests": 0,
       "failures": 0,
       "skipped": 0,
       "suites": [
         "tests/test_autopilot.py",
-        "tests/test_public_access.py"
+        "tests/test_public_access.py",
+        "tests/test_reservation_bound.py"
       ]
     },
     "infra": {
@@ -2119,7 +2125,7 @@
     }
   },
   "live_http_checks": 0,
-  "browser_checks": 11,
+  "browser_checks": 13,
   "new_paid_model_requests": 0,
   "real_provider_probe": {
     "passed": true,
@@ -2169,6 +2175,7 @@
   },
   "notes": [
     "Original 62 requirements retained; partial feature increments do not establish production readiness.",
+    "0.28.0: byte-bounded reservations for contracts with context_limit_bytes (legacy contracts unchanged; overrun still suspends) and user-provided acceptance examples kept out of all model prompts.",
     "0.27.1 fixes nine red-team findings (verification state, stop/resume episodes, swallowed errors, cancellation, device-token lockout and revocation, N+1 listing, held-out visibility, follow-up prompt length, unloadable verification); all reproduction scripts rerun clean.",
     "Autopilot sessions verified with simulated provider HTTP and a sandbox test double; a real automatic session on the maintainer host is pending.",
     "Held-out acceptance cases are generated by the tester role model (tester-model-heldout); they are not independent dual-model verification.",

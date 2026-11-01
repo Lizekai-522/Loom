@@ -160,10 +160,17 @@ class ExecutionRequestInput(Input):
     expected_dispatch_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     reason: str = Field(min_length=1,max_length=2000)
 
+class SessionExample(Input):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False, strict=False)
+    input: Any
+    expected: Any
+
+
 class SessionInput(Input):
     prompt: str = Field(min_length=1, max_length=4000)
     title: str | None = Field(default=None, min_length=1, max_length=200)
     parent_session_id: str | None = Field(default=None, min_length=1, max_length=100, pattern=r"^[A-Za-z0-9-]+$")
+    examples: list[SessionExample] | None = Field(default=None, max_length=10)
 
 
 class VerificationRequestInput(Input):
@@ -300,7 +307,8 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
         if not all(registry.authorize(identity, action) for action in ("goal.write", "plan.approve")):
             raise HTTPException(403, "automatic sessions require a named operator")
         return sessions.create(identity, idempotency_key, prompt=body.prompt, title=body.title,
-                               parent_session_id=body.parent_session_id)
+                               parent_session_id=body.parent_session_id,
+                               examples=None if body.examples is None else [e.model_dump() for e in body.examples])
 
     @app.get("/v1/sessions")
     def list_sessions(tenant: Tenant):

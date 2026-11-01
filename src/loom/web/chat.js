@@ -148,6 +148,13 @@
     }
     box.append(table);
     if (step.split) box.append(el("p", "note", `留出验收用例由测试角色模型生成，实现者看不到；通过它不等于独立双模型复核。`));
+    const mine = state.renderingView?.acceptance_examples || [];
+    if (mine.length) {
+      box.append(el("p", "note", `另有你提供的 ${mine.length} 个验收样例，同样不提供给任何模型：`));
+      const list = el("ul", "user-examples");
+      for (const item of mine) { const li = el("li"); li.append(el("code", null, `${json(item.input)} → ${json(item.expected)}`)); list.append(li); }
+      box.append(list);
+    }
     return box;
   }
   function implementBody(step, view) {
@@ -192,7 +199,8 @@
   function summaryFor(step) {
     if (step.key === "requirements" && step.content?.summary) return step.content.summary;
     if (step.key === "checks" && step.content?.cases) {
-      const split = step.split ? ` · ${step.split.development} 个开发检查 / ${step.split.heldout} 个留出验收` : "";
+      const split = step.split ? ` · ${step.split.development} 个开发检查 / ${step.split.heldout} 个留出验收` +
+        (step.split.user_examples ? ` + 你的 ${step.split.user_examples} 个样例` : "") : "";
       return `${step.content.cases.length} 个用例${split}`;
     }
     if (step.key === "implement") {
@@ -235,6 +243,7 @@
         if (state.executorWarning) body.append(el("p", "activity warn-text", state.executorWarning));
       }
     }
+    state.renderingView = view;
     for (const step of view.steps) {
       let content = null;
       if (step.key === "requirements") content = requirementsBody(step.content);
@@ -312,7 +321,7 @@
     const view = state.view, prompt = $("prompt");
     if (!state.canWrite) return;
     const busy = view && (view.state === "running" || view.state === "paused");
-    prompt.disabled = !!busy; $("send").disabled = !!busy;
+    prompt.disabled = !!busy; $("send").disabled = !!busy; $("toggle-examples").disabled = !!busy;
     prompt.placeholder = !view ? "描述你想要的程序…" : busy ? "本轮完成后可继续补充" : "继续补充或修改要求…（会参考上一版程序）";
   }
   function scrollToEnd() { const s = $("stream"); s.scrollTop = s.scrollHeight; }
@@ -386,15 +395,20 @@
     const prompt = $("prompt").value.trim();
     if (!prompt || state.busy) return;
     const parent = state.view && !["running", "paused"].includes(state.view.state) ? state.view.session_id : null;
+    let examples;
+    try { examples = parseExamples($("examples-input").value); }
+    catch (error) { notice(error.message, true); $("examples-box").hidden = false; return; }
     const body = parent ? {prompt, parent_session_id: parent} : {prompt};
+    if (examples.length) body.examples = examples;
     // Same text after a lost response reuses its key, so no duplicate session.
-    const pendingKey = (parent || "") + "\n" + prompt;
+    const pendingKey = (parent || "") + "\n" + prompt + "\n" + json(examples);
     if (!state.pendingKeys.has(pendingKey)) state.pendingKeys.set(pendingKey, key());
     state.busy = true; $("send").disabled = true;
     try {
       const view = await request("POST", "/v1/sessions", body, state.pendingKeys.get(pendingKey));
       state.pendingKeys.delete(pendingKey);
       $("prompt").value = ""; autoGrow(); notice("");
+      $("examples-input").value = ""; setExamplesOpen(false);
       state.views.set(view.session_id, view);
       await loadList();
       state.current = null;
@@ -469,6 +483,23 @@
   // ---------- shell ----------
   function openSidebar() { $("shell").classList.add("sidebar-open"); $("scrim").hidden = false; }
   function closeSidebar() { $("shell").classList.remove("sidebar-open"); $("scrim").hidden = true; }
+  // One example per line: `<input JSON> => <expected JSON>`; "=>" inside strings is tolerated.
+  function parseExamples(text) {
+    const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+    if (lines.length > 10) throw new Error("验收样例最多 10 个。");
+    return lines.map((line, index) => {
+      let at = line.indexOf("=>");
+      while (at !== -1) {
+        try { return {input: JSON.parse(line.slice(0, at)), expected: JSON.parse(line.slice(at + 2))}; }
+        catch { at = line.indexOf("=>", at + 2); }
+      }
+      throw new Error(`第 ${index + 1} 个验收样例格式不对，应为：输入 JSON => 期望输出 JSON`);
+    });
+  }
+  function setExamplesOpen(open) {
+    $("examples-box").hidden = !open;
+    $("toggle-examples").setAttribute("aria-expanded", String(open));
+  }
   function autoGrow() { const t = $("prompt"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 200) + "px"; }
   function handleUnauthorized() {
     if (location.protocol === "https:") { location.assign("/preview/login"); return; }
@@ -483,6 +514,9 @@
       $("examples").append(b);
     }
     $("composer").addEventListener("submit", submit);
+    $("toggle-examples").addEventListener("click", () => {
+      const open = $("examples-box").hidden; setExamplesOpen(open); if (open) $("examples-input").focus();
+    });
     $("prompt").addEventListener("input", autoGrow);
     $("prompt").addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("composer").requestSubmit(); }

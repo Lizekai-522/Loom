@@ -4,6 +4,7 @@ import json
 from .approved_execution import ApprovedExecutionService
 from .artifacts import ArtifactService
 from .execution import FLASH_CONTEXT_LIMIT, cost_upper_microusd
+from .model_pricing import FLASH, prompt_token_bound
 from .review_decisions import ReviewDecisionService
 from .store import Conflict, InvalidInput, NotFound, digest
 
@@ -73,10 +74,10 @@ class ProgressionService:
                                     else:item['suggested_inputs'].append(dict(artifact_id=candidate['id'],kind=candidate['kind'],source_node=candidate['source_node']))
                         elif spec['role']=='validator':
                             item.update(stage='host_tests_required',action='view_execution',ready_for_preview=True)
-                        elif (spec['limits']['cost_limit_microusd']<cost_upper_microusd(FLASH_CONTEXT_LIMIT,1024)
-                              or spec['limits']['token_limit']<FLASH_CONTEXT_LIMIT+1024
-                              or run['cost_limit']-run['spent']-run['reserved']<cost_upper_microusd(FLASH_CONTEXT_LIMIT,1024)
-                              or run['token_limit']-run['tokens_spent']-run['tokens_reserved']<FLASH_CONTEXT_LIMIT+1024):
+                        elif (spec['limits']['cost_limit_microusd']<cost_upper_microusd(prompt_token_bound(spec,FLASH),1024)
+                              or spec['limits']['token_limit']<prompt_token_bound(spec,FLASH)+1024
+                              or run['cost_limit']-run['spent']-run['reserved']<cost_upper_microusd(prompt_token_bound(spec,FLASH),1024)
+                              or run['token_limit']-run['tokens_spent']-run['tokens_reserved']<prompt_token_bound(spec,FLASH)+1024):
                             item.update(stage='budget_insufficient',action='view_interventions')
                         elif spec['role'] in {'analyst','architect','tester','reviewer'}:
                             preview=ApprovedExecutionService(self.store)._check_in(db,tenant,run_id,spec['node_id'],plan['plan_digest'],None,1024)[1]

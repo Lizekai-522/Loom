@@ -8,7 +8,7 @@ from .artifact_schemas import ARTIFACT_ROLES
 from .auth import LocalIdentity
 from .development_suites import DevelopmentSuiteService
 from .execution import freeze_tests
-from .model_pricing import role_tariff
+from .model_pricing import role_tariff,prompt_token_bound
 from .store import Claim, Conflict, InvalidInput, Store, _Connection, digest
 
 
@@ -108,8 +108,9 @@ class ApprovedExecutionService:
         if validator:cost,tokens=0,0
         else:
             tariff=role_tariff(spec)
-            cost=tariff.cost(tariff.context_limit,max_output_tokens)
-            tokens=tariff.context_limit+max_output_tokens
+            bound=prompt_token_bound(spec,tariff)
+            cost=tariff.cost(bound,max_output_tokens)
+            tokens=bound+max_output_tokens
         limits=spec['limits']
         if (limits['cost_limit_microusd']<cost or limits['token_limit']<tokens
                 or run['cost_limit']-run['spent']-run['reserved']<cost
