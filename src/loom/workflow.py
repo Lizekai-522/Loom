@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from .artifact_schemas import ARTIFACT_ROLES, ArtifactInput, DevelopmentSuiteReference, RoleOutput, ReviewSubjectReference
 from .policy import GateRules, TaskContract, gate_p
 from .pack_refs import PackName, PackReference
+from .contract import parse_requester, record_requester
 from .store import BudgetExceeded, Conflict, InvalidInput, NotFound, PlanBindingConflict, Store, canonical, digest
 
 
@@ -352,6 +353,7 @@ class WorkflowService:
         if (type(cost_limit) is not int or type(token_limit) is not int
                 or not 0 <= cost_limit <= 1_000_000_000_000 or not 0 <= token_limit <= 1_000_000_000):
             raise InvalidInput("goal budgets must be bounded nonnegative integers")
+        parse_requester(description)  # malformed requested-by prefixes fail before any write
         args = dict(title=title, description=description, acceptance=acceptance,
                     cost_limit=cost_limit, token_limit=token_limit, ruleset="kernel-v1", scope="local-workspace")
         if actor is not None:
@@ -369,6 +371,8 @@ class WorkflowService:
             result = {"run_id": run_id, "goal_id": goal_id, "intent_id": intent_id, "anchor_digest": anchor,
                       "ruleset": "kernel-v1", "status": "draft", "plan_revision": 0}
             self.store._event(db, tenant, run_id, "run.created", {**result, **args, "managed_workflow": True}, audit_actor, key)
+            # Requester attribution is parsed and stored at creation time, inside this transaction.
+            record_requester(self.store, db, tenant, run_id, description)
             self.store._event(db, tenant, run_id, "goal.created", {"goal_id": goal_id, "anchor": anchor,
                               "title": title, "description": description}, audit_actor)
             self.store._event(db, tenant, run_id, "intent.created", {"intent_id": intent_id, "goal_id": goal_id,

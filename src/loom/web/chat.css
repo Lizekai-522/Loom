@@ -39,7 +39,7 @@ a{color:var(--accent)}
 .session-item .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--faint)}
 .dot.running{background:var(--ok);animation:pulse 1.4s ease-in-out infinite}
-.dot.needs_attention{background:var(--warn)}
+.dot.needs_attention,.dot.awaiting_approval{background:var(--warn)}
 .dot.delivered,.dot.verified{background:var(--ok)}
 .dot.paused{background:var(--muted)}
 .dot.terminated{background:var(--line-strong)}
@@ -64,7 +64,7 @@ a{color:var(--accent)}
 .only-mobile{display:none}
 .state{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--sunken);color:var(--muted);white-space:nowrap}
 .state.running{background:var(--ok-soft);color:var(--ok)}
-.state.needs_attention{background:var(--warn-soft);color:var(--warn)}
+.state.needs_attention,.state.awaiting_approval{background:var(--warn-soft);color:var(--warn)}
 .state.delivered,.state.verified{background:var(--ok-soft);color:var(--ok)}
 
 .notice{margin:10px 20px 0;padding:8px 12px;border-radius:var(--radius-sm);background:var(--warn-soft);color:var(--warn);font-size:14px}
@@ -125,6 +125,8 @@ pre.code{margin:0;background:var(--code);border:1px solid var(--line);border-rad
 .callout{border-radius:var(--radius);padding:12px 14px;font-size:14px}
 .callout.warn{background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent)}
 .callout.ok{background:var(--ok-soft);border:1px solid color-mix(in srgb,var(--ok) 25%,transparent)}
+.callout.approve{background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 45%,transparent)}
+.approval-facts{font-size:13px;color:var(--muted,inherit)}
 .callout h3{margin:0 0 4px;font-size:14px}
 .callout p{margin:0 0 8px}
 .callout .row{display:flex;gap:8px;flex-wrap:wrap}

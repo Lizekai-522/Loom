@@ -3,7 +3,7 @@ window.LoomExecutionPanel=function({state,node,has,request,publicError,runChecke
  const names={queued:'等待服务端执行器处理',running:'执行中',submitted:'候选已提交，等待独立验证',blocked:'执行前置条件变化，请重新核对',awaiting_human:'执行已停止，需人工处理',indeterminate:'结果未知，先核对调用与预算',cancelled:'排队请求已取消'};
  const reasons={EXECUTOR_NOT_CONFIGURED:'服务端执行器尚未配置，请使用项目启动说明配置并启动。',REQUEST_ALREADY_ACTIVE:'已有请求，不会重复发起。',REQUEST_LIMIT_REACHED:'此任务已达到请求记录上限，请查看历史。',HOST_TESTS_NOT_REGISTERED:'此节点尚未登记服务端冻结终验。请先配置独立宿主用例，再重新核对。',HOST_TESTS_CHANGED:'本机用例与批准摘要不一致，禁止执行。',INDEPENDENT_MODEL_PENDING:'独立模型仍待配置，不能从普通执行入口验收。',ADMISSION_NOT_READY:'计划、输入、预算或任务状态尚不满足准入条件。'};
  let generation=0,binding='',item=null,refs=null,data=null,pending=false,error='',attempt=null,receipt=null,timer=null,queuedObservation=null,heartbeat=null;
- const operator=()=>has('control')&&state.principal?.roles?.includes('operator');
+ const operator=()=>has('control')&&(state.principal?.roles||[]).some(r=>r==='operator'||r==='user');
  const current=()=>binding&&runChecked()&&state.tab==='progression'&&!state.busy&&refs?.root.isConnected;
  const path=()=>`/v1/runs/${encodeURIComponent(state.runId)}/tasks/${encodeURIComponent(item.task_id)}`;
  const cancelPath=id=>`/v1/runs/${encodeURIComponent(state.runId)}/execution-requests/${encodeURIComponent(id)}/cancel`;

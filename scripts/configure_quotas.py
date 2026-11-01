@@ -3,7 +3,7 @@ import argparse
 import json
 from pathlib import Path
 
-from loom.auth import load_identities
+from loom.auth import load_identities, named_controllers
 from loom.quotas import QuotaService,QuotaPolicy
 from loom.store import Store,LoomError
 
@@ -29,7 +29,7 @@ def main():
                 result[key]=value
             return result
         policy=QuotaPolicy.parse(json.loads(raw,object_pairs_hook=unique))
-        identities=[i for i in load_identities(args.identities_file) if i.tenant_id==args.tenant and 'operator' in i.roles]
+        identities=named_controllers(load_identities(args.identities_file),args.tenant)
         if len(identities)!=1:raise ValueError
         result=QuotaService(Store(args.db)).configure(identities[0],policy,key=args.key,expected_revision=args.expected_revision,reason=args.reason)
         print(json.dumps(dict(passed=True,**result,model_dispatched=False,counts_as_success=False)))

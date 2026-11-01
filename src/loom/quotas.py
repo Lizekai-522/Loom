@@ -4,7 +4,7 @@ import json
 import re
 import sqlite3
 
-from .auth import LocalIdentity
+from .auth import LocalIdentity, is_controller
 from .store import Conflict, InvalidInput, canonical, digest
 
 
@@ -89,7 +89,7 @@ class QuotaService:
         return current
 
     def configure(self,identity,policy,*,key,expected_revision,reason):
-        if (not isinstance(identity,LocalIdentity) or 'operator' not in identity.roles or type(policy) is not QuotaPolicy
+        if (not isinstance(identity,LocalIdentity) or not is_controller(identity) or type(policy) is not QuotaPolicy
             or type(expected_revision) is not int or expected_revision<0 or not isinstance(key,str) or not 1<=len(key)<=200
             or not isinstance(reason,str) or not reason.strip() or len(reason)>2000):raise InvalidInput('named operator and exact quota policy required')
         with self.store.transaction() as db:

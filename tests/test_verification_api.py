@@ -23,7 +23,7 @@ def verification_api(node_case,tmp_path):
     identities.chmod(0o600)  # POSIX private-file check; no-op on Windows
     path=script.configure(tmp_path/'keys',tenant='a',identities=identities,model_config=ROOT/'configs/models.dual.example.json',model_secrets=tmp_path/'missing-model-key.json',db=b['store'].path,pool_limit=2000000)
     config=LocalExecutorConfig('fixture',identities,tmp_path/'missing-model-key.json',ROOT/'configs/models.dual.example.json',None,{},verification_config=path)
-    b.update(config=config,client=TestClient(create_app(b['store'],{'a':'legacy-test-key-long-enough'},identities=(OP,WORKER),executor_config=config)),task=b['run']+':work',verification_config=load_verification_config(path))
+    b.update(config=config,client=TestClient(create_app(b['store'],{'a':'legacy-test-key-long-enough'},identities=(OP,WORKER),executor_config=config,legacy_developer_keys=True)),task=b['run']+':work',verification_config=load_verification_config(path))
     return b
 
 def headers(identity=OP,key=None):return {'Authorization':'Bearer '+identity.token,**({'Idempotency-Key':key} if key else {})}

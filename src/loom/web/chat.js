@@ -13,11 +13,12 @@
   ];
   const RESTART_CODES = new Set(["ACCEPTANCE_FAILED", "REPAIR_ATTEMPTS_EXHAUSTED", "REPEATED_SOURCE", "TOO_FEW_CASES",
     "PUBLIC_CHECKS_INVALID", "MODEL_SOURCE_INVALID", "MODEL_OUTPUT_TRUNCATED", "BUDGET_EXHAUSTED", "budget_insufficient"]);
-  const STATE_NAMES = {running: "自动推进中", needs_attention: "需要你处理", paused: "已暂停",
+  const STATE_NAMES = {running: "自动推进中", needs_attention: "需要你处理", paused: "已暂停", awaiting_approval: "等你批准",
                        delivered: "已交付", verified: "已独立复核", terminated: "已终止"};
   const STEP_NAMES = {submitted: "已完成", verified: "已复核", running: "进行中", queued: "排队中",
                       waiting: "等待中", attention: "需处理", pending: "待复核", done: "已复核", not_configured: "未配置",
-                      rejected: "未通过", disputed: "结论不一致", blocked: "已拦截", unavailable: "不可用"};
+                      rejected: "未通过", disputed: "结论不一致", blocked: "已拦截", unavailable: "不可用",
+                      awaiting_approval: "等你批准"};
 
   function el(tag, cls, text) {
     const e = document.createElement(tag);
@@ -280,6 +281,21 @@
       }
       call.append(row);
       body.append(call);
+    } else if (view.state === "awaiting_approval" && view.approval) {
+      // Approval is the person's own decision; the system never approves on their behalf.
+      const a = view.approval;
+      const call = el("div", "callout approve");
+      const facts = [];
+      if (a.development_cases !== null) facts.push(`${a.development_cases} 个开发检查给实现者`);
+      if (a.heldout_cases !== null) facts.push(`${a.heldout_cases} 个留出验收不给实现者看`);
+      if (a.user_examples) facts.push(`另含你的 ${a.user_examples} 个样例`);
+      facts.push(`预算上限 ${usd(a.cost_limit_microusd)}，最多尝试 ${a.max_attempts} 次`);
+      call.append(el("h3", null, "请批准实现计划"), el("p", null, a.message), el("p", "approval-facts", facts.join(" · ")));
+      const row = el("div", "row");
+      const approve = el("button", "primary", "批准并开始编写"); approve.type = "button";
+      approve.addEventListener("click", () => approveSession(view, approve));
+      const expert = el("a", "ghost", "在项目空间查看完整计划"); expert.href = "/console/expert";
+      row.append(approve, expert); call.append(row); body.append(call);
     } else if (view.state === "delivered" || view.state === "verified") {
       const impl = view.steps.find(s => s.key === "implement");
       const lastRun = [...(impl?.attempts || [])].reverse().find(a => a.phase === "acceptance");
@@ -321,9 +337,9 @@
   function updateComposer() {
     const view = state.view, prompt = $("prompt");
     if (!state.canWrite) return;
-    const busy = view && (view.state === "running" || view.state === "paused");
+    const busy = view && (view.state === "running" || view.state === "paused" || view.state === "awaiting_approval");
     prompt.disabled = !!busy; $("send").disabled = !!busy; $("toggle-examples").disabled = !!busy;
-    prompt.placeholder = !view ? "描述你想要的程序…" : busy ? "本轮完成后可继续补充" : "继续补充或修改要求…（会参考上一版程序）";
+    prompt.placeholder = !view ? "描述你想要的程序…" : busy ? (view.state === "awaiting_approval" ? "请先批准上方的实现计划" : "本轮完成后可继续补充") : "继续补充或修改要求…（会参考上一版程序）";
   }
   function scrollToEnd() { const s = $("stream"); s.scrollTop = s.scrollHeight; }
 
@@ -427,6 +443,14 @@
                     {reason: action === "pause" ? "用户在会话中暂停" : "用户在会话中继续"}, key());
       notice("");
     } catch (error) { notice(explain(error), true); }
+    state.view = null; refresh();
+  }
+  async function approveSession(view, button) {
+    if (button) button.disabled = true;
+    try {
+      await request("POST", `/v1/sessions/${encodeURIComponent(view.session_id)}/approve`, {expected_digest: view.approval.digest}, key());
+      notice("已批准，开始编写程序。");
+    } catch (error) { notice(explain(error), true); if (button) button.disabled = false; }
     state.view = null; refresh();
   }
   async function resumeSession(view) {

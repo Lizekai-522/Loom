@@ -2,7 +2,7 @@
   "schema_version": "loom.functional-acceptance/v1",
   "updated": "2026-11-01",
   "baseline": "0.20.0",
-  "current_increment": "0.29.0",
+  "current_increment": "0.30.0",
   "authoritative_spec": "docs/Loom.md",
   "implementation_plan": "docs/project-plan-2026-10-28.md",
   "rules": [

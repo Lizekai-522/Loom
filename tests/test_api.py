@@ -12,7 +12,7 @@ class ApiTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Store(Path(self.tmp.name) / "api.db")
-        self.client = TestClient(create_app(self.store, {"tenant-a": "local-test-token-a-123", "tenant-b": "local-test-token-b-123"}))
+        self.client = TestClient(create_app(self.store, {"tenant-a": "local-test-token-a-123", "tenant-b": "local-test-token-b-123"},legacy_developer_keys=True))
         self.a = {"Authorization": "Bearer local-test-token-a-123", "Idempotency-Key": "create"}
         self.b = {"Authorization": "Bearer local-test-token-b-123", "Idempotency-Key": "create"}
 

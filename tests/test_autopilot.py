@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from loom.api import create_app
 from loom.autopilot import SessionService, split_cases
-from loom.auth import Principal
+from loom.auth import LocalIdentity, Principal
 from loom.executor_config import LocalExecutorConfig, load_executor_config
 from loom.local_executor import LocalExecutor
 from loom.model_gateway import ModelGateway, ModelRoute
@@ -65,7 +65,19 @@ def executor(c):
         return LocalExecutor(c['store'], c['config'])
 
 
-def run_until_idle(c, bodies, outcomes, *, limit=20):
+def human_approves_waiting_plans(c):
+    """The person clicks "批准并开始编写" for every session waiting on them."""
+    service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER), initialize=False)
+    approved = 0
+    for item in service.list('a'):
+        for session_id in service.get('a', item['session_id'])['thread']:
+            if service.get('a', session_id, include_source=False)['state'] == 'awaiting_approval':
+                service.approve(PRINCIPAL, session_id, 'human-approve:' + session_id)
+                approved += 1
+    return approved
+
+
+def run_until_idle(c, bodies, outcomes, *, limit=20, approve=True):
     requests, sandbox = [], SequenceSandbox(outcomes)
     model = gateway(bodies, requests)
     worker = executor(c)
@@ -77,6 +89,8 @@ def run_until_idle(c, bodies, outcomes, *, limit=20):
         for _ in range(limit):
             result = asyncio.run(worker.drain_one())
             idle = idle + 1 if result is None else 0
+            if idle >= 2 and approve and human_approves_waiting_plans(c):
+                idle = 0
             if idle >= 3:
                 break
     return requests, sandbox, worker
@@ -352,7 +366,7 @@ def test_session_view_reports_current_activity_while_running(case):
     c = case
     service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER))
     created = service.create(PRINCIPAL, 'activity', prompt='写一个加一程序')
-    assert created['activity']['text'] == '计划已自动批准'
+    assert created['activity']['text'] == '计划已由你批准'
 
 
 def test_long_follow_up_chains_stay_within_instruction_limits(case):
@@ -419,3 +433,47 @@ def test_http_session_accepts_examples(case):
     bad = client.post('/v1/sessions', json={'prompt': '加一', 'examples': [{'input': 1}]},
                       headers={'Authorization': 'Bearer ' + OP.token, 'Idempotency-Key': 'ex-bad'})
     assert bad.status_code == 422
+
+
+def test_implementation_plan_waits_for_the_person_and_only_a_human_can_approve(case):
+    """Plan v2.2 5.3: no machine approval; the executor never approves the build plan."""
+    c = case
+    service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER))
+    created = service.create(PRINCIPAL, 'needs-human', prompt='写一个程序：读取 {"value":整数}，输出 {"answer":value+1}')
+    requests, sandbox, _ = run_until_idle(c, [REQUIREMENTS, CHECKS], [], approve=False)
+    view = service.get('a', created['session_id'])
+    assert view['state'] == 'awaiting_approval' and view['steps'][2]['status'] == 'awaiting_approval'
+    assert view['approval']['development_cases'] == 3 and view['approval']['heldout_cases'] == 1
+    assert len(requests) == 2 and sandbox.execution_calls == 0  # no developer call, nothing executed
+    build = view['runs']['build']
+    assert service.workflow.get_plan('a', build)['status'] == 'draft'
+    # An instance principal (operator role) cannot approve, neither through the service nor over HTTP.
+    instance = LocalIdentity('a', 'instance-op', frozenset({'operator'}), 'autopilot-instance-operator-fixture-0000')
+    with pytest.raises(PermissionError):
+        service.approve(Principal('a', 'instance-op', frozenset({'operator'})), created['session_id'], 'machine')
+    app = create_app(c['store'], {}, identities=(OP, WORKER, instance), executor_config=c['config'])
+    with TestClient(app) as client:
+        denied = client.post(f"/v1/sessions/{created['session_id']}/approve", json={},
+                             headers={'Authorization': 'Bearer ' + instance.token, 'Idempotency-Key': 'machine-approve'})
+        assert denied.status_code == 403
+        assert client.post('/v1/sessions', json={'prompt': 'x'},
+                           headers={'Authorization': 'Bearer ' + instance.token, 'Idempotency-Key': 'machine-create'}).status_code == 403
+        approved = client.post(f"/v1/sessions/{created['session_id']}/approve", json={'expected_digest': view['approval']['digest']},
+                               headers={'Authorization': 'Bearer ' + OP.token, 'Idempotency-Key': 'human-approve'})
+        assert approved.status_code == 200, approved.text
+    events = c['store'].events('a', build)
+    approvals = [e for e in events if e['type'] == 'workflow.plan_approved']
+    assert len(approvals) == 1 and approvals[0]['actor'] == 'subject:' + OP.subject_id
+    refusals = app.state.platform['agents'].ledger.history('a', 'approval-refusal', f"/v1/sessions/{created['session_id']}/approve")
+    assert refusals and refusals[0]['record']['subject'] == 'subject:instance-op'
+    run_until_idle(c, [{'source': GOOD}], [True, True])
+    assert service.get('a', created['session_id'])['state'] == 'delivered'
+
+
+def test_direct_topology_is_approved_by_the_creating_person_and_needs_no_second_click(case):
+    c = case
+    service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER))
+    examples = [{'input': {'value': v}, 'expected': {'answer': v + 1}} for v in (1, 2, 3)]
+    created = service.create(PRINCIPAL, 'direct-human', prompt='加一', examples=examples)
+    run_until_idle(c, [{'source': GOOD}], [True, True], approve=False)
+    assert service.get('a', created['session_id'])['state'] == 'delivered'

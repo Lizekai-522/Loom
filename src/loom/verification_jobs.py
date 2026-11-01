@@ -10,7 +10,7 @@ import sqlite3
 from uuid import uuid4
 
 from .artifacts import ArtifactService
-from .auth import LocalIdentity,Principal
+from .auth import LocalIdentity,Principal, is_controller
 from .operator import _text
 from .policy import ArtifactSubmission
 from .review_inputs import ReviewInputService
@@ -117,7 +117,7 @@ class VerificationJobs:
             return {**result,'preview_digest':digest(result)}
 
     def request(self,identity,run_id,task_id,key,*,expected_preview_digest,reason):
-        if not isinstance(identity,(LocalIdentity,Principal)) or 'operator' not in identity.roles:raise InvalidInput('named operator required')
+        if not isinstance(identity,(LocalIdentity,Principal)) or not is_controller(identity):raise InvalidInput('named operator required')
         _text(key,200,'command key');_text(reason,2000,'reason')
         args=dict(run_id=run_id,task_id=task_id,actor='subject:'+identity.subject_id,expected_preview_digest=expected_preview_digest,reason=reason)
         def apply(db):

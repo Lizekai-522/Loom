@@ -6,7 +6,8 @@ from loom.auth import AuthConfigError, LocalIdentity
 from loom.store import Store
 
 TOKEN='local-console-public-fixture-operator-00000000'
-IDENTITY=LocalIdentity('a','operator',frozenset({'operator'}),TOKEN)
+# The loopback console is a person at the browser: the single named human user session.
+IDENTITY=LocalIdentity('a','operator',frozenset({'user'}),TOKEN)
 
 def client(tmp_path, *, enabled=True, peer='127.0.0.1', base='http://127.0.0.1:8796'):
     return TestClient(create_app(Store(tmp_path/'console.db'),{},identities=(IDENTITY,),local_console=enabled),
@@ -16,7 +17,7 @@ def test_auto_operator_contains_no_token_and_never_gains_worker_permissions(tmp_
     with client(tmp_path) as c:
         response=c.get('/v1/me',headers={'X-Loom-Console':'local'})
         assert response.status_code==200 and response.json()['authentication']=='local-console'
-        assert response.json()['roles']==['operator'] and TOKEN not in response.text
+        assert response.json()['roles']==['user'] and TOKEN not in response.text
         headers={'X-Loom-Console':'local','Origin':'http://127.0.0.1:8796','Idempotency-Key':'goal'}
         goal=c.post('/v1/goals',headers=headers,json={'title':'中文目标','description':'本机测试','acceptance':['tests.pass']})
         assert goal.status_code==201
@@ -52,7 +53,8 @@ def test_opt_in_required_and_original_bearer_still_works(tmp_path):
         assert c.get('/v1/me',headers={'X-Loom-Console':'local'}).status_code==401
         assert c.get('/v1/me',headers={'Authorization':'Bearer '+TOKEN}).json()['authentication']=='local-bearer'
 
-@pytest.mark.parametrize('identities',[(),(IDENTITY,LocalIdentity('b','op',frozenset({'operator'}),'local-console-public-fixture-other-00000000'))])
+@pytest.mark.parametrize('identities',[(),(IDENTITY,LocalIdentity('b','op',frozenset({'user'}),'local-console-public-fixture-other-00000000')),
+                                       (LocalIdentity('a','op',frozenset({'operator'}),'local-console-public-fixture-instance-0000'),)])
 def test_ambiguous_or_absent_operator_refuses_startup(tmp_path,identities):
     with pytest.raises(AuthConfigError):create_app(Store(tmp_path/'c.db'),{},identities=identities,local_console=True)
 

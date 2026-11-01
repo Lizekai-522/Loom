@@ -573,7 +573,7 @@
   function approvalBody() {
     const item = state.artifactDetail, task = targetTask();
     const listed = state.artifacts.find((candidate) => candidate.artifact_id === state.artifactId);
-    if (!runChecked() || state.busy || !has("control") || !state.principal.roles.includes("operator")
+    if (!runChecked() || state.busy || !has("control") || !(state.principal.roles || []).some((r) => r === "operator" || r === "user")
         || state.snapshot.status !== "open" || state.artifactStatus !== "ready" || state.detailStatus !== "ready"
         || state.contextStatus === "loading" || state.contextBindingChanged || state.artifactsSelection !== state.selection
         || !sameArtifact(item, listed) || item.stale !== false || listed.stale !== false
@@ -596,7 +596,7 @@
     $("context-refresh").disabled = locked || !targetTask() || state.contextStatus === "loading";
     document.querySelectorAll(".artifact-select").forEach((button) => { button.disabled = locked || state.artifactStatus !== "ready"; });
     const allowed = Boolean(approvalBody());
-    $("auxiliary-form").hidden = state.artifactDetail?.kind === "review-findings" || !has("control") || !state.principal?.roles?.includes("operator");
+    $("auxiliary-form").hidden = state.artifactDetail?.kind === "review-findings" || !has("control") || !(state.principal?.roles||[]).some((r) => r === "operator" || r === "user");
     $("auxiliary-reviewed").disabled = !allowed;
     $("auxiliary-approve").disabled = !allowed || !$("auxiliary-reviewed").checked;
     $("auxiliary-help").textContent = state.artifactDetail?.kind === "review-findings" && state.artifactDetail.body?.verdict === "no_findings"

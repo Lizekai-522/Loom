@@ -3,7 +3,7 @@ import argparse
 import json
 from pathlib import Path
 
-from loom.auth import load_identities
+from loom.auth import load_identities, named_controllers
 from loom.store import Store,LoomError
 from loom.tool_recovery import ToolRecoveryService
 
@@ -23,7 +23,7 @@ def main():
     args=parser.parse_args()
     try:
         if not args.db.is_file():raise ValueError
-        identities=[i for i in load_identities(args.identities_file) if i.tenant_id==args.tenant and 'operator' in i.roles]
+        identities=named_controllers(load_identities(args.identities_file),args.tenant)
         if len(identities)!=1:raise ValueError
         result=ToolRecoveryService(Store(args.db)).reconcile(identities[0],args.run_id,args.call_id,args.key,
             expected_epoch=args.expected_epoch,expected_request_hash=args.expected_request_hash,decision=args.decision,

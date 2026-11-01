@@ -80,6 +80,8 @@ def install(app, store, *, Tenant, Reader, Writer, Controller, Key, registry_aut
     plugins = HttpPlugins(store, ledger=ledger, transport=http_transport)
     mcp_servers = McpServers(store, ledger=ledger, transport=http_transport)
     rollouts = PackRollouts(store, packs, ledger=ledger)
+    from .contract import ExecutionDomains
+    domains = ExecutionDomains(store)
 
     def actor(identity):
         return 'subject:' + identity.subject_id
@@ -95,7 +97,9 @@ def install(app, store, *, Tenant, Reader, Writer, Controller, Key, registry_aut
 
     @app.get('/v1/agents/{agent_id}')
     def get_agent(agent_id: str, tenant: Tenant):
-        return agents.get(tenant, agent_id)
+        found = agents.get(tenant, agent_id)
+        # Effective execution domain and its source (plan v2.2 6.2: inherited vs override).
+        return {**found, 'effective_execution_domain': domains.effective(tenant, found)}
 
     @app.get('/v1/capability-profiles')
     def capability_profiles(tenant: Tenant):
@@ -214,7 +218,7 @@ def install(app, store, *, Tenant, Reader, Writer, Controller, Key, registry_aut
                                                 'idempotency_key': {'type': 'string', 'minLength': 1, 'maxLength': 100},
                                                 'examples': {'type': 'array', 'maxItems': 10, 'items': obj}}},
                                 lambda identity, a: sessions.create(identity, 'mcp:' + a['idempotency_key'], prompt=a['prompt'],
-                                                                    examples=a.get('examples')), 'control'),
+                                                                    examples=a.get('examples')), 'plan.approve'),
         'loom_get_session': ('读取会话的步骤、状态、源码与停止原因。', session_schema,
                              lambda identity, a: sessions.get(identity.tenant_id, a['session_id']), 'read'),
         'loom_list_sessions': ('列出会话线程。', {'type': 'object', 'additionalProperties': False, 'properties': {}},

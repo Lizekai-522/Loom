@@ -101,10 +101,16 @@ class AgentRegistry:
         description = text(definition.get('description', base), 'description', 1000)
         status = definition.get('status', 'active')
         require(status in {'active', 'retired'}, 'status must be active or retired')
-        extra = set(definition) - {'agent_id', 'base_role', 'version', 'skills', 'tools', 'model_alias', 'description', 'status'}
+        # Plan v2.2 6.2: null inherits the tenant default, a value overrides it.
+        domain = definition.get('execution_domain')
+        require(domain in (None, 'local', 'remote'), 'execution_domain must be local, remote or null')
+        extra = set(definition) - {'agent_id', 'base_role', 'version', 'skills', 'tools', 'model_alias', 'description', 'status',
+                                   'execution_domain'}
         require(not extra, 'unknown agent fields: ' + ', '.join(sorted(extra)))
         record = dict(schema_version='loom.agent/v1', agent_id=agent_id, base_role=base, version=version,
                       skills=sorted(skills), tools=sorted(tools), model_alias=model, description=description, status=status)
+        if domain is not None:
+            record['execution_domain'] = domain
 
         def check(db):
             prior = self.ledger.latest_in(db, tenant, self.KIND, agent_id)

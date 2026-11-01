@@ -6,9 +6,9 @@ It never creates runs, executes a template, changes defaults or approves a plan.
 from __future__ import annotations
 
 import json
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import Field, ValidationError, model_validator
+from pydantic import Field, ValidationError, model_serializer, model_validator
 
 from .artifacts import _subject, _text
 from .builtin_resources import software_workflow
@@ -21,6 +21,27 @@ class PackTemplate(StrictModel):
     id: Identifier
     title: str = Field(min_length=1, max_length=200)
     nodes: list[TaskNode] = Field(min_length=1, max_length=100)
+    # Parameter contract (plan v2.2 section 7.4): the JSON-schema shape of the
+    # free-text values a delegation may supply. Absent for older packs, and then
+    # omitted from serialization so published content digests stay unchanged.
+    parameters: dict[str, Any] | None = None
+
+    @model_validator(mode='after')
+    def parameter_contract(self):
+        if self.parameters is not None:
+            from .agents import validate_schema
+            if (self.parameters.get('type') != 'object'
+                    or [e for e in validate_schema(self.parameters, {}) if 'unsupported' in e]
+                    or len(canonical(self.parameters)) > 16384):
+                raise ValueError('template parameters must be a bounded object schema using supported keywords')
+        return self
+
+    @model_serializer(mode='wrap')
+    def _omit_absent_parameters(self, handler):
+        data = handler(self)
+        if data.get('parameters') is None:
+            data.pop('parameters', None)
+        return data
 
 
 class DomainPack(StrictModel):
@@ -178,7 +199,19 @@ class DomainPackService:
             pack_ref=PackReference.model_validate(view['reference']), scope='local-workspace',
             roles=view['bundle']['roles'], nodes=template['nodes'])
         return dict(reference=view['reference'], template_id=template_id, definition=definition.model_dump(mode='json'),
-                    plan_approved=False, grants_authority=False)
+                    parameters=template.get('parameters'), plan_approved=False, grants_authority=False)
+
+    def validate_arguments(self, tenant, name, version, template_id, arguments):
+        """Schema check + mechanical mapping only; a failure rejects, never degrades (plan 7.4, D1/D2)."""
+        from .agents import validate_schema
+        resolved = self.template(tenant, name, version, template_id)
+        contract = resolved['parameters']
+        if contract is None:
+            errors = [] if arguments == {} else ['$: this template declares no parameters']
+        else:
+            errors = validate_schema(contract, arguments)
+        return dict(reference=resolved['reference'], template_id=template_id, valid=not errors, errors=errors[:20],
+                    parameter_contract=contract is not None, plan_submitted=False)
 
     def resolve_in(self, db, tenant, definition):
         reference = definition.pack_ref

@@ -1,10 +1,15 @@
 """Conversation sessions with delegated automatic progression.
 
-A named operator opts a session into ``auto`` mode once. The private executor
-then performs the same audited actions the console would (plan approval, input
-grants, execution requests, suite freeze, verification requests) under that
-operator's subject, using deterministic ``ap:<session>:...`` idempotency keys
-so every delegated receipt is identifiable and replay-safe.
+A named human user opens a session; the plan that request creates (analysis
+and test design, or the whole direct build when the user's own examples fix the
+acceptance set) is approved inside that same human request. The private
+executor then performs routine audited actions (input grants, execution
+requests, suite freeze, verification requests) under that user's subject with
+deterministic ``ap:<session>:...`` idempotency keys.
+
+Approval is never delegated to a machine (monsoon-harness plan v2.2, 5.3): the
+implementation plan, which only exists once tests are designed, waits in
+``awaiting_approval`` until the person approves it with one click.
 
 Autopilot never weakens the kernel: budgets, leases, unknown-effect holds,
 frozen contracts and Gate-V are unchanged. It stops and asks a human whenever
@@ -19,6 +24,7 @@ import os
 from pathlib import Path
 from uuid import uuid4
 
+from .auth import is_controller, is_human
 from .artifacts import ArtifactService
 from .builtin_resources import software_workflow
 from .development_suites import DevelopmentSuiteService
@@ -148,7 +154,7 @@ ACTIVITY = {
     'artifact.input_approved': '已把上一步结果交给下一步',
     'development.suite_frozen': '已冻结开发检查用例',
     'autopilot.acceptance_frozen': '已留出验收用例',
-    'workflow.plan_approved': '计划已自动批准',
+    'workflow.plan_approved': '计划已由你批准',
 }
 
 
@@ -217,7 +223,7 @@ class SessionService:
         return 'subject:' + identity.subject_id
 
     def _registered_operator(self, tenant, subject):
-        found = [i for i in self.identities if i.tenant_id == tenant and i.subject_id == subject and 'operator' in i.roles]
+        found = [i for i in self.identities if i.tenant_id == tenant and i.subject_id == subject and is_controller(i)]
         if len(found) != 1:
             raise InvalidInput('autopilot requires the registered named operator who created the session')
         return found[0]
@@ -248,7 +254,7 @@ class SessionService:
         the parent's held-out acceptance set is copied.
         """
         view = self.get(tenant, parent_id)
-        if view['state'] in {'running', 'paused'}:
+        if view['state'] in {'running', 'paused', 'awaiting_approval'}:
             raise Conflict('previous turn is still in progress')
         with self.store.connect() as db:
             parent, _ = self._session_row(db, tenant, parent_id)
@@ -303,6 +309,8 @@ class SessionService:
         return definition, tests, evaluation
 
     def create(self, identity, key, *, prompt, title=None, parent_session_id=None, examples=None, topology='auto'):
+        if not is_human(identity):
+            raise PermissionError('automatic sessions are approved by a named human user session')
         _text(prompt, 'prompt', 4000)
         _text(key, 'idempotency key', 120)
         examples = self._user_examples(examples)
@@ -375,6 +383,25 @@ class SessionService:
                               self._operator(identity), key)
             return dict(session_id=session_id, resumed=True)
         self.store._command(tenant, key, 'autopilot.resume', args, apply)
+        return self.get(tenant, session_id)
+
+    def approve(self, identity, session_id, key, *, expected_digest=None):
+        """The person approves the implementation plan (one click in the UI)."""
+        if not is_human(identity):
+            raise PermissionError('approval requires a named human user session')
+        _text(key, 'idempotency key', 200)
+        tenant = identity.tenant_id
+        with self.store.connect() as db:
+            _, links = self._session_row(db, tenant, session_id)
+        if 'build' not in links:
+            raise Conflict('the implementation plan is not ready yet')
+        plan = self.workflow.get_plan(tenant, links['build'])
+        if plan['status'] != 'draft':
+            raise Conflict('the implementation plan is already approved')
+        if expected_digest is not None and expected_digest != plan['digest']:
+            raise Conflict('approval does not match the current reviewed plan')
+        self.workflow.approve_plan(tenant, links['build'], key, plan['revision'], plan['digest'],
+                                   actor=self._operator(identity))
         return self.get(tenant, session_id)
 
     # ----- automatic progression --------------------------------------
@@ -461,6 +488,8 @@ class SessionService:
         actor = self._operator(operator)
         phase = 'build' if 'build' in links else 'spec'
         run_id = links[phase]
+        if phase == 'build' and record.get('topology') != 'direct' and self.workflow.get_plan(tenant, run_id)['status'] == 'draft':
+            return None  # waiting for the human approval of the implementation plan
         progress = self.progression.read(tenant, run_id)
         if progress['run_status'] == 'succeeded' and phase == 'build':
             return self._deliver(tenant, session_id, run_id, progress, operator, actor)
@@ -609,8 +638,7 @@ class SessionService:
                                                     max_repairs=1, stop_on_duplicate_source=True),
                                         limits=dict(BUILD_LIMITS))]
             plan = self.workflow.save_plan(tenant, build_run, base + ':plan', definition, 0, actor=actor)
-        if plan['status'] == 'draft':
-            self.workflow.approve_plan(tenant, build_run, base + ':approve', plan['revision'], plan['digest'], actor=actor)
+        # No machine approval: the implementation plan waits for the person.
         link_args = dict(session_id=session_id, run_id=build_run)
 
         def link(db):
@@ -624,7 +652,7 @@ class SessionService:
                        (tenant, session_id, 'build', build_run, canonical(payload), event['hash']))
             return payload
         self.store._command(tenant, base + ':link', 'autopilot.link_phase', link_args, link)
-        return 'build_started'
+        return 'awaiting_approval'
 
     def _verification_state(self, tenant, run_id, task_id):
         """Latest independent verification job for the task, or None."""
@@ -723,7 +751,8 @@ class SessionService:
             current = status.get((links.get(sid) or [record['spec_run_id']])[-1])
             state = ('needs_attention' if kind == 'autopilot.stopped' else
                      ('verified' if verified else 'delivered') if kind == 'autopilot.delivered' else
-                     'paused' if current == 'paused' else 'terminated' if current in {'cancelled', 'terminated'} else 'running')
+                     'paused' if current == 'paused' else 'terminated' if current in {'cancelled', 'terminated'} else
+                     'awaiting_approval' if current == 'draft' and len(links.get(sid) or []) > 1 else 'running')
             rows.append(dict(session_id=sid, title=record['title'], state=state, created_at=created.get(sid),
                              updated_at=updated.get(sid), thread_id=record.get('thread_id') or sid))
         return rows
@@ -868,6 +897,18 @@ class SessionService:
             state = 'paused'
         if state == 'running' and current['status'] in {'cancelled', 'terminated'}:
             state = 'terminated'
+        approval = None
+        if state == 'running' and 'build' in links and not direct and current['status'] == 'draft':
+            state = 'awaiting_approval'
+            plan = self.workflow.get_plan(tenant, links['build'])
+            build['status'] = 'awaiting_approval'
+            approval = dict(run_id=links['build'], revision=plan['revision'], digest=plan['digest'],
+                            development_cases=len(frozen['development_case_names']) if frozen else None,
+                            heldout_cases=len(frozen['heldout_case_names']) if frozen else None,
+                            user_examples=frozen.get('user_example_count', 0) if frozen else 0,
+                            cost_limit_microusd=BUILD_BUDGET['cost_limit'], token_limit=BUILD_BUDGET['token_limit'],
+                            max_attempts=BUILD_LIMITS['max_attempts'],
+                            message='测试用例已设计好。批准后才会开始编写程序并在隔离环境验收；批准由你本人做出，系统不会代批。')
         spend = dict(cost_microusd=sum(r['spent'] for r in run_rows.values()),
                      reserved_microusd=sum(r['reserved'] for r in run_rows.values()),
                      tokens=sum(r['tokens_spent'] for r in run_rows.values()),
@@ -887,7 +928,8 @@ class SessionService:
                     parent_session_id=record.get('parent_session_id'), activity=activity,
                     acceptance_examples=record.get('acceptance_examples') or [],
                     topology=record.get('topology', 'standard'), topology_reason=record.get('topology_reason'),
-                    mode=record['mode'], state=state, attention=attention, created_at=created_at, updated_at=updated_at,
+                    mode=record['mode'], state=state, attention=attention, approval=approval,
+                    created_at=created_at, updated_at=updated_at,
                     current_run_id=links.get('build') or links['spec'], runs=links, steps=steps, spend=spend,
                     executor_configured=self.config is not None,
                     acceptance_origin=('user-examples' if direct else

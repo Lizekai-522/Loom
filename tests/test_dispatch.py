@@ -200,7 +200,7 @@ def test_history_has_eight_request_bound_and_no_automatic_retry(dispatch_case):
 def test_http_role_barriers_and_disabled_default(dispatch_case):
     b=dispatch_case();viewer=LocalIdentity('a','viewer',frozenset({'viewer'}),'dispatch-viewer-public-fixture-00000000')
     path='/v1/runs/'+b['run']+'/tasks/'+b['params'][2]
-    with TestClient(create_app(b['store'],{'a':'dispatch-legacy-public-fixture-00000000'},identities=(OP,WORKER,viewer),executor_config=b['config'])) as client:
+    with TestClient(create_app(b['store'],{'a':'dispatch-legacy-public-fixture-00000000'},identities=(OP,WORKER,viewer),executor_config=b['config'],legacy_developer_keys=True)) as client:
         header=lambda i:{'Authorization':'Bearer '+i.token,'Idempotency-Key':'http-request'}
         assert client.get(path+'/execution-preview').status_code==401
         p=client.get(path+'/execution-preview',headers=header(viewer)).json();assert p['ready']

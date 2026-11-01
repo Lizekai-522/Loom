@@ -171,7 +171,7 @@ class PublicPreview:
         if method == 'PUT':
             return bool(re.fullmatch(r'/v1/goals/[A-Za-z0-9_-]+/plan', path))
         if method == 'POST':
-            return (path in {'/v1/goals', '/v1/sessions'} or bool(re.fullmatch(r'/v1/sessions/[A-Za-z0-9_-]+/resume', path)) or bool(re.fullmatch(
+            return (path in {'/v1/goals', '/v1/sessions'} or bool(re.fullmatch(r'/v1/sessions/[A-Za-z0-9_-]+/(?:resume|approve)', path)) or bool(re.fullmatch(
                 r'/v1/(?:goals/[A-Za-z0-9_-]+/plan/approve|runs/[A-Za-z0-9_-]+/(?:control/(?:pause|resume|terminate)|pause|resume|terminate|tasks/[A-Za-z0-9:_-]+/(?:auxiliary-inputs|execution-requests|verification-requests)|execution-requests/[A-Za-z0-9_-]+/cancel|artifacts/[A-Za-z0-9_-]+/(?:development-suites|review-decisions)))', path)))
         return False
 

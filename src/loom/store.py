@@ -130,6 +130,8 @@ class Store:
         with self.connect() as db:
             db.execute("PRAGMA journal_mode=WAL")
             db.executescript(SCHEMA)
+            from .contract import SCHEMA as CONTRACT_SCHEMA  # derived contract tables (plan v2.2 batch 3)
+            db.executescript(CONTRACT_SCHEMA)
         with self.transaction() as db:
             for key, value in (("max_workers", max_workers), ("verify_reserve", verify_reserve)):
                 old = db.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()

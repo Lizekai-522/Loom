@@ -1,7 +1,7 @@
 """Named operator resolution of registered tool uncertainty; never billing or success."""
 import re
 
-from .auth import LocalIdentity, Principal
+from .auth import LocalIdentity, Principal, is_controller
 from .operator import _text
 from .quotas import QuotaService
 from .store import Conflict, InvalidInput, NotFound
@@ -11,7 +11,7 @@ class ToolRecoveryService:
     def __init__(self,store):self.store=store
 
     def reconcile(self,identity,run_id,call_id,key,*,expected_epoch,expected_request_hash,decision,evidence):
-        if (not isinstance(identity,(LocalIdentity,Principal)) or 'operator' not in identity.roles
+        if (not isinstance(identity,(LocalIdentity,Principal)) or not is_controller(identity)
             or identity.subject_id.startswith('legacy:')):
             raise InvalidInput('named operator required for tool reconciliation')
         for value,maximum,label in ((run_id,200,'run'),(key,200,'command key')):_text(value,maximum,label)

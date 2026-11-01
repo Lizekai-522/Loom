@@ -67,7 +67,7 @@ class ContextScriptTests(unittest.IsolatedAsyncioTestCase):
             raise AssertionError("unexpected approval/claim/network call")
         client_type = httpx.Client
         identities = tuple(LocalIdentity("first-round", role, frozenset({role}), "context-script-fixture-" + role + "-00000000")
-                           for role in ("operator", "worker"))
+                           for role in ("operator", "worker", "user"))
         with patch.object(script, "load_identities", return_value=identities), \
              patch.object(script, "load_project_secrets", return_value={"DEEPSEEK_API_KEY": "context-script-test-key-only"}), \
              patch.object(script, "load_model_config", return_value=((ModelRoute("deepseek-flash"),), {})), \
@@ -86,7 +86,7 @@ class ContextScriptTests(unittest.IsolatedAsyncioTestCase):
         self.args.approve = True
         store = Store(self.args.db)
         identities = tuple(LocalIdentity("first-round", role, frozenset({role}), "context-script-stop-fixture-" + role + "-00000000")
-                           for role in ("operator", "worker"))
+                           for role in ("operator", "worker", "user"))
         client_type = httpx.Client
         async def stopped(runner, claim, *args, **kwargs):
             return runner._block(claim, "CONTEXT_BINDING_INVALID")

@@ -2,7 +2,7 @@
 from ipaddress import ip_address
 from urllib.parse import urlsplit
 
-from .auth import AuthConfigError, Principal
+from .auth import HUMAN_ROLE, AuthConfigError, Principal
 
 
 def console_principal(identities, enabled):
@@ -10,10 +10,12 @@ def console_principal(identities, enabled):
         raise AuthConfigError()
     if not enabled:
         return None
-    operators = [identity for identity in identities if 'operator' in identity.roles]
-    if len(operators) != 1:
+    # The browser at the loopback console is a person, so it acts as the one
+    # registered human user session (approval belongs to people, not instances).
+    humans = [identity for identity in identities if HUMAN_ROLE in identity.roles]
+    if len(humans) != 1:
         raise AuthConfigError()
-    identity = operators[0]
+    identity = humans[0]
     return Principal(identity.tenant_id, identity.subject_id, identity.roles)
 
 

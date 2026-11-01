@@ -4,16 +4,19 @@
 
 ## 角色与动作
 
-| 角色 | read | goal.write | plan.approve | task.claim | task.submit | control |
-|---|---|---|---|---|---|---|
-| operator | 允许 | 允许 | 允许 | 拒绝 | 拒绝 | 允许 |
-| worker | 允许 | 拒绝 | 拒绝 | 允许 | 允许 | 拒绝 |
-| viewer | 允许 | 拒绝 | 拒绝 | 拒绝 | 拒绝 | 拒绝 |
-| developer（旧租户 key） | 允许 | 允许 | 允许 | 允许 | 允许 | 拒绝 |
+2026-11-01（0.30.0）起按仓库 PR #1 方案 v2.2 第 5.3 节调整：批准是人的决定，只授予具名人类用户会话（`user`）；实例主体负责组装与执行，不持批准能力。
 
-`read` 仍受租户边界限制，不授予跨租户资源访问。`control` 用于受控暂停、恢复、终止及未知调用核对；它不授予模型验证签名或把候选标为成功的权限。operator 不能通过普通 Worker 入口认领/提交任务，worker 不能批准计划或处理人工控制。
+| 角色 | read | goal.write | plan.approve / suite.approve | task.claim | task.submit | control（含终止） | run.pause（暂停/恢复） |
+|---|---|---|---|---|---|---|---|
+| user（人类用户会话） | 允许 | 允许 | 允许 | 拒绝 | 拒绝 | 允许 | 允许 |
+| operator（实例主体） | 允许 | 允许 | 拒绝 | 拒绝 | 拒绝 | 允许 | 允许 |
+| worker（执行器主体） | 允许 | 拒绝 | 拒绝 | 允许 | 允许 | 拒绝 | 允许 |
+| viewer | 允许 | 拒绝 | 拒绝 | 拒绝 | 拒绝 | 拒绝 | 拒绝 |
+| developer（旧租户 key，仅过渡开关） | 允许 | 允许 | 拒绝 | 允许 | 允许 | 拒绝 | 拒绝 |
 
-新具名身份禁止同时拥有 operator 和 worker；可以与 viewer 组合，但 viewer 不增加动作。旧 `tenant_keys` 配置只为已有本地 fixture API 保持兼容，映射为 `legacy:<tenant>` / developer。它保留原来的开发读写权限，却不能获得新 control 权限，不能据此声称生产职责隔离已经完成。
+`read` 仍受租户边界限制，不授予跨租户资源访问。`control` 用于受控暂停、恢复、终止及未知调用核对；`run.pause` 只允许暂停与恢复（执行器请求人工介入），终止仍需 control。批准接口除能力检查外还判定“具名人类”：主体须为已登记的 `user` 身份且不是旧租户 key 派生；被拒绝的批准尝试写入租户内哈希链接的 `approval-refusal` 台账。
+
+`user` 不能与任何其他角色同时登记；新具名身份也禁止同时拥有 operator 和 worker。旧 `tenant_keys` 默认拒绝（启动报错）；只有显式使用 `loom serve --legacy-developer-keys` 时才映射为 `legacy:<tenant>` / developer，且没有批准与 control 权限，不能据此声称生产职责隔离已经完成。本机控制台（`--local-console`）要求身份文件中恰好一个 `user`，浏览器以该身份操作。
 
 相同租户中的 subject_id 只能登记一次，不能以两条记录给同一主体分别叠加 operator/worker。不同租户可以使用相同 subject_id，但 token 必须在全部具名及 legacy 身份间全局唯一。
 
@@ -25,6 +28,12 @@
 {
   "schema_version": "loom.local-identities/v1",
   "identities": [
+    {
+      "tenant_id": "local-test",
+      "subject_id": "local-user",
+      "roles": ["user"],
+      "token": "<replace-with-a-long-random-human-user-token>"
+    },
     {
       "tenant_id": "local-test",
       "subject_id": "operator-local",

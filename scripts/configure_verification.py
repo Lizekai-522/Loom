@@ -8,7 +8,7 @@ import os
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from loom.auth import load_identities
+from loom.auth import load_identities, named_controllers
 from loom.store import InvalidInput,LoomError
 from loom.verification_config import MODELS,load_verification_config
 
@@ -16,7 +16,7 @@ def configure(directory,*,tenant,identities,model_config,model_secrets,db,pool_l
     directory=Path(directory).resolve();repo=Path(__file__).resolve().parents[1]
     if directory.is_relative_to(repo) or directory.exists() or not Path(db).is_file():raise InvalidInput('new private configuration directory required')
     actors=load_identities(identities)
-    if len([i for i in actors if i.tenant_id==tenant and 'operator' in i.roles])!=1:raise InvalidInput('named tenant operator required')
+    if len(named_controllers(actors,tenant))!=1:raise InvalidInput('named tenant operator required')
     if type(pool_limit) is not int or not 0<=pool_limit<=10000000:raise InvalidInput('invalid project pool')
     directory.mkdir(parents=True)
     passwords={model:secrets.token_urlsafe(40) for model in MODELS};private={};public={}

@@ -22,9 +22,9 @@ BODY = {"schema_version": "loom.requirements/v1", "summary": "Keep task data iso
 def artifacts_api(tmp_path):
     store = Store(tmp_path / "artifact-api.db")
     identities = tuple(LocalIdentity("b" if role == "other" else "a", role + "-a",
-                       frozenset({"viewer" if role == "other" else role}), KEYS[role])
+                       frozenset({"viewer" if role == "other" else "user" if role == "operator" else role}), KEYS[role])
                        for role in ("operator", "worker", "viewer", "other"))
-    with TestClient(create_app(store, {"a": KEYS["legacy"]}, identities=identities)) as client:
+    with TestClient(create_app(store, {"a": KEYS["legacy"]}, identities=identities,legacy_developer_keys=True)) as client:
         sequence = 0
         def request(method, path, body=None, *, role="operator", key=None):
             headers = {"Authorization": "Bearer " + KEYS[role]} if role else {}

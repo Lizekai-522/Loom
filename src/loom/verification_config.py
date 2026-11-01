@@ -7,7 +7,7 @@ import re
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey,Ed25519PublicKey
 
-from .auth import load_identities
+from .auth import load_identities, named_controllers
 from .local_config import load_project_secrets
 from .store import InvalidInput
 from .verification_signatures import TrustedVerifier
@@ -28,7 +28,7 @@ class VerificationConfig:
 
     def identities(self):
         identities=load_identities(self.identities_file)
-        operators=[i for i in identities if i.tenant_id==self.tenant_id and 'operator' in i.roles]
+        operators=named_controllers(identities,self.tenant_id)
         workers=[i for i in identities if i.tenant_id==self.tenant_id and 'worker' in i.roles]
         if len(operators)!=1 or len(workers)!=1:raise InvalidInput('ambiguous verification identities')
         return operators[0],workers[0]

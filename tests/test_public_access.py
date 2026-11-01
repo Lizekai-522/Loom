@@ -15,7 +15,8 @@ from loom.store import Conflict
 from loom.workflow import WorkflowService
 
 ORIGIN='https://loom-preview.example'
-OP=LocalIdentity('preview','operator',frozenset({'operator'}),'preview-test-operator-00000000000000000')
+# Invited visitors are people, so the injected server-held identity is the human user session.
+OP=LocalIdentity('preview','operator',frozenset({'user'}),'preview-test-operator-00000000000000000')
 CONFIG=PreviewAccess(ORIGIN,'public_fixture_access_code_000000000000000',OP.token)
 HEADERS={'Origin':ORIGIN,'Idempotency-Key':'one'}
 GOAL=dict(title='公网测试',description='仅测试，无真实模型调用',acceptance=['tests.pass'],cost_limit_microusd=100000,token_limit=10000)

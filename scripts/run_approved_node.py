@@ -6,7 +6,7 @@ from pathlib import Path
 
 from loom.approved_execution import ApprovedExecutionService, ReadOnlyStore
 from loom.artifacts import ArtifactService
-from loom.auth import load_identities
+from loom.auth import load_identities, named_controllers
 from loom.execution import LocalTaskRunner, freeze_tests
 from loom.local_config import load_project_secrets
 from loom.model_gateway import ModelGateway, GatewayError, load_model_config
@@ -47,7 +47,7 @@ async def run(args):
     if args.preview_digest!=preview['preview_digest']:raise ValueError('CURRENT_PREVIEW_REQUIRED')
     if not args.identities_file or (not validator and not args.secrets_file):raise ValueError('PRIVATE_CONFIGURATION_REQUIRED')
     identities=load_identities(args.identities_file)
-    operators=[i for i in identities if i.tenant_id==args.tenant and 'operator' in i.roles]
+    operators=named_controllers(identities,args.tenant)
     workers=[i for i in identities if i.tenant_id==args.tenant and 'worker' in i.roles]
     if len(operators)!=1 or len(workers)!=1:raise ValueError('UNAMBIGUOUS_OPERATOR_AND_WORKER_REQUIRED')
     sandbox=None

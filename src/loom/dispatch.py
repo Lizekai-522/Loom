@@ -9,7 +9,7 @@ from pydantic import Field,ValidationError
 from .approved_execution import ApprovedExecutionService
 from .artifact_schemas import ArtifactModel,Hash,ReviewIdentifier
 from .artifacts import ArtifactService,_hash,_text
-from .auth import LocalIdentity
+from .auth import LocalIdentity, is_controller
 from .review_inputs import ReviewInputService
 from .store import Claim,Conflict,InvalidInput,NotFound,canonical,digest
 
@@ -91,7 +91,7 @@ class DispatchService:
     def flags():return dict(counts_as_success=False,independently_verified=False,automatic_retry=False)
 
     def _identity(self,tenant,role,subject=None):
-        found=[i for i in self.identities if isinstance(i,LocalIdentity) and i.tenant_id==tenant and role in i.roles and (subject is None or i.subject_id==subject)]
+        found=[i for i in self.identities if isinstance(i,LocalIdentity) and i.tenant_id==tenant and (is_controller(i) if role=='operator' else role in i.roles) and (subject is None or i.subject_id==subject)]
         if len(found)!=1:raise InvalidInput('unique registered local identity required')
         return found[0]
 

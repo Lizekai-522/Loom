@@ -18,7 +18,7 @@ def api(tmp_path):
     tokens = {role:'domain-pack-fixture-token-only-'+role+'-00000000' for role in (*roles,'legacy')}
     identities = tuple(LocalIdentity('b' if role=='other' else 'a',role,
         frozenset({'viewer' if role=='other' else role}),tokens[role]) for role in roles)
-    with TestClient(create_app(store,{'a':tokens['legacy']},identities=identities)) as client:
+    with TestClient(create_app(store,{'a':tokens['legacy']},identities=identities,legacy_developer_keys=True)) as client:
         def request(method,path,body=None,*,role='operator',key='publish'):
             headers = {} if role is None else {'Authorization':'Bearer '+tokens[role]}
             if key is not None:headers['Idempotency-Key'] = key

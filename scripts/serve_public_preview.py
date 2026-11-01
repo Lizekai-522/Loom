@@ -16,11 +16,12 @@ def main():
     private=args.work_root.resolve()/'loom-public-preview'
     identities=load_identities(private/'identities.json')
     operator=next(i for i in identities if 'operator' in i.roles)
+    human=next(i for i in identities if 'user' in i.roles)
     def access():
         raw=(private/'access.json').read_bytes()
         if len(raw)>4096:raise ValueError('invalid access config')
         data=json.loads(raw)
-        return PreviewAccess(data['origin'],data['access_code'],operator.token)
+        return PreviewAccess(data['origin'],data['access_code'],human.token)
     access()
     port=json.loads((private/'access.json').read_bytes())['port']
     store=PreviewStore(private/'preview.db');executor=load_executor_config(private/'executor.json')

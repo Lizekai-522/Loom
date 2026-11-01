@@ -1,4 +1,5 @@
 """Private, single-attempt review worker; only known gateway receipts are signed."""
+from .auth import is_controller
 from dataclasses import asdict
 import json
 from pathlib import Path
@@ -18,7 +19,7 @@ class VerificationWorker:
         self.jobs=jobs;self.gateway=gateway;self.directory=Path(directory).resolve();self.operator=operator;self.worker=worker
         self.signing_keys=signing_keys;self.trusted_keys=trusted_keys
         if (self.directory.is_relative_to(Path(__file__).resolve().parents[2]) or operator.tenant_id!=worker.tenant_id
-            or 'operator' not in operator.roles or 'worker' not in worker.roles or operator.subject_id==worker.subject_id):
+            or not is_controller(operator) or 'worker' not in worker.roles or operator.subject_id==worker.subject_id):
             raise InvalidInput('private verification workspace and separate named identities required')
         self.directory.mkdir(parents=True,exist_ok=True)
         for model in ('deepseek-flash','deepseek-v4-pro'):

@@ -159,7 +159,7 @@ async def run(args, private, progress=None):
     await asyncio.to_thread(sandbox.preflight)
     identities = load_identities(args.identities_file)
     selected = {role: next((item for item in identities if item.tenant_id == args.tenant and role in item.roles), None)
-                for role in ("operator", "worker")}
+                for role in ("operator", "worker", "user")}
     if any(item is None for item in selected.values()):
         raise CheckFailure("MATCHED_NAMED_IDENTITIES_REQUIRED")
     if selected["operator"].subject_id == selected["worker"].subject_id:
@@ -202,7 +202,7 @@ async def run(args, private, progress=None):
             local_plan = workflows.get_plan(args.tenant, run_id)
             if local_plan["digest"] != plan["digest"] or local_plan["revision"] != plan["revision"]:
                 raise CheckFailure("API_DATABASE_CONTRACT_MISMATCH")
-            approved = request("operator", "POST", goal_path + "/plan/approve", {"expected_revision": plan["revision"], "expected_digest": plan["digest"]}, prefix + ":approve")
+            approved = request("user", "POST", goal_path + "/plan/approve", {"expected_revision": plan["revision"], "expected_digest": plan["digest"]}, prefix + ":approve")
             worker = selected["worker"].subject_id
             def claim_node(node):
                 data = request("worker", "POST", base + "/claim", {"worker_id": worker, "lease_seconds": 90})["claim"]

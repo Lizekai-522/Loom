@@ -5,7 +5,7 @@ import sqlite3
 
 from .artifacts import ArtifactService, _hash
 from .artifact_schemas import ARTIFACT_ROLES
-from .auth import LocalIdentity
+from .auth import LocalIdentity, is_controller
 from .development_suites import DevelopmentSuiteService
 from .execution import freeze_tests
 from .model_pricing import role_tariff,prompt_token_bound
@@ -141,7 +141,7 @@ class ApprovedExecutionService:
         _hash(preview_digest)
         if (not isinstance(operator,LocalIdentity) or not isinstance(worker,LocalIdentity)
                 or operator.tenant_id!=tenant or worker.tenant_id!=tenant
-                or 'operator' not in operator.roles or 'worker' not in worker.roles):
+                or not is_controller(operator) or 'worker' not in worker.roles):
             raise InvalidInput('registered same-tenant operator and worker required')
         spec,current=self._check_in(db,tenant,run_id,node_id,plan_digest,tests,max_output_tokens)
         if current['preview_digest']!=preview_digest:

@@ -1,6 +1,6 @@
 # 本地 API 契约
 
-此目录的 `openapi.json` 由当前 FastAPI 应用生成，描述实际可运行的 HTTP 子集。当前版本 **0.29.0**；本机 [控制台](http://127.0.0.1:8796/console) 与 [接口文档](http://127.0.0.1:8796/docs) 同源提供。设计方案附录中的其余接口仍属后续目标，未因列入规范而自动实现。
+此目录的 `openapi.json` 由当前 FastAPI 应用生成，描述实际可运行的 HTTP 子集。当前版本 **0.30.0**；本机 [控制台](http://127.0.0.1:8796/console) 与 [接口文档](http://127.0.0.1:8796/docs) 同源提供。设计方案附录中的其余接口仍属后续目标，未因列入规范而自动实现。
 
 `/health` 返回 version，stage 仍为 `S1-local`，表示 HTTP 内核继续使用单实例 SQLite；`external_writes_enabled=false` 表示此 API 没有执行真实外部写的路由。本机脚本的真实模型调用另见 [本机执行说明](../local-execution.md)。`/integrity` 的 `external_checkpoint: "not_configured"` 表示该 HTTP 实例尚未配置独立检查点；离线 Ed25519 组件不在普通查询时自动签名，使用方法见 [检查点说明](../checkpoints.md)。
 
@@ -13,7 +13,8 @@
 | 本租户持久配额与计数 | `GET /v1/quotas`；只读，实际模型及已登记 Python 工具准入在相应 effect 事务核对，工具不新增模型费用预留 |
 | 本机工具未知态核对 | `POST /v1/runs/{run_id}/tool-effects/{call_id}/reconcile`；具名操作员，公网禁止，不改费用或自动重跑 |
 | 独立验证能力 | `GET /v1/verification-capabilities`；鉴权只读，区分签名核心与真实配置/完成入口，不接受HTTP密钥登记 |
-| 新建自动会话或追问 | `POST /v1/sessions`，正文 `{"prompt":…, "title"?:…, "parent_session_id"?:…, "examples"?:[{"input":…,"expected":…}], "topology"?:"auto|standard|direct"}`（examples 最多10个，作为不进入模型提示的终验样例）；需具名操作员（goal.write+plan.approve+control）与 Idempotency-Key。创建即按会话模板批准计划，由私有执行器委托推进；带 parent 时须上一轮已结束，新会话携带原始需求、历次补充与上一版程序，不含留出用例 |
+| 新建自动会话或追问 | `POST /v1/sessions`，正文 `{"prompt":…, "title"?:…, "parent_session_id"?:…, "examples"?:[{"input":…,"expected":…}], "topology"?:"auto|standard|direct"}`（examples 最多10个，作为不进入模型提示的终验样例）；需具名人类用户会话（`user` 角色）与 Idempotency-Key。本次请求创建的计划（需求分析+测试设计；或直通拓扑的整条实现）在该人工请求内批准；实现计划在测试设计完成后进入 `awaiting_approval`，须由人调用下一行接口批准；带 parent 时须上一轮已结束，新会话携带原始需求、历次补充与上一版程序，不含留出用例 |
+| 批准实现计划 | `POST /v1/sessions/{session_id}/approve`，正文 `{"expected_digest"?:…}`；仅 `user` 角色。会话视图的 `approval` 字段给出修订、摘要、开发/留出用例数、预算与尝试次数；实例主体（operator/worker）调用返回 403 并写入拒绝台账 |
 | 列出/读取会话 | `GET /v1/sessions`（每个对话线程一行，含轮数）、`GET /v1/sessions/{session_id}`；返回线程、步骤、需求/用例正文、尝试计数、源码、当前活动、停止原因与费用，不含留出用例执行输出 |
 | 停止后继续自动推进 | `POST /v1/sessions/{session_id}/resume`，正文 `{"reason":…}`；只解除会话停止标记，不改变运行状态、预算或未知调用 |
 | 创建 Goal 草案 | `POST /v1/goals` |
@@ -127,3 +128,25 @@ CLI 通过 `loom serve --identities-file <源码和公开outputs之外的私有J
 | FR-038 HTTP 插件 | `GET/POST /v1/plugins`、`POST /v1/plugins/{plugin_id}/invoke` `{endpoint, arguments, dry_run=true}` | 读 / 操作员 / 操作员 | 声明式清单：https 公网主机、仅 GET、路径参数必须在 schema required 中；默认禁用；调用固定主机、不跟随重定向、10 秒超时、响应上限 64KB，只记录状态与摘要 |
 | FR-049 领域包灰度 | `GET /v1/pack-rollouts/{name}`、`POST /v1/pack-rollouts/{name}` `{action: canary|promote|rollback, version?, percent?}`、`GET /v1/pack-rollouts/{name}/resolve?subject=` | 读 / 操作员 / 读 | 金丝雀 1–50%，按主体哈希分桶；promote 后可 rollback 到上一稳定版；已有运行保持冻结的 pack_ref |
 | FR-054 风险抽样 | `GET /v1/evaluation/sampling` | 读 | 汇总自动会话的独立复核结果，给出偏差率与单侧95%上界（零偏差用精确公式，否则 Wilson），并给出证明≤2%所需样本数（149） |
+
+## 0.30.0 批准归属与跨机契约（以仓库 PR #1 方案 v2.2 为准）
+
+依据 PR #1《monsoon-harness 施工方案 v2.2》第 5.3、6.2、7.4、8.1–8.5 节与批次三，本版完成 Loom 侧改造：
+
+- **批准只归人**：新增 `user` 角色（具名人类用户会话），唯一持有 `plan.approve`、`suite.approve`；`operator`（实例主体）保留 goal.write/control/pack.publish，不再能批准；`worker` 新增 `run.pause`，可暂停/恢复以请求人工介入，终止仍需 control。`user` 不能与其他角色同时登记。批准接口在能力检查之外再判定“具名人类”，拒绝写入按租户哈希链接的 `approval-refusal` 台账。所有经 API 的写入都记录具名主体，不再出现 `operator:local` 兜底字面量。
+- **旧式租户密钥**：默认拒绝（启动报错）。确需兼容时用过渡开关 `loom serve --legacy-developer-keys`（`create_app(..., legacy_developer_keys=True)`），派生的 developer 主体不含任何批准能力。
+- **本机控制台与公网体验**：浏览器身份改为唯一的 `user` 身份。`scripts/bootstrap_local.py` 与 `scripts/prepare_public_preview.py` 会在已有身份文件中追加 `local-user`/`preview-user`（不覆盖既有令牌）。
+- **自动会话**：需求与测试设计仍自动推进；实现计划等待人一次点击批准；直通拓扑（≥3个样例）在创建请求内已由人批准，无需再点。
+
+| 契约动作 | 接口 | 权限 | 说明 |
+|---|---|---|---|
+| 读取进度（游标） | `GET /v1/runs/{run_id}/events?after_seq=&limit=` | 读 | 返回 `{events, after_seq, next_after_seq, has_more, head_seq, cursor_owner:"consumer", push:"none"}`；游标归各消费者所有；游标超出末尾返回 409 `CURSOR_INVALID`；不带参数时保持原全量返回 |
+| 续租 | `POST /v1/runs/{run_id}/tasks/{task_id}/renew` `{worker_id, epoch, lease_seconds?}` | worker（task.claim） | 仅当前持有者可续；过期或 epoch 不符 409 |
+| 登记副作用 | `POST /v1/runs/{run_id}/effects` `{task_id, worker_id, epoch, action_id, effect_level: read|write|external_write|irreversible, request}` | worker（task.submit） | 动作开始前登记意图；同一 action_id 只首次 `dispatch:true`，参数不同 409；执行器若在完成前失联，租约到期后任务转为 indeterminate、不再被领取，副作用保留待人工核对（不重放） |
+| 完成副作用 | `POST /v1/runs/{run_id}/effects/{call_id}/finish` `{task_id, worker_id, epoch, result}` | worker | 只结算本 epoch 的意图；裁决仍用既有 `…/effects/{call_id}/reconcile` |
+| 发起人归集 | 创建目标时描述以 `requested-by:<用户标识>` 开头；`GET /v1/goals/{run_id}/requester`、`GET /v1/requester-attribution?requester=` | 读 | 创建事务内同步解析入派生表；前缀格式错误 422 且不创建目标；无前缀记为 null |
+| 执行域策略 | `GET /v1/execution-policy`、`PUT /v1/execution-policy` `{default_execution_domain: local|remote, expected_revision, reason}`；Agent 定义可选 `execution_domain` | 读 / 操作员 | 租户默认值追加写入并带修订号；`GET /v1/agents/{agent_id}` 返回 `effective_execution_domain`（值、来源 inherited-from-tenant 或 agent-override）；不构成安全边界 |
+| 模板参数契约 | 领域包模板可选 `parameters`（受限 JSON Schema 对象）；`GET …/templates/{template_id}` 返回 `parameters`；`POST /v1/domain-packs/{name}/{version}/templates/{template_id}/arguments/validate` `{arguments}` | 读 | 只做 Schema 校验，失败即拒绝（`valid:false`），不降级为空参数；未声明参数的模板只接受 `{}`；旧包内容摘要不变 |
+
+PostgreSQL：`migrations/postgres/002_contract.sql` 新增 `goal_requesters`、`tenant_execution_policy`，强制行级安全、追加写入，业务登录只读。PG 存储适配探针结论见实施计划 0.30.0 条目。
+

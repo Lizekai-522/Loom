@@ -9,7 +9,7 @@ from loom.sandbox import FrozenTest
 from loom.store import Conflict, InvalidInput
 from tests.test_suite_binding import ACCEPTANCE, binding, approve_binding
 
-OP=LocalIdentity('a','operator',frozenset({'operator'}),'approved-execution-fixture-operator-00000000')
+OP=LocalIdentity('a','operator',frozenset({'user'}),'approved-execution-fixture-operator-00000000')
 WORKER=LocalIdentity('a','worker',frozenset({'worker'}),'approved-execution-fixture-worker-00000000')
 
 def prepared(b):

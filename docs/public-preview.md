@@ -61,3 +61,6 @@
 体验空间最多 20 个目标，每个目标预算不超过 $1 与 3,200,000 词元，包含已终止目标，不会因重启清零。预算按现有 Flash 上下文上限保守预留，不表示实际消费；实际已知用量结算，未知结果保留预留。三项模板任务各 $0.32 / 1,060,000 词元，合计在目标上限内。公开空间全部目标的配置金额上限为 $20，任何模型调用仍须逐项显式确认。供应商价格/账单未独立核验。
 
 这是单机受邀体验，不是生产 OIDC、多租户人员隔离或完整 62 项验收。使用 [Cloudflare 官方 Quick Tunnel](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)，无需服务器或自有域名；地址重建会变化、没有可用性保证，不支持 SSE。本项目使用普通 HTTP 轮询。地址和访问码始终以本机私有访问信息文件为准。cloudflared 来自 [官方 Windows 下载](https://developers.cloudflare.com/tunnel/downloads/)，本轮版本 2026.10.3，SHA256 `76b2805253d0d6ffacb092a7acfbee99e7af6917835c0c5410e23f3ef5052da2`，不打入项目源码包。
+
+0.30.0 更新：受邀访客是人，公网入口注入的服务端身份改为 `preview-user`（`user` 角色）；`scripts/prepare_public_preview.py` 会为已有身份文件追加该身份而不改动既有令牌。访客可在会话中批准实现计划（`POST /v1/sessions/{id}/approve`），执行器和实例主体不能代批。
+

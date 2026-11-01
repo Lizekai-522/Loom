@@ -172,7 +172,7 @@ def test_history_is_bounded_and_last_slot_reserved_for_routing(decision_case):
 def test_http_authentication_operator_only_and_exact_idempotency(decision_case):
     b=decision_case(no_findings=True)
     viewer=LocalIdentity('a','viewer',frozenset({'viewer'}),'review-decision-viewer-fixture-00000000')
-    with TestClient(create_app(b['store'],{'a':'review-decision-legacy-fixture-00000000','b':'review-decision-other-fixture-00000000'},identities=(OP,WORKER,viewer))) as client:
+    with TestClient(create_app(b['store'],{'a':'review-decision-legacy-fixture-00000000','b':'review-decision-other-fixture-00000000'},identities=(OP,WORKER,viewer),legacy_developer_keys=True)) as client:
         base=f'/v1/runs/{b["target"]}/artifacts/{b["artifact_id"]}'
         header=lambda token:{'Authorization':'Bearer '+token,'Idempotency-Key':'api-decision'}
         assert client.get(base+'/review-decision-preview').status_code==401

@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from . import __version__
 from .attempts import attempt_summaries
-from .auth import AuthRegistry, LocalIdentity, Principal
+from .auth import AuthRegistry, LocalIdentity, Principal, is_human
 from .artifacts import ArtifactService
 from .development_suites import DevelopmentSuiteService
 from .domain_packs import DomainPack, DomainPackService
@@ -31,6 +31,7 @@ from .tool_recovery import ToolRecoveryService
 from .quotas import QuotaService
 from .operator import OperatorService
 from .autopilot import SessionService
+from .contract import ExecutionDomains, events_page, lookup_effect, register_effect, requester_rows
 from .local_console import allows_local_console, console_principal
 from .store import Claim, Conflict, InvalidInput, LoomError, NotFound, Store, canonical, digest
 from .workflow import WorkflowDefinition, WorkflowService
@@ -174,13 +175,52 @@ class SessionInput(Input):
     topology: Literal["auto", "standard", "direct"] = "auto"
 
 
+class RenewInput(Input):
+    worker_id: str = Field(min_length=1, max_length=128)
+    epoch: int = Field(ge=1)
+    lease_seconds: float = Field(default=90, gt=0, le=3600)
+
+
+class EffectInput(Input):
+    task_id: str = Field(min_length=1, max_length=200)
+    worker_id: str = Field(min_length=1, max_length=128)
+    epoch: int = Field(ge=1)
+    action_id: str = Field(min_length=1, max_length=200)
+    effect_level: Literal["read", "write", "external_write", "irreversible"]
+    request: dict[str, Any] = Field(default_factory=dict)
+
+
+class EffectFinishInput(Input):
+    task_id: str = Field(min_length=1, max_length=200)
+    worker_id: str = Field(min_length=1, max_length=128)
+    epoch: int = Field(ge=1)
+    result: dict[str, Any]
+
+
+class ExecutionPolicyInput(Input):
+    default_execution_domain: Literal["local", "remote"]
+    expected_revision: int = Field(ge=0)
+    reason: str = Field(min_length=1, max_length=2000)
+
+
+class TemplateArgumentsInput(Input):
+    arguments: dict[str, Any]
+
+
+class SessionApprovalInput(Input):
+    expected_digest: str | None = Field(default=None, min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$")
+
+
 class VerificationRequestInput(Input):
     expected_preview_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     reason: str = Field(min_length=1,max_length=2000)
 
 
-def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[LocalIdentity, ...] = (), local_console: bool = False, executor_config=None) -> FastAPI:
-    registry = AuthRegistry(tenant_keys, identities)
+def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[LocalIdentity, ...] = (), local_console: bool = False, executor_config=None,
+               legacy_developer_keys: bool = False) -> FastAPI:
+    registry = AuthRegistry(tenant_keys, identities, legacy_developer_keys=legacy_developer_keys)
+    from .platform_ledger import Ledger
+    approval_ledger = Ledger(store)
     local_identity = console_principal(identities, local_console)
     app = FastAPI(title="Loom local kernel", version=__version__,
                   description="Single-host audited API. Explicit generation and dual-model verification requests are handled by separately configured private workers; production identity and hosting remain tracked independently.")
@@ -197,6 +237,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     verification_path=getattr(executor_config,'verification_config',None)
     verification = VerificationRuntime(store,load_verification_config(verification_path)) if verification_path is not None else None
     sessions = SessionService(store, executor_config=executor_config, identities=identities, verification=verification)
+    domains = ExecutionDomains(store)
     security = HTTPBearer(auto_error=False)
 
     def principal(request: Request, credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)]) -> Principal:
@@ -221,14 +262,40 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
         return resolve
 
     def audit(identity):
-        return {} if "developer" in identity.roles else {"actor": "subject:" + identity.subject_id}
+        # Every audited write names its subject; no anonymous literal fallback.
+        return {"actor": "subject:" + identity.subject_id}
+
+    def human_approver(request: Request, identity: Annotated[Principal, Depends(principal)]) -> Principal:
+        """Approval needs the capability AND a named human user session.
+
+        Refusals are appended to a tenant-scoped, hash-chained ledger instead of
+        being silently dropped, so machine approval attempts stay auditable.
+        """
+        if registry.authorize(identity, "plan.approve") and is_human(identity):
+            return identity
+        key = request.headers.get("idempotency-key") or ""
+        if 0 < len(key) <= 200:
+            record = {"schema_version": "loom.approval-refusal/v1", "path": request.url.path[:300],
+                      "subject": "subject:" + identity.subject_id, "roles": sorted(identity.roles),
+                      "reason": "approval requires a named human user session"}
+            try:
+                approval_ledger.append(identity.tenant_id, "approval-refused:" + key, "approval-refusal",
+                                       request.url.path[:200], record, "subject:" + identity.subject_id)
+            except LoomError:
+                pass
+        raise HTTPException(403, "approval requires a named human user session")
 
     Tenant = Annotated[str, Depends(tenant_for("read"))]
     WriteTenant = Annotated[str, Depends(tenant_for("goal.write"))]
     Writer = Annotated[Principal, Depends(permitted("goal.write"))]
-    Approver = Annotated[Principal, Depends(permitted("plan.approve"))]
+    Approver = Annotated[Principal, Depends(human_approver)]
+    Pauser = Annotated[Principal, Depends(permitted("run.pause"))]
     Controller = Annotated[Principal, Depends(permitted("control"))]
-    SuiteApprover = Annotated[Principal, Depends(permitted("suite.approve"))]
+    def human_suite_approver(identity: Annotated[Principal, Depends(human_approver)]) -> Principal:
+        if not registry.authorize(identity, "suite.approve"):
+            raise HTTPException(403, "this identity cannot perform the requested action")
+        return identity
+    SuiteApprover = Annotated[Principal, Depends(human_suite_approver)]
     PackPublisher = Annotated[Principal, Depends(permitted("pack.publish"))]
     Claimer = Annotated[Principal, Depends(permitted("task.claim"))]
     Submitter = Annotated[Principal, Depends(permitted("task.submit"))]
@@ -275,6 +342,10 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     def read_domain_template(name: str, version: str, template_id: str, tenant: Tenant):
         return packs.template(tenant, name, version, template_id)
 
+    @app.post('/v1/domain-packs/{name}/{version}/templates/{template_id}/arguments/validate')
+    def validate_template_arguments(name: str, version: str, template_id: str, body: TemplateArgumentsInput, tenant: Tenant):
+        return packs.validate_arguments(tenant, name, version, template_id, body.arguments)
+
     @app.post('/v1/domain-packs', status_code=201)
     def publish_domain_pack(body: PackPublishInput, identity: PackPublisher, idempotency_key: Key):
         return packs.publish(identity.tenant_id, idempotency_key, body.audit_run_id,
@@ -284,6 +355,10 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     async def loom_error(_, exc: LoomError):
         status = 404 if isinstance(exc, NotFound) else 422 if isinstance(exc, InvalidInput) else 409 if isinstance(exc, Conflict) else 500
         return JSONResponse(status_code=status, content={"code": exc.code, "detail": str(exc)})
+
+    @app.exception_handler(PermissionError)
+    async def permission_error(_, exc: PermissionError):
+        return JSONResponse(status_code=403, content={"code": "FORBIDDEN", "detail": str(exc)})
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(_, exc: RequestValidationError):
@@ -303,10 +378,10 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
                                      token_limit=body.token_limit, **audit(identity))
 
     @app.post("/v1/sessions", status_code=201)
-    def create_session(body: SessionInput, identity: Controller, idempotency_key: Key):
-        # One explicit opt-in delegates routine steps to the private executor.
-        if not all(registry.authorize(identity, action) for action in ("goal.write", "plan.approve")):
-            raise HTTPException(403, "automatic sessions require a named operator")
+    def create_session(body: SessionInput, identity: Approver, idempotency_key: Key):
+        # The person's own request approves the plan it creates; nothing else is delegated as approval.
+        if not registry.authorize(identity, "goal.write"):
+            raise HTTPException(403, "automatic sessions require a named human user")
         return sessions.create(identity, idempotency_key, prompt=body.prompt, title=body.title,
                                parent_session_id=body.parent_session_id,
                                examples=None if body.examples is None else [e.model_dump() for e in body.examples],
@@ -319,6 +394,10 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     @app.get("/v1/sessions/{session_id}")
     def read_session(session_id: str, tenant: Tenant):
         return sessions.get(tenant, session_id)
+
+    @app.post("/v1/sessions/{session_id}/approve")
+    def approve_session(session_id: str, body: SessionApprovalInput, identity: Approver, idempotency_key: Key):
+        return sessions.approve(identity, session_id, idempotency_key, expected_digest=body.expected_digest)
 
     @app.post("/v1/sessions/{session_id}/resume")
     def resume_session(session_id: str, body: ControlInput, identity: Controller, idempotency_key: Key):
@@ -381,7 +460,7 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
         if (any(node.get("development_suite") is not None or node.get("review_subject") is not None
                 for node in definition.get("nodes", []))
                 and not registry.authorize(identity, "suite.approve")):
-            raise HTTPException(403, "reviewed-suite execution plans require a named operator")
+            raise HTTPException(403, "reviewed-suite execution plans require a named human user")
         return workflows.approve_plan(identity.tenant_id, run_id, idempotency_key, body.expected_revision, body.expected_digest, **audit(identity))
 
     @app.get("/v1/interventions")
@@ -413,9 +492,13 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
         return dispatch.cancel(identity.tenant_id,run_id,request_id,idempotency_key,actor='subject:'+identity.subject_id,reason=body.reason)
 
     @app.post("/v1/runs/{run_id}/control/{action}")
-    def control(run_id: str, action: str, body: ControlInput, identity: Controller, idempotency_key: Key):
+    def control(run_id: str, action: str, body: ControlInput, identity: Pauser, idempotency_key: Key):
         if action not in {"pause", "resume", "terminate"}:
             raise HTTPException(404, "unknown control action")
+        # Executors may pause to ask for a person and resume afterwards; ending a
+        # run is a human/operator decision only.
+        if action == "terminate" and not registry.authorize(identity, "control"):
+            raise HTTPException(403, "terminating a run requires a named operator or user")
         return getattr(operators, action)(identity.tenant_id, run_id, idempotency_key, "subject:" + identity.subject_id, body.reason)
 
     @app.post("/v1/runs/{run_id}/effects/{call_id}/reconcile")
@@ -582,6 +665,48 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
         result = store.claim_next(identity.tenant_id, run_id, body.worker_id, channel=body.channel, lease_seconds=body.lease_seconds)
         return {"claim": asdict(result) if result else None}
 
+    @app.post("/v1/runs/{run_id}/tasks/{task_id}/renew")
+    def renew(run_id: str, task_id: str, body: RenewInput, identity: Claimer):
+        if "developer" not in identity.roles and body.worker_id != identity.subject_id:
+            raise HTTPException(403, "worker identity must match the authenticated subject")
+        renewed = store.renew_claim(Claim(identity.tenant_id, run_id, task_id, body.worker_id, body.epoch, 0),
+                                    lease_seconds=body.lease_seconds)
+        return {"claim": asdict(renewed)}
+
+    @app.post("/v1/runs/{run_id}/effects", status_code=201)
+    def register_effect_intent(run_id: str, body: EffectInput, identity: Submitter):
+        if "developer" not in identity.roles and body.worker_id != identity.subject_id:
+            raise HTTPException(403, "worker identity must match the authenticated subject")
+        current = Claim(identity.tenant_id, run_id, body.task_id, body.worker_id, body.epoch, 0)
+        return register_effect(store, current, action_id=body.action_id, effect_level=body.effect_level, request=body.request)
+
+    @app.post("/v1/runs/{run_id}/effects/{call_id}/finish")
+    def finish_effect_intent(run_id: str, call_id: str, body: EffectFinishInput, identity: Submitter):
+        if "developer" not in identity.roles and body.worker_id != identity.subject_id:
+            raise HTTPException(403, "worker identity must match the authenticated subject")
+        lookup_effect(store, identity.tenant_id, run_id, call_id)
+        return store.finish_effect(Claim(identity.tenant_id, run_id, body.task_id, body.worker_id, body.epoch, 0), call_id, body.result)
+
+    @app.get("/v1/goals/{run_id}/requester")
+    def goal_requester(run_id: str, tenant: Tenant):
+        workflows.get_goal(tenant, run_id)
+        rows = requester_rows(store, tenant, run_id=run_id)
+        return rows[0] if rows else {"run_id": run_id, "requester": None, "source": "none"}
+
+    @app.get("/v1/requester-attribution")
+    def requester_attribution(tenant: Tenant, requester: str = Query(min_length=1, max_length=128)):
+        return {"items": requester_rows(store, tenant, requester=requester), "source": "requested-by description prefix"}
+
+    @app.get("/v1/execution-policy")
+    def read_execution_policy(tenant: Tenant):
+        return domains.policy(tenant)
+
+    @app.put("/v1/execution-policy")
+    def write_execution_policy(body: ExecutionPolicyInput, identity: Controller, idempotency_key: Key):
+        return domains.set_default(identity.tenant_id, idempotency_key, domain=body.default_execution_domain,
+                                   expected_revision=body.expected_revision, reason=body.reason,
+                                   actor="subject:" + identity.subject_id)
+
     @app.post("/v1/runs/{run_id}/tasks/{task_id}/submit")
     def submit(run_id: str, task_id: str, body: CompleteInput, identity: Submitter, idempotency_key: Key):
         if "developer" not in identity.roles and body.worker_id != identity.subject_id:
@@ -590,7 +715,16 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
         return store.submit_output(current, idempotency_key, body.output)
 
     @app.get("/v1/runs/{run_id}/events")
-    def events(run_id: str, tenant: Tenant, request: Request):
+    def events(run_id: str, tenant: Tenant, request: Request, after_seq: int | None = Query(default=None, ge=0),
+               limit: int | None = Query(default=None, ge=1, le=1000)):
+        if after_seq is not None or limit is not None:
+            # Per-consumer cursor (plan v2.2 8.2); each poller keeps its own after_seq.
+            page = events_page(store, tenant, run_id, after_seq=after_seq or 0, limit=limit or 100)
+            if getattr(request.state,'public_preview',False):
+                from .public_audit import public_event_summaries
+                return {**{k: v for k, v in page.items() if k != 'events'},
+                        **public_event_summaries(page['events'], source_chain_verified=False)}
+            return page
         events=store.events(tenant,run_id)
         if getattr(request.state,'public_preview',False):
             from .public_audit import public_event_summaries

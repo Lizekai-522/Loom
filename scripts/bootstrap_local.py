@@ -15,6 +15,15 @@ def write_private(path,data):
     except OSError:pass
 
 
+def ensure_human_user(path,tenant,subject):
+    """Append the named human user session once; approval belongs to people only."""
+    data=json.loads(path.read_text(encoding='utf-8-sig'))
+    if not any(row['tenant_id']==tenant and 'user' in row['roles'] for row in data['identities']):
+        data['identities'].append(dict(tenant_id=tenant,subject_id=subject,roles=['user'],token=secrets.token_urlsafe(32)))
+        write_private(path,data)
+    return load_identities(path)
+
+
 def enable_auto_acceptance(config,directory):
     """Add the private autopilot held-out directory to an existing executor config once."""
     data=json.loads(config.read_text(encoding='utf-8-sig'))
@@ -33,7 +42,7 @@ def prepare(work_root,port=8796):
     session=json.loads(session_path.read_text(encoding='utf-8-sig'))
     identities=private/'local-identities.json'
     if not identities.exists():write_private(identities,dict(schema_version='loom.local-identities/v1',identities=[dict(tenant_id=session['tenant'],subject_id='local-'+role,roles=[role],token=secrets.token_urlsafe(32)) for role in ('operator','worker','viewer')]))
-    load_identities(identities)
+    ensure_human_user(identities,session['tenant'],'local-user')
     config=private/'local-executor.json'
     if not config.exists():
         image=work/'loom-sandbox-image.id'

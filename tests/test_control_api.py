@@ -38,14 +38,14 @@ def test_maximum_length_named_worker_can_claim_and_submit(tmp_path):
 def api(tmp_path):
     store = Store(tmp_path / "control-api.db")
     identities = tuple(LocalIdentity(tenant, subject, frozenset({role}), KEYS[name]) for name, tenant, subject, role in (
-        ("operator", "a", "operator-a", "operator"),
-        ("operator2", "a", "operator-two", "operator"),
+        ("operator", "a", "operator-a", "user"),
+        ("operator2", "a", "operator-two", "user"),
         ("worker", "a", "worker-a", "worker"),
         ("worker2", "a", "worker-b", "worker"),
         ("viewer", "a", "viewer-a", "viewer"),
-        ("other", "b", "operator-b", "operator"),
+        ("other", "b", "operator-b", "user"),
     ))
-    with TestClient(create_app(store, {"a": KEYS["legacy"]}, identities=identities)) as client:
+    with TestClient(create_app(store, {"a": KEYS["legacy"]}, identities=identities,legacy_developer_keys=True)) as client:
         sequence = 0
 
         def request(method, path, body=None, *, role="operator", key=None, headers=None):
@@ -112,8 +112,8 @@ def unknown_model_fixture(api, run_id):
 def test_me_lists_named_capabilities_without_credentials(api):
     response = api.request("GET", "/v1/me")
     assert response.status_code == 200
-    assert response.json() == {"tenant_id": "a", "subject_id": "operator-a", "roles": ["operator"],
-                               "capabilities": ["control", "goal.write", "pack.publish", "plan.approve", "read", "suite.approve"],
+    assert response.json() == {"tenant_id": "a", "subject_id": "operator-a", "roles": ["user"],
+                               "capabilities": ["control", "goal.write", "pack.publish", "plan.approve", "read", "run.pause", "suite.approve"],
                                "authentication": "local-bearer", "production_identity": False}
     assert all(key not in response.text for key in KEYS.values())
     assert response.headers["Cache-Control"] == "no-store"
@@ -122,12 +122,23 @@ def test_me_lists_named_capabilities_without_credentials(api):
     assert api.client.get("/v1/interventions").status_code == 401
 
 
-@pytest.mark.parametrize("role", ["worker", "viewer", "legacy"])
+@pytest.mark.parametrize("role", ["viewer", "legacy"])
 def test_control_is_denied_to_non_operator_roles(api, role):
     run_id = api.managed_goal()
     for action in ("pause", "resume", "terminate"):
         assert api.request("POST", f"/v1/runs/{run_id}/control/{action}", {"reason": "fixture reason"}, role=role, key=role + action).status_code == 403
     assert api.store.snapshot("a", run_id)["status"] == "open"
+
+
+def test_worker_may_pause_and_resume_to_ask_for_a_person_but_never_terminate(api):
+    # Plan v2.2 section 5.3: executors request human intervention by pausing; ending a run is a human decision.
+    run_id = api.managed_goal()
+    assert api.request("POST", f"/v1/runs/{run_id}/control/terminate", {"reason": "x"}, role="worker", key="w-term").status_code == 403
+    assert api.request("POST", f"/v1/runs/{run_id}/control/pause", {"reason": "需要人工确认"}, role="worker", key="w-pause").status_code == 200
+    assert api.store.snapshot("a", run_id)["status"] == "paused"
+    assert api.request("POST", f"/v1/runs/{run_id}/control/resume", {"reason": "已处理"}, role="worker", key="w-resume").status_code == 200
+    assert api.store.snapshot("a", run_id)["status"] == "open"
+    assert api.request("POST", f"/v1/runs/{run_id}/control/terminate", {"reason": "x"}, role="worker", key="w-term2").status_code == 403
 
 
 @pytest.mark.parametrize("role", ["worker", "viewer"])
@@ -163,7 +174,7 @@ def test_headers_and_json_cannot_override_authenticated_principal(api):
     current = claim(api, run_id)
     headers = {"X-Role": "operator", "X-Tenant-ID": "a", "X-Subject-ID": "operator-a"}
     assert api.request("GET", "/v1/me", role="worker", headers=headers).json()["subject_id"] == "worker-a"
-    assert api.request("POST", f"/v1/runs/{run_id}/control/pause", {"reason": "spoof"}, role="worker", key="spoof", headers=headers).status_code == 403
+    assert api.request("POST", f"/v1/runs/{run_id}/control/terminate", {"reason": "spoof"}, role="worker", key="spoof", headers=headers).status_code == 403
     response = api.request("POST", f"/v1/runs/{run_id}/tasks/{current['task_id']}/submit",
                            {"worker_id": "worker-a", "epoch": current["epoch"], "output": {}, "roles": ["operator"], "tenant_id": "b"}, role="worker", key="extra-subject")
     assert response.status_code == 422
