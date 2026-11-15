@@ -16,9 +16,13 @@ def update(work,origin):
     PreviewAccess(origin,data['access_code'],'validation-placeholder-000000000000000')
     write_private(path,data)
     info=private/'访问信息.txt'
-    info.write_text('Loom 临时公网体验\n\n地址：'+origin+'/console\n体验访问码：'+data['access_code']+'\n\n访问码仅分享给受邀测试者，不公开模型 API 密钥或内部身份。\n本机必须保持开机、联网，Docker 和服务/执行器/隧道进程持续运行。\n重启隧道地址会变化；重启服务需重新登录。停止脚本可关闭公网体验。\n单目标最多 $1 / 3,200,000 词元，空间最多 20 个目标，不自动重试模型。\n独立双模型仍待配置，候选提交不代表最终完成。\n',encoding='utf-8')
+    info.write_text('Loom 临时公网体验\n\n地址：'+origin+'/console\n管理员访问码（身份 preview-user，仅本人使用）：'+data['access_code']+'\n\n每位团队成员用自己的访问码和身份：scripts/manage_preview_members.py add --work-root <目录> --subject <名字>，\n邀请文件在 invites/ 目录，只发给本人；新增成员后需重启体验服务和执行器。不公开模型 API 密钥或内部身份。\n本机必须保持开机、联网，Docker 和服务/执行器/隧道进程持续运行。\n重启隧道地址会变化；重启服务需重新登录。停止脚本可关闭公网体验。\n单目标最多 $1 / 3,200,000 词元，空间最多 20 个目标，不自动重试模型。\n独立双模型仍待配置，候选提交不代表最终完成。\n',encoding='utf-8')
     try:info.chmod(0o600)
     except OSError:pass
+    # Quick-tunnel addresses change on restart: keep each member's invite pointing at the current one.
+    for invite in sorted((private/'invites').glob('*.txt')):
+        lines=invite.read_text(encoding='utf-8').split('\n')
+        invite.write_text('\n'.join([origin+'/console',*lines[1:]]),encoding='utf-8')
 
 
 if __name__=='__main__':

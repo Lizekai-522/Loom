@@ -15,6 +15,8 @@ ARTIFACT_ROLES = {"requirements": "analyst", "design": "architect", "public-chec
 MAX_BODY_BYTES = 32768
 MAX_CONTEXT_BYTES = 65536
 Name = Annotated[str, Field(min_length=1, max_length=48, pattern=r"^[a-z][a-z0-9_-]*$")]
+# Model routes may carry a provider version with dots (qwen3.8-max-0902).
+RouteName = Annotated[str, Field(min_length=1, max_length=48, pattern=r"^[a-z][a-z0-9_.-]*$")]
 Text = Annotated[str, Field(min_length=1, max_length=4000)]
 
 
@@ -124,10 +126,22 @@ class RoleOutput(ArtifactModel):
         return self
 
 
+ModelId = Literal["deepseek-flash", "deepseek-v4-pro", "qwen3.8-max-0902"]
+ProviderId = Literal["deepseek", "dashscope"]
+
+
+def _model_rules(provider, model, route, kind):
+    from .model_pricing import MODEL_PROVIDERS, REVIEW_ONLY_MODELS
+    if MODEL_PROVIDERS.get(model) != provider:
+        raise ValueError('model and provider differ')
+    if model in REVIEW_ONLY_MODELS and (route != model or kind != 'review-findings'):
+        raise ValueError('reviewer-only models require the canonical reviewer route')
+
+
 class RoleGenerationRequest(ArtifactModel):
-    route: Name
-    provider: Literal["deepseek"]
-    model: Literal["deepseek-flash","deepseek-v4-pro"]
+    route: RouteName
+    provider: ProviderId
+    model: ModelId
     prompt_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     max_output_tokens: int = Field(ge=1, le=8192)
     plan_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -138,8 +152,7 @@ class RoleGenerationRequest(ArtifactModel):
 
     @model_validator(mode='after')
     def restricted_pro_request(self):
-        if self.model=='deepseek-v4-pro' and (self.route!='deepseek-v4-pro' or self.role_output.kind!='review-findings'):
-            raise ValueError('Pro requires the canonical reviewer route')
+        _model_rules(self.provider, self.model, self.route, self.role_output.kind)
         return self
 
 
@@ -165,13 +178,13 @@ class RoleModelUsage(ArtifactModel):
 
 class RoleModelResult(ArtifactModel):
     content: str = Field(min_length=1, max_length=1048576)
-    model_id: Literal["deepseek-flash","deepseek-v4-pro"]
-    provider: Literal["deepseek"]
-    route_alias: Name
+    model_id: ModelId
+    provider: ProviderId
+    route_alias: RouteName
     usage: RoleModelUsage
     request_id: str = Field(min_length=1, max_length=200, pattern=r"^[A-Za-z0-9_.:/-]+$")
     finish_reason: Literal["stop", "length"]
-    response_model: Literal["deepseek-flash","deepseek-v4-pro"]
+    response_model: ModelId
 
 
 class ModelProvenance(ArtifactModel):
@@ -184,9 +197,9 @@ class ModelProvenance(ArtifactModel):
     role: Literal["analyst", "architect", "tester", "reviewer"]
     role_output: RoleOutput
     content_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
-    route: Name
-    provider: Literal["deepseek"]
-    model: Literal["deepseek-flash","deepseek-v4-pro"]
+    route: RouteName
+    provider: ProviderId
+    model: ModelId
     usage: RoleModelUsage
     usage_cost_upper_microusd: int = Field(ge=0)
     request_hash: str = Field(pattern=r"^[0-9a-f]{64}$")

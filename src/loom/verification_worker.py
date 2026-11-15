@@ -1,14 +1,14 @@
 """Private, single-attempt review worker; only known gateway receipts are signed."""
+from . import storage
 from .auth import is_controller
 from dataclasses import asdict
 import json
 from pathlib import Path
-import sqlite3
 
 from .approved_execution import ApprovedExecutionService
 from .artifacts import ArtifactService
 from .builtin_resources import software_workflow
-from .model_pricing import FLASH,PRO
+from .model_pricing import FLASH,MODEL_PROVIDERS,VERIFIER_MODELS
 from .role_execution import RoleTaskRunner
 from .store import Conflict,InvalidInput,Store,canonical,digest
 from .verification_signatures import GatewayReceipt,VerdictBody,VerificationBinding,sign_verdict
@@ -22,9 +22,9 @@ class VerificationWorker:
             or not is_controller(operator) or 'worker' not in worker.roles or operator.subject_id==worker.subject_id):
             raise InvalidInput('private verification workspace and separate named identities required')
         self.directory.mkdir(parents=True,exist_ok=True)
-        for model in ('deepseek-flash','deepseek-v4-pro'):
+        for model in VERIFIER_MODELS:
             route=gateway.routes.get(model)
-            if route is None or route.model!=model or route.thinking!='disabled' or not gateway.readiness(model).ready:
+            if route is None or route.model!=model or route.provider!=MODEL_PROVIDERS[model] or route.thinking!='disabled' or not gateway.readiness(model).ready:
                 raise InvalidInput('both canonical non-thinking verifier models must be configured')
             key=trusted_keys.get(model)
             if key is None or key.model_id!=model or model not in signing_keys:raise InvalidInput('model-bound verifier keys required')
@@ -51,7 +51,9 @@ class VerificationWorker:
         tenant=self.operator.tenant_id;prefix=state['job_id']+':'+model
         goal=workflows.create_goal(tenant,prefix+':goal',title='独立复核 '+model,description=description,
             acceptance=['report.traceable'],cost_limit=limit,token_limit=1100000)
-        run=goal['run_id'];actor='subject:'+self.operator.subject_id
+        # The review template is approved under the named human whose verification
+        # request authorised it (never under the executor's own operator identity).
+        run=goal['run_id'];actor=state['actor']
         plan=workflows.save_plan(tenant,run,prefix+':plan',definition,0,actor=actor)
         workflows.approve_plan(tenant,run,prefix+':approve',plan['revision'],plan['digest'],actor=actor)
         params=(tenant,run,'review',plan['digest'],None)
@@ -63,12 +65,12 @@ class VerificationWorker:
     def _sign_known_candidate(self,shadow,state,result,model):
         artifact=ArtifactService(shadow).get_artifact(self.operator.tenant_id,result['run_id'],result['artifact_id'])
         provenance=artifact.get('model_provenance');body=artifact['body']
-        if (not artifact.get('model_source_recorded') or not provenance or provenance['provider']!='deepseek'
+        if (not artifact.get('model_source_recorded') or not provenance or provenance['provider']!=MODEL_PROVIDERS[model]
             or provenance['model']!=model or provenance['route']!=model or body['subject']!=state['subject']
             or artifact['stale'] or body['verdict'] not in {'findings','no_findings'}):raise Conflict('VERIFICATION_MODEL_EVIDENCE_INVALID')
         key=self.trusted_keys[model]
         with self.jobs.store.connect() as db:now=int(self.jobs.store.now(db))
-        receipt=GatewayReceipt(provider='deepseek',model_id=model,call_id=provenance['call_id'],request_hash=provenance['request_hash'],
+        receipt=GatewayReceipt(provider=MODEL_PROVIDERS[model],model_id=model,call_id=provenance['call_id'],request_hash=provenance['request_hash'],
             response_hash=provenance['model_result_hash'],candidate_hash=artifact['content_hash'])
         verdict=VerdictBody(key_id=key.key_id,verifier_id=key.verifier_id,binding=VerificationBinding.model_validate(state['binding']),receipt=receipt,
             passed=body['verdict']=='no_findings' and not body['findings'],issued_at=now,expires_at=now+3600)
@@ -95,9 +97,9 @@ class VerificationWorker:
             directory=self.directory/job_id
             directory.mkdir()  # Existing workspace is never replayed or overwritten.
             path=directory/'reviews.db'
-            with sqlite3.connect(Path(self.jobs.store.path).resolve().as_uri()+'?mode=ro',uri=True) as source,sqlite3.connect(path) as target:source.backup(target)
+            storage.SQLITE.snapshot_copy(self.jobs.store.path,path)
             shadow=Store(path)
-            for model in ('deepseek-flash','deepseek-v4-pro'):
+            for model in VERIFIER_MODELS:
                 self._check_source(state)
                 run,claim=self._prepare_review(shadow,state,requirements,model);runs.append(run)
                 (directory/'review-runs.json').write_text(json.dumps(runs),encoding='utf-8')

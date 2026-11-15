@@ -21,6 +21,8 @@ from .store import BudgetExceeded, Conflict, InvalidInput, NotFound, PlanBinding
 
 RoleId = Literal["analyst", "architect", "tester", "developer", "reviewer", "fixer", "validator"]
 Identifier = Annotated[str, Field(min_length=1, max_length=48, pattern=r"^[a-z][a-z0-9_-]*$")]
+# A model route alias may carry a provider version with dots (qwen3.8-max-0902).
+ModelAlias = Annotated[str, Field(min_length=1, max_length=48, pattern=r"^[a-z][a-z0-9_.-]*$")]
 ToolId = Literal["workspace.read", "workspace.write", "tests.run", "artifacts.read", "artifacts.write"]
 ROLE_SKILLS = {
     "analyst": frozenset({"requirements.analysis"}),
@@ -49,7 +51,7 @@ class AgentRole(StrictModel):
     id: RoleId
     skills: list[str] = Field(min_length=1, max_length=8)
     tools: list[ToolId] = Field(max_length=8)
-    model_alias: Identifier
+    model_alias: ModelAlias
 
     @model_validator(mode="after")
     def authorized_capabilities(self):

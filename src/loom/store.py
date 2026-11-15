@@ -11,10 +11,10 @@ from dataclasses import asdict, dataclass
 from hashlib import sha256
 import json
 from pathlib import Path
-import sqlite3
 from typing import Any, Callable, Iterator
 from uuid import uuid4
 
+from . import storage
 from .policy import ArtifactSubmission, GateRules, TaskContract, gate_p, gate_v
 
 
@@ -109,12 +109,7 @@ CREATE TABLE IF NOT EXISTS effects (
 """
 
 
-class _Connection(sqlite3.Connection):
-    def __exit__(self, *args):
-        try:
-            return super().__exit__(*args)
-        finally:
-            self.close()
+_Connection = storage.Connection  # backwards-compatible name
 
 
 class Store:
@@ -128,7 +123,7 @@ class Store:
         Path(self.path).parent.mkdir(parents=True, exist_ok=True)
         self.max_workers, self.verify_reserve = max_workers, verify_reserve
         with self.connect() as db:
-            db.execute("PRAGMA journal_mode=WAL")
+            self.backend.enable_wal(db)
             db.executescript(SCHEMA)
             from .contract import SCHEMA as CONTRACT_SCHEMA  # derived contract tables (plan v2.2 batch 3)
             db.executescript(CONTRACT_SCHEMA)
@@ -137,21 +132,18 @@ class Store:
                 old = db.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
                 if old is not None and old[0] != value:
                     raise ValueError("all adapters sharing a database must use identical capacity settings")
-                db.execute("INSERT OR IGNORE INTO settings VALUES (?,?)", (key, value))
+                db.execute("INSERT INTO settings VALUES (?,?) ON CONFLICT DO NOTHING", (key, value))
 
-    def connect(self) -> sqlite3.Connection:
-        db = sqlite3.connect(self.path, timeout=15, isolation_level=None, factory=_Connection)
-        db.row_factory = sqlite3.Row
-        db.execute("PRAGMA foreign_keys=ON")
-        db.execute("PRAGMA synchronous=FULL")
-        db.execute("PRAGMA busy_timeout=15000")
-        return db
+    backend = storage.SQLITE
+
+    def connect(self) -> storage.Connection:
+        return self.backend.connect(self.path)
 
     @contextmanager
-    def transaction(self) -> Iterator[sqlite3.Connection]:
+    def transaction(self) -> Iterator[storage.Connection]:
         db = self.connect()
         try:
-            db.execute("BEGIN IMMEDIATE")
+            self.backend.begin_write(db)
             yield db
             db.commit()
         except BaseException:
@@ -161,17 +153,17 @@ class Store:
             db.close()
 
     @staticmethod
-    def now(db: sqlite3.Connection) -> float:
-        return db.execute("SELECT (julianday('now')-2440587.5)*86400.0").fetchone()[0]
+    def now(db: storage.Connection) -> float:
+        return storage.SQLITE.now(db)
 
-    def _run(self, db: sqlite3.Connection, tenant: str, run_id: str) -> sqlite3.Row:
+    def _run(self, db: storage.Connection, tenant: str, run_id: str) -> storage.Row:
         row = db.execute("SELECT * FROM runs WHERE tenant=? AND id=?", (tenant, run_id)).fetchone()
         if row is None:
             raise NotFound("run not found in tenant")
         return row
 
     @staticmethod
-    def _workflow_plan(db: sqlite3.Connection, tenant: str, run_id: str):
+    def _workflow_plan(db: storage.Connection, tenant: str, run_id: str):
         """Optional managed-plan projection; legacy runs keep their contract."""
         if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='workflow_goals'").fetchone():
             plan = db.execute("SELECT plan_status FROM workflow_goals WHERE tenant=? AND run_id=?", (tenant, run_id)).fetchone()
@@ -194,7 +186,7 @@ class Store:
             raise PlanBindingConflict("managed workflow projection is missing")
         return None
 
-    def _event(self, db: sqlite3.Connection, tenant: str, run_id: str, kind: str,
+    def _event(self, db: storage.Connection, tenant: str, run_id: str, kind: str,
                payload: dict, actor: str, command_key: str | None = None) -> dict:
         self._run(db, tenant, run_id)
         prior = db.execute("SELECT seq,hash FROM events WHERE tenant=? AND run_id=? ORDER BY seq DESC LIMIT 1",
@@ -210,7 +202,7 @@ class Store:
         return {**envelope, "hash": event_hash}
 
     def _command(self, tenant: str, key: str, operation: str, args: dict,
-                 apply: Callable[[sqlite3.Connection], dict]) -> dict:
+                 apply: Callable[[storage.Connection], dict]) -> dict:
         if not tenant or not key or len(key) > 200:
             raise InvalidInput("tenant and idempotency key required (key <= 200 characters)")
         request_hash = digest({"operation": operation, "args": args})
@@ -281,14 +273,14 @@ class Store:
             try:
                 db.execute("INSERT INTO tasks(tenant,id,run_id,intent_id,title,depends,priority,channel,status) VALUES (?,?,?,?,?,?,?,?,?)",
                            (tenant, task_id, run_id, intent_id, title, canonical(depends), priority, channel, "pending"))
-            except sqlite3.IntegrityError as exc:
+            except storage.IntegrityError as exc:
                 raise Conflict("task ID already exists in tenant") from exc
             payload = {**args, "intent_id": intent_id, "anchor_digest": run["anchor"], "status": "pending"}
             self._event(db, tenant, run_id, "task.created", payload, "system", key)
             return payload
         return self._command(tenant, key, "add_task", args, apply)
 
-    def _expire(self, db: sqlite3.Connection) -> None:
+    def _expire(self, db: storage.Connection) -> None:
         now = self.now(db)
         for task in db.execute("SELECT * FROM tasks WHERE status='running' AND lease_until<=?", (now,)).fetchall():
             uncertain = db.execute("SELECT 1 FROM effects WHERE tenant=? AND task_id=? AND state IN ('intent','indeterminate','partial')",
@@ -340,7 +332,7 @@ class Store:
                         "lease_until": until, "channel": channel, "priority": task["priority"]}, "system")
             return claim
 
-    def _assert_claim(self, db: sqlite3.Connection, claim: Claim, *, allow_paused: bool = False) -> sqlite3.Row:
+    def _assert_claim(self, db: storage.Connection, claim: Claim, *, allow_paused: bool = False) -> storage.Row:
         row = db.execute("SELECT * FROM tasks WHERE tenant=? AND run_id=? AND id=?",
                          (claim.tenant_id, claim.run_id, claim.task_id)).fetchone()
         if row is None:
@@ -704,7 +696,7 @@ class Store:
             sent += 1
         return sent
 
-    def consume(self, consumer: str, event_id: str, apply: Callable[[sqlite3.Connection], None]) -> bool:
+    def consume(self, consumer: str, event_id: str, apply: Callable[[storage.Connection], None]) -> bool:
         with self.transaction() as db:
             if db.execute("SELECT 1 FROM inbox WHERE consumer=? AND event_id=?", (consumer, event_id)).fetchone():
                 return False

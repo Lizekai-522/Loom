@@ -821,7 +821,7 @@ ms 的完整形态由九个组件构成，形态开关决定哪些启用。
 交接文档原基于 /workspace 工作区编写；本机接手后的事实基线变更如下，正文其余部分继续有效：
 
 1. 本机只读基线路径：rakazo `~/projects/rakazo`（`d13ef7a`）、RV `~/projects/rv`（`e53ae8d`，tarball）、Loom `~/projects/Loom`（v0.23.0）、dsh-superagent `~/projects/dsh/superagent-prototype`（`6337fc8`）、dsh 主仓 `~/projects/dsh`（`ce7073d`）。
-2. 方案书已修订为 v2.2（`~/monsoon-work/monsoon-plan/monsoon-harness-方案书-v2.2.md`），文首修订前言记录 2026-11-01 六项拍板：路线 A（吸收 + Python 重写，取代 Q3 整仓 fork）、Loom 式认证（修订 Q2）、dsh/Codex 式 CLI harness + 常驻服务 + 本机 Web 控制台（解决打包载体前置决策）、Pi 不进 Phase 1（修订 Q4 执行面）、批次三批准先行、rakazo 优化清单采纳为设计约束。冲突时以方案书 v2.2 为准。
+2. 方案书已修订为 v2.2（`~/monsoon-work/monsoon-plan/monsoon-harness-方案书-v2.2.md`），文首修订前言记录 2026-11-01 六项拍板：路线 A（吸收 + Python 重写，取代 Q3 整仓 fork）、Loom 式认证（修订 Q2）、dsh 式 CLI harness + 常驻服务 + 本机 Web 控制台（解决打包载体前置决策）、Pi 不进 Phase 1（修订 Q4 执行面）、批次三批准先行、rakazo 优化清单采纳为设计约束。冲突时以方案书 v2.2 为准。
 3. 本机锚点核对结论：41 个 file:line 锚点在 Loom 0.23.0 上 38 个逐字命中；Loom 0.23.0 已自带计划读接口（`src/loom/api.py:327`）与 progression 修订号（`src/loom/progression.py:23`），批次三"三处新增"实际剩两处（事件游标、副作用登记端点）加续租路由（Phase 1 不用）。
 4. 调查产出：`~/monsoon-work/调查报告-2026-11-01.md`（三库盘点 + rakazo 可优化点清单）。
 

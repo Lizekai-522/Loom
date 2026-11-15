@@ -27,7 +27,7 @@ def prepare_reviewer_verification(case, directory, *, no_findings=False):
     jobs=VerificationJobs(case['store']);run=case['target'];task=run+':review'
     preview=jobs.preview('a',run,task)
     request=jobs.request(OP,run,task,'reviewer-verification',expected_preview_digest=preview['preview_digest'],reason='核对原审查是否遗漏或误报，保留原始材料')
-    signing={model:Ed25519PrivateKey.generate() for model in ('deepseek-flash','deepseek-v4-pro')}
+    signing={model:Ed25519PrivateKey.generate() for model in ('deepseek-flash','qwen3.8-max-0902')}
     trusted={model:TrustedVerifier(model,'verifier:'+model,model,key.public_key()) for model,key in signing.items()}
     case.update(run=run,original_run=original_run,jobs=jobs,task=task,job=request['job_id'],preview=preview,
         signing=signing,trusted=trusted,directory=directory)

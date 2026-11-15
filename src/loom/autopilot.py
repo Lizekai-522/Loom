@@ -104,6 +104,7 @@ MESSAGES = {
     'VERIFICATION_DISPUTED': '两个复核模型结论不一致，需要人工裁决。',
     'VERIFICATION_BLOCKED': '独立复核被拦截（额度、配置或结果未知），不会自动重试。',
     'VERIFICATION_UNAVAILABLE': '执行器配置了独立复核但无法加载，已停止，避免把程序误记为“未复核交付”。',
+    'VERIFICATION_MODELS_NOT_READY': '独立复核的两个模型还没准备好（缺 DeepSeek 或阿里云百炼的密钥，或模型配置里没有千问路由）。补上后点“继续”即可，不会重复计费。',
     'PERSISTENT_CONFLICT': '同一步骤连续多次被拒绝（状态反复变化），自动推进已停止以免空转。',
     'LOW_CONFIDENCE_TESTS': '测试角色设计的用例与你提供的验收样例相矛盾（同样的输入、不同的期望），说明模型可能误解了需求。请补充说明后重试。',
 }
@@ -673,10 +674,22 @@ class SessionService:
         review_sampled = sampled(session_id, self.sampling_rate)
         if node['status'] == 'submitted' and self.verification is not None and review_sampled:
             preview, job = self._verification_state(tenant, run_id, node['task_id'])
+            if preview and preview.get('ready') and not self.verification.models_ready():
+                # Request nothing yet: a queued job no worker can take would wait forever.
+                self._stop(tenant, session_id, run_id, 'VERIFICATION_MODELS_NOT_READY', actor, node['task_id'])
+                return 'stopped'
             if preview and preview.get('ready'):
+                # The person's approval of this implementation plan authorises its fixed
+                # read-only independent review; the request cites that approval event.
+                approval = next((e for e in reversed(self.store.events(tenant, run_id))
+                                 if e['type'] == 'workflow.plan_approved' and e['actor'] == actor), None)
+                if approval is None:
+                    self._stop(tenant, session_id, run_id, 'VERIFICATION_BLOCKED', actor, node['task_id'])
+                    return 'stopped'
                 self.verification.jobs.request(operator, run_id, node['task_id'], f'ap:{session_id}:verify:{node["epoch"]}',
                                                expected_preview_digest=preview['preview_digest'],
-                                               reason='自动会话：程序已通过留出验收，申请独立双模型复核')
+                                               reason='自动会话：程序已通过留出验收，按你批准实现计划时的授权申请独立双模型复核',
+                                               authorized_by=approval['hash'])
                 return 'verification_requested'
             if job and job.get('state') in {'queued', 'running'}:
                 return None
@@ -754,7 +767,8 @@ class SessionService:
                      'paused' if current == 'paused' else 'terminated' if current in {'cancelled', 'terminated'} else
                      'awaiting_approval' if current == 'draft' and len(links.get(sid) or []) > 1 else 'running')
             rows.append(dict(session_id=sid, title=record['title'], state=state, created_at=created.get(sid),
-                             updated_at=updated.get(sid), thread_id=record.get('thread_id') or sid))
+                             updated_at=updated.get(sid), thread_id=record.get('thread_id') or sid,
+                             owner=record.get('operator_id')))
         return rows
 
     def outcome_rows(self, tenant):
@@ -784,6 +798,11 @@ class SessionService:
                     reviewed += 1
                     deviations += 1
         return reviewed, deviations
+
+    def owner(self, tenant, session_id):
+        with self.store.connect() as db:
+            record, _ = self._session_row(db, tenant, session_id)
+        return record.get('operator_id')
 
     def _events(self, db, tenant, run_id):
         return [json.loads(r['envelope']) for r in db.execute(

@@ -5,16 +5,18 @@ operator-configured project pool and private review ledgers; public callers
 cannot change that pool, upload signatures, or mark their own output verified.
 """
 import json
+import re
 from pathlib import Path
-import sqlite3
 from uuid import uuid4
 
+from . import storage
 from .artifacts import ArtifactService
-from .auth import LocalIdentity,Principal, is_controller
+from .auth import LocalIdentity,Principal, is_controller, is_human
 from .operator import _text
 from .policy import ArtifactSubmission
 from .review_inputs import ReviewInputService
 from .store import Claim,Conflict,InvalidInput,NotFound,canonical,digest
+from .model_pricing import ACCEPTED_VERIFIER_PAIRS,VERIFIER_MODELS
 from .verification_signatures import VerificationBinding,verify_pair
 
 SCHEMA='''
@@ -42,10 +44,7 @@ class VerificationJobs:
         self.store=store;self.pool_limit=pool_limit;self.reviews=ReviewInputService(store)
         if initialize:
             with store.transaction() as db:
-                statement=''
-                for line in SCHEMA.splitlines(True):
-                    statement+=line
-                    if sqlite3.complete_statement(statement):db.execute(statement);statement=''
+                storage.SQLITE.execute_script(db,SCHEMA)
 
     def _binding_in(self,db,tenant,run_id,task_id,*,allow_verified_read=False):
         run=self.store._run(db,tenant,run_id)
@@ -112,12 +111,16 @@ class VerificationJobs:
             existing=[] if not self._available(db) else [self._state(db,row) for row in db.execute('SELECT * FROM verification_requests WHERE tenant=? AND task_id=?',(tenant,task_id))]
             result=dict(schema_version='loom.verification-preview/v1',binding=binding.model_dump(),subject=view['subject'],
                 ready=task['status']=='submitted' and not existing,existing_request=existing[-1] if existing else None,
-                models=['deepseek-flash','deepseek-v4-pro'],max_cost_microusd=self.MAX_RESERVATION,project_pool=self._pool(db,tenant),
+                models=list(VERIFIER_MODELS),max_cost_microusd=self.MAX_RESERVATION,project_pool=self._pool(db,tenant),
                 generation_budget_unchanged=True,requires_explicit_request=True,model_dispatched=False,counts_as_success=False)
             return {**result,'preview_digest':digest(result)}
 
-    def request(self,identity,run_id,task_id,key,*,expected_preview_digest,reason):
-        if not isinstance(identity,(LocalIdentity,Principal)) or not is_controller(identity):raise InvalidInput('named operator required')
+    def request(self,identity,run_id,task_id,key,*,expected_preview_digest,reason,authorized_by=None):
+        # The request authorises the fixed read-only review template, so it must come
+        # from a named human user (plan v2.2 5.3); instance principals cannot approve.
+        if not isinstance(identity,(LocalIdentity,Principal)) or not is_human(identity):raise InvalidInput('VERIFICATION_REQUIRES_NAMED_HUMAN')
+        if authorized_by is not None and (type(authorized_by) is not str or not re.fullmatch('[0-9a-f]{64}',authorized_by)):
+            raise InvalidInput('authorized_by must be an event hash')
         _text(key,200,'command key');_text(reason,2000,'reason')
         args=dict(run_id=run_id,task_id=task_id,actor='subject:'+identity.subject_id,expected_preview_digest=expected_preview_digest,reason=reason)
         def apply(db):
@@ -125,10 +128,16 @@ class VerificationJobs:
             task=db.execute('SELECT status FROM tasks WHERE tenant=? AND id=?',(identity.tenant_id,task_id)).fetchone()
             existing=[self._state(db,row) for row in db.execute('SELECT * FROM verification_requests WHERE tenant=? AND task_id=?',(identity.tenant_id,task_id))]
             preview=dict(schema_version='loom.verification-preview/v1',binding=binding.model_dump(),subject=view['subject'],ready=task['status']=='submitted' and not existing,
-                existing_request=existing[-1] if existing else None,models=['deepseek-flash','deepseek-v4-pro'],max_cost_microusd=self.MAX_RESERVATION,
+                existing_request=existing[-1] if existing else None,models=list(VERIFIER_MODELS),max_cost_microusd=self.MAX_RESERVATION,
                 project_pool=self._pool(db,identity.tenant_id),generation_budget_unchanged=True,requires_explicit_request=True,model_dispatched=False,counts_as_success=False)
             if digest(preview)!=expected_preview_digest or not preview['ready']:raise Conflict('VERIFICATION_PREVIEW_CHANGED')
             record=dict(job_id=str(uuid4()),binding=binding.model_dump(),subject=view['subject'],actor=args['actor'],command_key=key,reason=reason,max_cost_microusd=self.MAX_RESERVATION)
+            if authorized_by is not None:
+                # Delegated request: the human approval event that authorised it must exist on this run.
+                if not db.execute("SELECT 1 FROM events WHERE tenant=? AND run_id=? AND hash=? AND json_extract(envelope,'$.type')=? AND json_extract(envelope,'$.actor')=?",
+                                  (identity.tenant_id,run_id,authorized_by,'workflow.plan_approved',args['actor'])).fetchone():
+                    raise Conflict('VERIFICATION_AUTHORITY_NOT_FOUND')
+                record['authorized_by']=authorized_by
             event=self.store._event(db,identity.tenant_id,run_id,'verification.requested',dict(record=record,record_digest=digest(record),counts_as_success=False),args['actor'],key)
             db.execute('INSERT INTO verification_requests VALUES(?,?,?,?,?,?,?,?,?)',(identity.tenant_id,record['job_id'],run_id,task_id,binding.epoch,key,canonical(record),event['event_id'],event['hash']))
             return dict(job_id=record['job_id'],state='queued',counts_as_success=False,model_dispatched=False)
@@ -229,7 +238,7 @@ class VerificationJobs:
                 state=self._state(db,rows[0])
                 if state['state']!='verified' or state['binding']['content_hash']!=digest(json.loads(task['output'])):return False
                 signed=self.attestations(tenant,rows[0]['id'])
-                if len(signed)!=2 or {item['body']['receipt']['model_id'] for item in signed}!={'deepseek-flash','deepseek-v4-pro'}:return False
+                if len(signed)!=2 or frozenset(item['body']['receipt']['model_id'] for item in signed) not in ACCEPTED_VERIFIER_PAIRS:return False
             root=json.loads(db.execute('SELECT envelope FROM events WHERE tenant=? AND run_id=? AND seq=1',(tenant,run_id)).fetchone()[0])['payload']
             criteria=root['acceptance']
             if not set(criteria)<={'schema.valid','tests.pass','report.traceable'}:return False

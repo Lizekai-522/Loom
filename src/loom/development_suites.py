@@ -7,11 +7,11 @@ its producer nor modifies an approved workflow or confers execution authority.
 from __future__ import annotations
 
 import json
-import sqlite3
 from uuid import uuid4
 
 from pydantic import ValidationError
 
+from . import storage
 from .artifact_schemas import DevelopmentSuiteReference
 from .artifacts import ArtifactService, _hash, _subject, _text
 from .public_checks import compile_public_checks
@@ -192,7 +192,7 @@ class DevelopmentSuiteService:
             raise Conflict("reviewed suites require a separately approved execution run")
         try:
             suite = self._suite_in(db, tenant, checked["source_run_id"], checked["suite_id"], include_body=True)
-        except sqlite3.OperationalError:
+        except storage.OperationalError:
             raise Conflict("development suite registry is unavailable") from None
         if suite["stale"] or self.reference(suite) != checked:
             raise Conflict("development suite reference is stale or differs from the frozen review")

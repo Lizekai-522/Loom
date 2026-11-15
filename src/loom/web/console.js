@@ -917,7 +917,7 @@
       state.principal = principal;
       window.LoomPreview?.configure(principal, () => mutate("POST", "/preview/examples", {}, "多角色体验草案已创建，请在“计划”中审阅并批准，再按“推进指引”执行。", async result => { await refreshAll(result.run_id); }),
         () => mutate('POST','/preview/examples/verified',{},'完整体验草案已创建。先在“计划”批准，再到“推进指引”生成与隔离测试，最后进入“独立复核”。',async result=>{await refreshAll(result.run_id);}));
-      $("identity-label").textContent = `${principal.authentication === "public-session" ? "受邀体验 · " : ""}${principal.roles.map((role) => roleNames[role] || role).join(" / ")}`;
+      $("identity-label").textContent = `${principal.authentication === "public-session" ? `受邀体验 · ${principal.subject_id} · ` : ""}${principal.roles.map((role) => roleNames[role] || role).join(" / ")}`;
       $("login-panel").hidden = true;
       $("workspace").hidden = false;
       $("logout-button").hidden = $("refresh-button").hidden = false;
@@ -938,13 +938,6 @@
     catch { notify("退出未确认，请重试；停止公网进程可使全部体验会话失效。", true); }
   });
   $("refresh-button").addEventListener("click", () => refreshAll());
-  $("theme-button").addEventListener("click", () => {
-    const dark = document.documentElement.dataset.theme !== "dark";
-    document.documentElement.dataset.theme = dark ? "dark" : "light";
-    $("theme-button").textContent = dark ? "浅色" : "深色";
-    $("theme-button").setAttribute("aria-pressed", String(dark));
-    $("theme-button").setAttribute("aria-label", dark ? "切换浅色外观" : "切换深色外观");
-  });
   $("controls-button").addEventListener("click", () => {
     const expanded = document.body.classList.toggle("show-controls");
     $("controls-button").setAttribute("aria-expanded", String(expanded));
@@ -1109,4 +1102,31 @@
   });
   refreshControls();
   connect();
+  // Settings alignment: the home model label reflects the actually configured
+  // route instead of a hardcoded name (设置中心 → 模型与密钥).
+  (async () => {
+    const label = $("model-label-text");
+    if (!label) return;
+    const mark = (text, link) => {
+      label.replaceChildren(document.createTextNode(text));
+      if (link) {
+        const a = document.createElement("a");
+        a.href = "/console/settings"; a.textContent = "去设置"; a.className = "muted";
+        label.append(document.createTextNode(" · "), a);
+      }
+    };
+    try {
+      const response = await fetch("/v1/settings/overview", {headers: {Accept: "application/json", "X-Loom-Console": "local"},
+                                                            credentials: "same-origin", cache: "no-store"});
+      if (!response.ok) throw new Error(String(response.status));
+      const o = await response.json();
+      if (o.model && o.model.configured && o.model.detail)
+        mark(o.model.detail.model + "（" + (o.model.detail.provider === "dashscope" ? "千问" : "DeepSeek") + "）");
+      else mark("模型未配置", true);
+      const v = $("verification-label");
+      if (v) v.hidden = !(o.verification && o.verification.configured);
+    } catch {
+      mark("模型状态未知", true);
+    }
+  })();
 })();

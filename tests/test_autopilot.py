@@ -206,20 +206,25 @@ def test_paused_run_is_left_alone_until_resumed(case):
 
 class FakeVerification:
     """Mirrors VerificationJobs.preview: existing_request carries the job state."""
-    def __init__(self, outcome='queued'):
+    def __init__(self, outcome='queued', ready=True):
         self.requests = []
         self.jobs = self
         self.outcome = outcome
+        self.ready = ready
 
     def check(self, tenant):
         return None
+
+    def models_ready(self):
+        return self.ready
 
     def preview(self, tenant, run_id, task_id):
         job = dict(state=self.outcome) if self.requests else None
         return {'ready': not self.requests, 'preview_digest': 'f' * 64, 'existing_request': job}
 
-    def request(self, identity, run_id, task_id, key, *, expected_preview_digest, reason):
+    def request(self, identity, run_id, task_id, key, *, expected_preview_digest, reason, authorized_by=None):
         self.requests.append((identity.subject_id, run_id, task_id, key))
+        self.authorized_by = authorized_by
         return {'state': 'queued'}
 
 
@@ -238,8 +243,27 @@ def test_configured_verification_is_requested_once_and_session_waits(case):
     run_with_verification(c, verification, [REQUIREMENTS, CHECKS, {'source': GOOD}], [True, True])
     view = service.get('a', created['session_id'])
     assert len(verification.requests) == 1 and verification.requests[0][0] == 'operator'
+    # The request cites the person's approval of the implementation plan as its authority.
+    approvals = [e for e in c['store'].events('a', view['runs']['build']) if e['type'] == 'workflow.plan_approved']
+    assert verification.authorized_by == approvals[-1]['hash'] and approvals[-1]['actor'] == 'subject:operator'
     # Regression: a queued job must keep the session waiting, never "delivered (unverified)".
     assert view['state'] == 'running' and view['steps'][3]['status'] == 'queued'
+
+
+def test_missing_verifier_key_stops_before_requesting_and_resumes_cleanly(case):
+    """Regression: a job queued while a verifier key was missing waited forever with no reason."""
+    c = case
+    verification = FakeVerification('queued', ready=False)
+    service = SessionService(c['store'], executor_config=c['config'], identities=(OP, WORKER), verification=verification)
+    created = service.create(PRINCIPAL, 'v-keys', prompt='写一个加一程序')
+    run_with_verification(c, verification, [REQUIREMENTS, CHECKS, {'source': GOOD}], [True, True])
+    view = service.get('a', created['session_id'])
+    assert view['state'] == 'needs_attention' and view['attention']['code'] == 'VERIFICATION_MODELS_NOT_READY'
+    assert verification.requests == []                      # nothing queued that no worker could take
+    verification.ready = True                               # the operator adds the Model Studio key
+    service.resume(PRINCIPAL, created['session_id'], 'resume-keys', reason='已补上复核密钥')
+    run_with_verification(c, verification, [], [])
+    assert len(verification.requests) == 1 and service.get('a', created['session_id'])['state'] == 'running'
 
 
 @pytest.mark.parametrize('outcome', ['rejected', 'disputed', 'blocked'])

@@ -25,25 +25,30 @@ def verification_case(node_case,tmp_path):
     jobs=VerificationJobs(b['store']);tenant='a';task=b['run']+':work'
     preview=jobs.preview(tenant,b['run'],task)
     request=jobs.request(OP,b['run'],task,'verify-one',expected_preview_digest=preview['preview_digest'],reason='独立双模型复核，另设具名项目预算，原生成预算保持')
-    signing={model:Ed25519PrivateKey.generate() for model in ('deepseek-flash','deepseek-v4-pro')}
+    signing={model:Ed25519PrivateKey.generate() for model in ('deepseek-flash','qwen3.8-max-0902')}
     trusted={model:TrustedVerifier(model,'verifier:'+model,model,key.public_key()) for model,key in signing.items()}
     b.update(jobs=jobs,job=request['job_id'],task=task,preview=preview,signing=signing,trusted=trusted,directory=tmp_path/'private-verification')
     return b
+
+def verifier_route(model):
+    if model=='deepseek-flash':return ModelRoute(model,model=model)
+    return ModelRoute(model,provider='dashscope',base_url='https://dashscope.aliyuncs.com/compatible-mode/v1',model=model,key_env='DASHSCOPE_API_KEY')
 
 async def run_job(b,*,negative=False,timeout=False,callback=None):
     requests=[]
     def response(request):
         payload=json.loads(request.content);requests.append(payload)
         if callback:callback(len(requests))
-        if timeout and payload['model']=='deepseek-v4-pro':raise httpx.ReadTimeout('synthetic verifier timeout',request=request)
-        if negative and (payload['model']=='deepseek-v4-pro' or negative=='both'):
+        if timeout and payload['model']=='qwen3.8-max-0902':raise httpx.ReadTimeout('synthetic verifier timeout',request=request)
+        if negative and (payload['model']=='qwen3.8-max-0902' or negative=='both'):
             body=dict(schema_version='loom.review-findings/v1',subject=b['preview']['subject'],summary='发现问题',verdict='findings',
                 findings=[dict(id='one',severity='minor',path='artifact.json' if b['preview']['subject']['schema_version']=='loom.review-subject-ref/v2' else 'main.py',start_line=1,end_line=1,description='模拟意见',recommendation='核对原始需求')])
         else:body=dict(schema_version='loom.review-findings/v1',subject=b['preview']['subject'],summary='未发现明确问题',verdict='no_findings',findings=[])
         return httpx.Response(200,json=dict(id='verified-'+payload['model'],object='chat.completion',created=1792700000,model=payload['model'],
             choices=[dict(index=0,finish_reason='stop',message=dict(role='assistant',content=canonical(body)))],
             usage=dict(prompt_tokens=25,completion_tokens=10,total_tokens=35)))
-    async with ModelGateway([ModelRoute(model,model=model) for model in b['signing']],transport=httpx.MockTransport(response),environ={'DEEPSEEK_API_KEY':'verification-public-fixture-only'}) as gateway:
+    async with ModelGateway([verifier_route(model) for model in b['signing']],transport=httpx.MockTransport(response),
+                            environ={'DEEPSEEK_API_KEY':'verification-public-fixture-only','DASHSCOPE_API_KEY':'verification-public-fixture-only'}) as gateway:
         worker=VerificationWorker(b['jobs'],gateway,directory=b['directory'],operator=OP,worker=WORKER,signing_keys=b['signing'],trusted_keys=b['trusted'])
         result=await worker.process('a',b['job'])
     return result,requests
@@ -54,7 +59,7 @@ def test_real_signatures_complete_source_and_registered_goal_from_known_model_re
     after=b['store'].snapshot('a',b['run'])
     assert after['status']=='succeeded' and after['tasks'][0]['status']=='done'
     assert after['spent']==before['spent'] and after['reserved']==0
-    assert result['actual_cost_microusd']==93
+    assert result['actual_cost_microusd']==122  # Flash 20 + Qwen Max 102 micro-USD for 25/10 tokens
     assert b['store'].verify_events(b['store'].events('a',b['run']))
     # A verified implementation remains readable after its owner is cleared.
     with b['store'].connect() as db:
@@ -148,5 +153,31 @@ def test_persisted_signed_proof_is_audited_again_when_read(verification_case):
     assert result['state']=='verified' and len(b['jobs'].attestations('a',b['job']))==2
     with b['store'].transaction() as db:
         db.execute('DROP TRIGGER verification_attestations_no_update')
-        db.execute("UPDATE verification_attestations SET record='{}' WHERE model_id='deepseek-v4-pro'")
+        db.execute("UPDATE verification_attestations SET record='{}' WHERE model_id='qwen3.8-max-0902'")
     with pytest.raises(Conflict,match='LEDGER_INVALID'):b['jobs'].attestations('a',b['job'])
+
+
+def test_review_template_approval_is_attributed_to_the_requesting_human(verification_case):
+    """Plan v2.2 5.3: the shadow review plan is approved under the person whose request
+    authorised it, never under the executor's operator identity."""
+    import sqlite3
+    b=verification_case;result,_=asyncio.run(run_job(b))
+    assert result['state']=='verified'
+    shadow=next(b['directory'].glob('*/reviews.db'))
+    with sqlite3.connect(shadow) as db:
+        actors={json.loads(row[0])['actor'] for row in db.execute("SELECT envelope FROM events") if json.loads(row[0])['type']=='workflow.plan_approved'}
+    assert 'subject:'+OP.subject_id in actors and all(a=='subject:'+OP.subject_id for a in actors if a.startswith('subject:'))
+
+
+def test_instance_operator_cannot_request_review_and_delegation_must_cite_a_human_approval(node_case):
+    b=node_case('developer');result,_=execute(b);assert result['execution']['status']=='submitted'
+    jobs=VerificationJobs(b['store']);task=b['run']+':work';preview=jobs.preview('a',b['run'],task)
+    instance=LocalIdentity('a','instance-op',frozenset({'operator'}),'verification-instance-operator-fixture-00')
+    with pytest.raises(InvalidInput):
+        jobs.request(instance,b['run'],task,'instance',expected_preview_digest=preview['preview_digest'],reason='实例主体申请')
+    with pytest.raises(Conflict):
+        jobs.request(OP,b['run'],task,'forged',expected_preview_digest=preview['preview_digest'],reason='引用不存在的批准',authorized_by='0'*64)
+    approval=[e for e in b['store'].events('a',b['run']) if e['type']=='workflow.plan_approved'][-1]
+    assert approval['actor']=='subject:'+OP.subject_id
+    done=jobs.request(OP,b['run'],task,'cited',expected_preview_digest=preview['preview_digest'],reason='按批准授权',authorized_by=approval['hash'])
+    assert jobs.state('a',done['job_id'])['authorized_by']==approval['hash']

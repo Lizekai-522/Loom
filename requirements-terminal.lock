@@ -1,0 +1,2 @@
+# Native Windows ConPTY adapter; no external PTY package is needed on Linux.
+pywinpty==3.1.2; sys_platform == "win32"

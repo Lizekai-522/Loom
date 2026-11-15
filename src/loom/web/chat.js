@@ -5,7 +5,7 @@
   const $ = (id) => document.getElementById(id);
   const state = {me: null, sessions: [], current: null, view: null, timer: null, listTimer: null,
                  pendingKeys: new Map(), detailsOpen: false, events: null, busy: false,
-                 views: new Map(), open: new Set(), closed: new Set(), snapshot: null, executorWarning: null, canWrite: true};
+                 views: new Map(), open: new Set(), closed: new Set(), snapshot: null, executorWarning: null, canWrite: true, attachments: []};
   const EXAMPLES = [
     "统计英文文本词频：输入 {\"text\":字符串,\"limit\":整数}，输出出现最多的单词及次数",
     "校验中国大陆手机号：输入 {\"phone\":字符串}，输出 {\"valid\":布尔,\"carrier\":运营商或null}",
@@ -312,7 +312,10 @@
     } else if (!view.executor_configured) {
       body.append(el("p", "lead", "本机执行器未配置，任务会停在排队状态。"));
     }
-    agent.append(el("div", "avatar", "L"), body);
+    const avatar = el("div", "avatar");
+    const mark = document.createElement("img");
+    mark.src = "/console/assets/verilo-icon.svg?v=2"; mark.alt = "";
+    avatar.append(mark); agent.append(avatar, body);
     frag.append(agent);
     return frag;
   }
@@ -407,10 +410,51 @@
     $("prompt").focus();
   }
 
+  const TEXT_FILE = /\.(txt|md|csv|json|jsonl|py|js|ts|tsx|jsx|html|css|yaml|yml|xml|log|sh|ps1|toml|ini|c|h|cpp|hpp|java|go|rs|sql|rb|php|swift|kt|vue|svelte|scala|cs|bat)$/i;
+  function renderAttachments() {
+    const list = $("attachments"); list.replaceChildren();
+    for (const file of state.attachments) {
+      const chip = el("div", "as-attachment");
+      const name = el("span", null, file.name); name.title = file.name;
+      const remove = el("button", null, "×"); remove.type = "button";
+      remove.setAttribute("aria-label", "移除 " + file.name);
+      remove.addEventListener("click", () => {
+        state.attachments = state.attachments.filter(item => item !== file);
+        renderAttachments();
+      });
+      chip.append(name, remove); list.append(chip);
+    }
+    list.hidden = state.attachments.length === 0;
+  }
+  async function addFiles(files) {
+    if (!state.canWrite || state.busy) return notice("当前无法添加文件。", true);
+    const incoming = Array.from(files);
+    if (incoming.length + state.attachments.length > 3) return notice("每次最多添加 3 个文件。", true);
+    const accepted = [];
+    try {
+      for (const file of incoming) {
+        if (!TEXT_FILE.test(file.name)) throw new Error("目前支持文本和代码文件；PDF、Word 与图片暂未接入。");
+        if (file.size > 16000) throw new Error("单个文本文件不能超过 16 KB。");
+        const text = new TextDecoder("utf-8", {fatal: true}).decode(await file.arrayBuffer());
+        if (text.includes("\u0000")) throw new Error("文件不是可读取的 UTF-8 文本。");
+        accepted.push({name: file.name.replace(/[\x00-\x1f\x7f]/g, "_").slice(0, 120), text});
+      }
+      const all = [...state.attachments, ...accepted];
+      if (all.reduce((sum, item) => sum + item.text.length, 0) > 3000)
+        throw new Error("文件内容合计不能超过 3000 个字符。");
+      state.attachments = all; renderAttachments(); notice("");
+    } catch (error) { notice(error instanceof TypeError ? "请使用 UTF-8 编码的文本文件。" : error.message, true); }
+  }
+
   async function submit(event) {
     event.preventDefault();
-    const prompt = $("prompt").value.trim();
+    let prompt = $("prompt").value.trim();
+    if (state.attachments.length) {
+      const contents = state.attachments.map(file => `文件：${file.name}\n${file.text}`).join("\n\n");
+      prompt = (prompt || "请参考这些文件完成任务。") + "\n\n" + contents;
+    }
     if (!prompt || state.busy) return;
+    if (prompt.length > 4000) return notice("消息与文件内容合计不能超过 4000 个字符。", true);
     const parent = state.view && !["running", "paused"].includes(state.view.state) ? state.view.session_id : null;
     let examples;
     try { examples = parseExamples($("examples-input").value); }
@@ -424,7 +468,7 @@
     try {
       const view = await request("POST", "/v1/sessions", body, state.pendingKeys.get(pendingKey));
       state.pendingKeys.delete(pendingKey);
-      $("prompt").value = ""; autoGrow(); notice("");
+      $("prompt").value = ""; state.attachments = []; renderAttachments(); autoGrow(); notice("");
       $("examples-input").value = ""; setExamplesOpen(false);
       state.views.set(view.session_id, view);
       await loadList();
@@ -532,13 +576,18 @@
   }
 
   async function start() {
-    for (const text of EXAMPLES) {
-      const b = el("button", "example", text.length > 28 ? text.slice(0, 28) + "…" : text);
-      b.type = "button"; b.title = text;
-      b.addEventListener("click", () => { $("prompt").value = text; autoGrow(); $("prompt").focus(); });
-      $("examples").append(b);
-    }
     $("composer").addEventListener("submit", submit);
+    $("attach").addEventListener("click", () => $("file-input").click());
+    $("file-input").addEventListener("change", async event => {
+      await addFiles(event.target.files); event.target.value = "";
+    });
+    for (const type of ["dragover", "drop"]) window.addEventListener(type, event => {
+      if (!Array.from(event.dataTransfer?.types || []).includes("Files")) return;
+      event.preventDefault();
+      document.body.classList.toggle("file-drag", type === "dragover");
+      if (type === "drop") addFiles(event.dataTransfer.files);
+    });
+    window.addEventListener("dragleave", event => { if (!event.relatedTarget) document.body.classList.remove("file-drag"); });
     $("toggle-examples").addEventListener("click", () => {
       const open = $("examples-box").hidden; setExamplesOpen(open); if (open) $("examples-input").focus();
     });

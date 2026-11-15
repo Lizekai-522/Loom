@@ -8,7 +8,7 @@ from bootstrap_local import enable_auto_acceptance, ensure_human_user, write_pri
 from loom.auth import load_identities
 from loom.execution import freeze_tests
 from loom.executor_config import load_executor_config
-from loom.public_access import PreviewAccess, PreviewStore
+from loom.public_access import MEMBERS_SCHEMA, PreviewAccess, PreviewStore, code_hash, load_members
 from loom.sandbox import FrozenTest
 from loom.workflow import WorkflowService
 
@@ -70,9 +70,13 @@ def prepare(work_root, port=8799):
     config_path=private/'access.json'
     if not config_path.exists():write_private(config_path,dict(origin='https://unconfigured.invalid',access_code=secrets.token_urlsafe(32),port=port))
     config=json.loads(config_path.read_bytes());operator=next(i for i in identities if 'operator' in i.roles)
-    # Invited visitors are people: their browser acts as the human user session.
+    # Invited visitors are people, each with their own named user identity and code.
+    # Migration: the earlier shared code becomes the owner's personal code (preview-user).
     human=next(i for i in identities if 'user' in i.roles)
-    PreviewAccess(config['origin'],config['access_code'],human.token)
+    members_path=private/'members.json'
+    if not members_path.exists():
+        write_private(members_path,dict(schema_version=MEMBERS_SCHEMA,members=[dict(subject=human.subject_id,display='管理员',code_sha256=code_hash(config['access_code']))]))
+    PreviewAccess(config['origin'],config['access_code'],human.token,members=load_members(members_path,identities))
     store=PreviewStore(private/'preview.db')
     # Repeatable startup restores the same draft, never creates new paid work.
     goal=create_example(store,repo,evaluation,operator,'initial-preview-example-v2')

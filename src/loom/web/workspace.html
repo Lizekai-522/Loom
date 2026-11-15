@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Verilo · 工作区</title>
+<link rel="icon" href="/console/assets/verilo-taskbar-v4.ico?v=4"><link rel="stylesheet" href="/console/assets/chat.css"><link rel="stylesheet" href="/console/assets/verilo-theme.css"><link rel="stylesheet" href="/console/assets/workspace-ui.css"><link rel="stylesheet" href="/console/assets/workspace.css">
+<script src="/console/assets/workspace-ui.js" defer></script><script src="/console/assets/workspace.js" defer></script>
+</head>
+<body><div class="hub-shell"><aside class="hub-sidebar"><a class="brand" href="/console"><img src="/console/assets/verilo-icon.svg" alt="" width="28" height="28">Verilo</a><nav><a href="/console/sessions">＋ 新建任务</a><a href="/console">对话</a><a href="/console/projects">项目</a><a href="/console/automations">自动化</a><a href="/console/market">插件市场</a></nav><a class="hub-settings" href="/console/settings">设置</a></aside><main class="hub-main"><header><h1 id="hub-title"></h1><button id="add" type="button" class="primary" hidden>新建</button></header><p id="notice" role="status" hidden></p><div id="hub-content"></div></main></div>
+<dialog id="editor"><form id="editor-form"><div class="dialog-head"><h2 id="editor-title">新建</h2><button id="editor-close" type="button" aria-label="关闭">×</button></div><div id="editor-fields"></div><div class="dialog-actions"><button id="editor-save" class="primary" type="submit">保存</button></div></form></dialog>
+<dialog id="details"><div class="dialog-head"><h2 id="details-title">运行记录</h2><button id="details-close" type="button" aria-label="关闭详情">×</button></div><div id="details-body"></div></dialog>
+</body></html>

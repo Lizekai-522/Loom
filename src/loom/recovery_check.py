@@ -3,9 +3,9 @@ from collections import Counter
 from hashlib import sha256
 import json
 from pathlib import Path
-import sqlite3
 from uuid import uuid4
 
+from . import storage
 from .approved_execution import ReadOnlyStore
 from .dispatch import DispatchService
 from .store import Store
@@ -66,8 +66,7 @@ def make_copy(source, work_root, *, excluded_roots=()):
         db.execute('BEGIN')
         summary = audit_summary(db)
         expected = fingerprint(db)
-        with sqlite3.connect(destination) as target:
-            db.backup(target)
+        storage.SQLITE.backup(db, destination)
     with ReadOnlyStore(destination).connect() as db:
         if fingerprint(db) != expected or audit_summary(db) != summary:
             raise RecoveryCheckError('BACKUP_SNAPSHOT_DIFFERS')

@@ -26,6 +26,23 @@ class VerificationRuntime:
         if tenant!=self.config.tenant_id:raise NotFound('verification runtime not found')
         if self._fingerprint()!=self.binding:raise Conflict('VERIFICATION_CONFIGURATION_CHANGED')
 
+    def models_ready(self):
+        """Both verifier routes are configured, verified and have a key (no network, no values kept)."""
+        from .local_config import load_project_secrets
+        from .model_gateway import ModelGateway, load_model_config
+        from .model_pricing import MODEL_PROVIDERS, VERIFIER_MODELS
+        try:
+            routes, roles = load_model_config(self.config.model_config)
+            secrets = load_project_secrets(self.config.model_secrets_file, allowed_names={route.key_env for route in routes})
+            gateway = ModelGateway(routes, role_aliases=roles, environ=dict(secrets))
+        except Exception:
+            return False
+        try:
+            return all(model in gateway.routes and gateway.routes[model].provider == MODEL_PROVIDERS[model]
+                       and gateway.readiness(model).ready for model in VERIFIER_MODELS)
+        finally:
+            del secrets
+
     def registry(self):
         trusted={};public=[]
         for model,path in self.config.public_keys.items():

@@ -12,9 +12,9 @@ import json
 import inspect
 import math
 import re
-import sqlite3
 from typing import Any, Callable
 
+from . import storage
 from .store import Conflict, Store, canonical, digest
 
 
@@ -246,7 +246,7 @@ class JetStreamBridge:
             return count
 
     async def consume_message(self, message, *, tenant: str, run_id: str, durable: str,
-                              apply: Callable[[sqlite3.Connection, dict], None]) -> DeliveryResult:
+                              apply: Callable[[storage.Connection, dict], None]) -> DeliveryResult:
         _name(durable)
         subject = event_subject(self.prefix, tenant, run_id)
         identity = canonical({"stream": self.stream, "subject": subject, "durable": durable})

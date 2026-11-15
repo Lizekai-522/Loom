@@ -1,6 +1,6 @@
 # 本地 API 契约
 
-此目录的 `openapi.json` 由当前 FastAPI 应用生成，描述实际可运行的 HTTP 子集。当前版本 **0.30.0**；本机 [控制台](http://127.0.0.1:8796/console) 与 [接口文档](http://127.0.0.1:8796/docs) 同源提供。设计方案附录中的其余接口仍属后续目标，未因列入规范而自动实现。
+此目录的 `openapi.json` 由当前 FastAPI 应用生成，描述实际可运行的 HTTP 子集。当前版本 **0.35.0**；本机 [控制台](http://127.0.0.1:8796/console) 与 [接口文档](http://127.0.0.1:8796/docs) 同源提供。设计方案附录中的其余接口仍属后续目标，未因列入规范而自动实现。
 
 `/health` 返回 version，stage 仍为 `S1-local`，表示 HTTP 内核继续使用单实例 SQLite；`external_writes_enabled=false` 表示此 API 没有执行真实外部写的路由。本机脚本的真实模型调用另见 [本机执行说明](../local-execution.md)。`/integrity` 的 `external_checkpoint: "not_configured"` 表示该 HTTP 实例尚未配置独立检查点；离线 Ed25519 组件不在普通查询时自动签名，使用方法见 [检查点说明](../checkpoints.md)。
 
@@ -149,4 +149,48 @@ CLI 通过 `loom serve --identities-file <源码和公开outputs之外的私有J
 | 模板参数契约 | 领域包模板可选 `parameters`（受限 JSON Schema 对象）；`GET …/templates/{template_id}` 返回 `parameters`；`POST /v1/domain-packs/{name}/{version}/templates/{template_id}/arguments/validate` `{arguments}` | 读 | 只做 Schema 校验，失败即拒绝（`valid:false`），不降级为空参数；未声明参数的模板只接受 `{}`；旧包内容摘要不变 |
 
 PostgreSQL：`migrations/postgres/002_contract.sql` 新增 `goal_requesters`、`tenant_execution_policy`，强制行级安全、追加写入，业务登录只读。PG 存储适配探针结论见实施计划 0.30.0 条目。
+
+## 0.31.0 常驻助手接口（monsoon 核心）
+
+全部需认证；写操作带 `Idempotency-Key`。“人”= 具名用户（user 角色，本机控制台与公网体验即此身份）；实例主体（operator/worker）不能批准、签发授权或确认完成。API 进程不调用模型，回复与后台工作由执行器进程完成。
+
+| 动作 | 接口 | 权限 | 说明 |
+|---|---|---|---|
+| 我的对话 | `GET /v1/assistant/thread?limit=` | 读 | 每人一条长对话（首次自动创建），返回最近消息、`head_seq` 与执行器状态（在线、搜索服务） |
+| 发消息 | `POST /v1/assistant/threads/{id}/messages` `{text}` | 写 | 消息进入 `queued`，执行器流式回复；同一幂等键重放返回同一条 |
+| 历史 / 事件 | `GET …/messages?before=&limit=`、`GET …/events?after_seq=&limit=` | 读（仅本人线程） | 事件类型：message、message.delta（流式片段，含已生成全文）、message.updated、task、todo、approval、safety（0.32.0：内容规则命中，字段 category/action/rule/stage/ref，不含原文） |
+| 实时流 | `GET /v1/assistant/threads/{id}/stream?after_seq=&wait=` | 读（仅本人线程） | 同源 `text/event-stream`，`id` 为事件序号，支持 `Last-Event-ID` 续传；每 300 秒结束一次由客户端重连；浏览器端用 fetch 读取以携带本机标记头 |
+| 后台任务 | `GET /v1/assistant/tasks?status=`、`GET /v1/assistant/tasks/{id}` | 读 | kind：research/coding；status：queued、running、waiting_approval、blocked、awaiting_confirmation、completed、cancelled；调研报告在 `state.report` 与 `state.sources` |
+| 确认完成 | `POST /v1/assistant/tasks/{id}/confirm` | 人 | 只有 awaiting_confirmation 可确认；关联待办同时完成 |
+| 取消 / 重试 | `POST …/cancel`、`POST …/retry` | 写 | 重试仅限暂停的调研，且只限没有未知调用的暂停原因（网络、预算、搜索配置、服务商报错、报告格式或内容规则）；超时、连接中断等结果未知的调用返回 409，不会重发。每次重试是新的尝试，在内核账本里有自己的任务 |
+| 待办 | `GET /v1/assistant/todos?include_closed=`、`POST /v1/assistant/todos` `{text, due?, research?}`、`POST /v1/assistant/todos/{id}` `{status: open|done|dismissed}` | 读 / 写 / 写 | `research:true` 的待办可被巡检在授权内自动调研 |
+| 审批卡 | `GET /v1/assistant/approvals?status=pending|approved|rejected|all`、`POST /v1/assistant/approvals/{id}` `{decision: approved|rejected}` | 读 / 人 | start_research 批准后建调研任务；start_coding 批准即以该人的请求创建编程会话（实现计划之后仍需再批） |
+| 常设授权 | `GET /v1/assistant/mandates`、`POST /v1/assistant/mandates` `{scopes:[research,resume], daily_budget_microusd, days}`、`POST /v1/assistant/mandates/{id}/revoke` | 读 / 人 / 写 | research：授权内自动开始只读调研；resume：自动重试一次因网络/预算暂停的调研；独立的每日预算 |
+| 设置 | `GET/PUT /v1/assistant/settings` `{patrol_minutes 15–1440, brief_hour -1–23, tz_offset_minutes, daily_budget_microusd}` | 读 / 写 | 对话与用户发起调研的每日上限；简报每天一次 |
+
+执行器私有配置新增可选 `search`：`{"provider": "bocha|tavily|searxng|none", "key_env": "…", "secrets_file": "…", "base_url": "…(searxng)", "max_results": 1–10}`；bocha/tavily 的密钥放在 `secrets_file` 指向的单独私有文件里（只含该键），不与模型密钥文件混放。原一句话编程会话页面移至 `/console/sessions`，接口不变。
+
+### 0.35.0 公网体验按人区分身份
+
+公网体验登录 `POST /preview/login` 只接受成员本人的访问码（私有 `members.json` 只存加盐哈希），登录后转发该成员自己的具名用户令牌，`GET /v1/me` 的 `subject_id` 即本人。浏览器令牌为 `v2.<成员>.<到期>.<随机>.<签名>`，每次请求都会核对成员是否仍存在、访问码是否未更换。`GET /v1/sessions` 对具名用户只返回本人的会话；`GET /v1/sessions/{id}`、`POST .../approve`、`POST .../resume` 及以他人会话为 `parent_session_id` 新建，对非本人返回 404。实例主体（operator）仍看全部。
+
+### 0.34.0 域名邮箱
+
+全部只对本人线程可见，公网体验版不开放。`GET /v1/assistant/mail/status`（是否配置、账号、同步状态与原因、是否允许发信）；`POST /v1/assistant/mail/sync`（请执行器立即检查）；`GET /v1/assistant/mail/messages?limit=`、`GET /v1/assistant/mail/messages/{id}`（邮件头含真实地址，正文已脱敏；详情含草稿与发送记录）；`POST /v1/assistant/mail/messages/{id}/draft`（请求 AI 起草，202）；`GET/PUT /v1/assistant/mail/drafts/{id}` `{to, cc, subject, body, expected_version}`（每次修改版本号加一，待批准的发送随之作废）；`POST /v1/assistant/mail/drafts/{id}/request-send` `{expected_version}`（生成 `send_mail` 审批卡；未开启发信返回 409 `MAIL_SEND_DISABLED`）。批准走已有的 `POST /v1/assistant/approvals/{id}`，仅具名用户；批准后进入发件队列，状态为 queued、sending、accepted、partial、rejected、unknown、failed，unknown 不会自动重发。事件流新增 mail、mail.draft、mail.outbox、mail.state，只含编号和状态。执行器私有配置新增可选 `mail` 段，见部署说明。
+
+### 0.33.1 授权与预算
+
+常设授权只作用于签发人本人的线程：巡检和主动调研只使用该线程主人的有效授权。`PUT /v1/assistant/settings` 调高 `daily_budget_microusd` 需要具名用户（user 角色），实例主体调高返回 403，调低不受限。自动会话在申请独立复核前检查两个复核模型的路由与密钥，缺失时停在 `VERIFICATION_MODELS_NOT_READY`，补齐后继续即可；复核服务遇到模型未就绪时保留排队任务、不退出。
+
+### 0.33.0 独立复核换成跨厂商模型
+
+复核预览与请求里的 `models` 变为 `["deepseek-flash", "qwen3.8-max-0902"]`；签名回执 `receipt.provider` 可为 `deepseek` 或 `dashscope`，并须与模型对应。验收时接受当前组合，也接受历史上已完成的 `deepseek-flash` + `deepseek-v4-pro` 组合；`deepseek-v4-pro` 与千问的混合组合不被接受。模型配置的路由新增 `provider: "dashscope"`（阿里云百炼北京地域 OpenAI 兼容接口，密钥名 `DASHSCOPE_API_KEY`）；该路由的思考模式用 `enable_thinking` 控制、输出上限用 `max_completion_tokens`，JSON 模式要求消息里出现 “JSON” 字样，否则在发出请求前就以 `INVALID_MODEL_INPUT` 拒绝。
+
+### 0.32.1 归属与重试
+
+`/v1/assistant/tasks`、`/todos`、`/approvals`、`/mandates` 及其确认、取消、重试、决定、撤销接口只返回和接受调用者本人线程里的记录；同租户的其他用户、operator、worker 看到空列表，对他人记录的操作返回 404。`MODEL_HTTP_ERROR` 暂停的调研仍可由人重试，但不再被带 resume 授权的巡检自动重新排队。`GET /v1/interventions` 不再列出助手调用正常结束的运行，只在出现未知调用、遗留预留或暂停时列出。
+
+### 0.32.0 内容规则与脱敏
+
+接口不变。所有助手接口返回的消息、任务、待办、审批和事件里，手机号、邮箱、身份证号、银行卡号与密钥都是占位符（`[手机号]` 等）；用户消息被隐藏了内容时 `meta.redacted` 给出各类数量。被拒绝的请求回复带 `meta.safety = {category: sexual|unethical|self_harm|political, action: refuse|neutral, rule, stage}`，且没有对应的模型运行；涉政回复带 `action: neutral`。调研新增暂停原因 `CONTENT_POLICY_BLOCKED`（题目不符合规则）与 `REPORT_POLICY_BLOCKED`（报告不符合规则），违规网页记入 `state.fetch_failures`（`CONTENT_POLICY_FILTERED`）且不会发给模型。执行器私有配置新增可选 `safety: {"lexicon_file": "…"}`，格式见部署说明。
 

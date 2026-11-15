@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Verilo · 设置</title>
+  <link rel="icon" href="/console/assets/verilo-icon.svg?v=4" type="image/svg+xml">
+  <link rel="icon" href="/console/assets/verilo-taskbar-v4.ico?v=4" sizes="any">
+  <link rel="stylesheet" href="/console/assets/chat.css">
+  <link rel="stylesheet" href="/console/assets/settings.css">
+  <link rel="stylesheet" href="/console/assets/verilo-theme.css">
+</head>
+<body>
+  <header class="settings-top">
+    <a class="brand" href="/console"><span class="brand-mark" aria-hidden="true"><img src="/console/assets/verilo-mark.svg" alt=""></span>Verilo 设置</a>
+    <nav class="settings-links">
+      <a href="/console">助手</a>
+      <a href="/console/sessions">编程会话</a>
+      <a href="/console/expert">项目空间</a>
+    </nav>
+  </header>
+  <main class="settings-main">
+    <div id="notice" class="notice" hidden></div>
+    <div id="restart-banner" class="restart-banner" hidden>
+      <span id="restart-banner-text">执行器配置已更新，需要重启后生效。</span>
+      <button id="restart-now" class="primary" type="button">重启执行器</button>
+    </div>
+    <section class="settings-section" id="section-overview">
+      <h1>就绪度总览</h1>
+      <p class="muted">绿色=已就绪；黄色=部分配置；红色=未配置。点卡片标题跳到对应设置。</p>
+      <div id="overview-cards" class="cards"></div>
+    </section>
+    <section class="settings-section" id="section-model">
+      <h2>模型与密钥</h2>
+      <p class="muted">选择已验证的服务商与模型，填入 API key。保存后路由与密钥在执行器下一次调用时生效；首次保存需要重启一次执行器。</p>
+      <div id="model-body"></div>
+    </section>
+    <section class="settings-section" id="section-search">
+      <h2>联网搜索</h2>
+      <p class="muted">助手的只读调研来源。密钥只写入私有文件，页面上不回显。</p>
+      <div id="search-body"></div>
+    </section>
+    <section class="settings-section" id="section-mail">
+      <h2>域名邮箱</h2>
+      <p class="muted">收信自动摘要；发信必须由你批准草稿。密码只写入私有文件。</p>
+      <div id="mail-body"></div>
+    </section>
+    <section class="settings-section" id="section-verification">
+      <h2>独立双模型复核</h2>
+      <p class="muted">DeepSeek Flash + 阿里云千问两个独立复核模型；生成签名密钥到私有目录。已配置过则需换新目录重新生成。</p>
+      <div id="verification-body"></div>
+    </section>
+    <section class="settings-section" id="section-sandbox">
+      <h2>沙箱镜像</h2>
+      <p class="muted">Python 候选在冻结沙箱里执行：无网络、只读根、非 root。登记 docker image inspect 输出的不可变 ID。</p>
+      <div id="sandbox-body"></div>
+    </section>
+    <section class="settings-section" id="section-hosttests">
+      <h2>宿主用例（冻结终验）</h2>
+      <p class="muted">粘贴 {"tests": [...]} 用例文件内容；系统计算冻结摘要并登记。批准计划中的摘要一致时才会被使用。</p>
+      <div id="hosttests-body"></div>
+    </section>
+    <section class="settings-section" id="section-quotas">
+      <h2>持久配额</h2>
+      <p class="muted">滑动窗口内的模型/工具调用上限；配额台账只追加、不可改写。</p>
+      <div id="quotas-body"></div>
+    </section>
+    <section class="settings-section" id="section-members">
+      <h2>成员与访问</h2>
+      <p class="muted">本机身份管理。令牌只写入私有邀请文件（600），页面永不回显；新增成员后 API 与执行器需重启。控制台要求唯一具名用户，因此这里不能添加 user 角色。</p>
+      <div id="members-body"></div>
+    </section>
+    <section class="settings-section" id="section-executor">
+      <h2>执行器</h2>
+      <div id="executor-body"></div>
+    </section>
+  </main>
+  <script src="/console/assets/settings.js"></script>
+</body>
+</html>

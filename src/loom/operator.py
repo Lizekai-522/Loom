@@ -55,6 +55,12 @@ class OperatorService:
         with self.store.connect() as db:
             db.execute("BEGIN")
             now = self.store.now(db)
+            # Resident-assistant calls (ms_jobs) end as submitted by design: a chat
+            # reply has no independent verification step. They are listed only when
+            # something needs a person (unknown effect, stranded reservation, pause).
+            assistant = ("NOT EXISTS (SELECT 1 FROM ms_jobs j WHERE j.tenant=r.tenant AND j.run_id=r.id)"
+                         if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='ms_jobs'").fetchone()
+                         else "1")
             runs = db.execute("""SELECT * FROM runs r WHERE tenant=? AND (
                 status IN ('paused','awaiting_human') OR EXISTS (
                     SELECT 1 FROM effects e WHERE e.tenant=r.tenant AND e.run_id=r.id
@@ -67,7 +73,7 @@ class OperatorService:
                             AND owner.epoch=b.epoch AND owner.status='running' AND owner.lease_until>?))) OR (
                     r.status NOT IN ('cancelled','succeeded') AND EXISTS (SELECT 1 FROM tasks t
                         WHERE t.tenant=r.tenant AND t.run_id=r.id AND t.status IN ('indeterminate','awaiting_human'))) OR (
-                    r.status NOT IN ('cancelled','succeeded') AND EXISTS (
+                    r.status NOT IN ('cancelled','succeeded') AND """ + assistant + """ AND EXISTS (
                         SELECT 1 FROM tasks t WHERE t.tenant=r.tenant AND t.run_id=r.id
                         AND t.status='submitted'))) ORDER BY r.rowid DESC""", (tenant, now, now)).fetchall()
             result = []

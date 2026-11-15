@@ -36,7 +36,7 @@ def test_new_cloud_has_real_private_signers_frozen_tests_and_single_inflight_quo
     assert len(signing)==len(trusted)==2
     assert config.model_config==verifier.model_config
     routes=json.loads(config.model_config.read_bytes())['routes']
-    assert {r['model'] for r in routes}=={'deepseek-flash','deepseek-v4-pro'}
+    assert {r['model'] for r in routes}=={'deepseek-flash','deepseek-v4-pro','qwen3.8-max-0902'}
     store=Store(private/'preview.db')
     snapshot=store.snapshot('public-preview',result['run_id'])
     assert snapshot['status']=='draft' and snapshot['spent']==snapshot['reserved']==0
@@ -63,3 +63,20 @@ def test_bad_boundary_inputs_create_no_state(tmp_path,origin,image):
     state=tmp_path/'state'
     with pytest.raises(ValueError):cloud.initialize(state,origin=origin,image=image,secrets_file=secret(tmp_path))
     assert not state.exists()
+
+
+def test_verifier_readiness_needs_both_vendor_keys(tmp_path):
+    from loom.executor_config import load_executor_config
+    from loom.store import Store
+    from loom.verification_config import load_verification_config
+    from loom.verification_runtime import VerificationRuntime
+    for name, keys, expected in (('one', {'DEEPSEEK_API_KEY': 'fixture-not-a-real-provider-key'}, False),
+                                 ('two', {'DEEPSEEK_API_KEY': 'fixture-not-a-real-provider-key',
+                                          'DASHSCOPE_API_KEY': 'fixture-not-a-real-dashscope-key'}, True)):
+        path = tmp_path / (name + '.json'); path.write_text(json.dumps(keys)); path.chmod(0o600)
+        state = tmp_path / ('state-' + name)
+        cloud.initialize(state, origin='https://loom.example.com', image='sha256:' + '1' * 64, secrets_file=path)
+        private = state / 'loom-public-preview'
+        config = load_executor_config(private / 'executor.json')
+        runtime = VerificationRuntime(Store(private / 'preview.db'), load_verification_config(config.verification_config))
+        assert runtime.models_ready() is expected

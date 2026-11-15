@@ -43,6 +43,15 @@ class LocalExecutorConfig:
     # Private directory for autopilot held-out acceptance files, keyed by digest.
     # Content is re-frozen and must match the plan digest; never a public path.
     auto_acceptance_dir:Path|None=None
+    # Optional read-only research search provider (monsoon assistant); the key
+    # itself stays in the private secrets file under ``key_env``.
+    search:dict|None=None
+    # Optional private content-rule lexicon for the assistant (JSON, see
+    # monsoon.safety); unset means the built-in rules only.
+    safety_lexicon:Path|None=None
+    # Optional domain mailbox for the assistant (monsoon.mail); the password stays
+    # in its own private file named by mail.secrets_file.
+    mail:dict|None=None
 
     def binding(self,role,evaluation_digest):
         model_hash=None
@@ -77,7 +86,7 @@ def load_executor_config(path):
         if len(raw)>65536:raise ValueError
         data=strict_json(raw)
         expected={'schema_version','executor_id','identities_file','secrets_file','model_config','sandbox_image','host_tests'}
-        optional={'verification_config','auto_acceptance_dir'}
+        optional={'verification_config','auto_acceptance_dir','search','safety','mail'}
         if (type(data) is not dict or not expected<=set(data)<=expected|optional or data['schema_version']!='loom.local-executor/v1'
             or type(data['executor_id']) is not str or not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}',data['executor_id'])
             or data['sandbox_image'] is not None and not re.fullmatch(r'sha256:[0-9a-f]{64}',data['sandbox_image'])
@@ -91,5 +100,20 @@ def load_executor_config(path):
             paths[key]=resolve(value)
         verifier=resolve(data['verification_config']) if data.get('verification_config') is not None else None
         auto=resolve(data['auto_acceptance_dir']) if data.get('auto_acceptance_dir') is not None else None
-        return LocalExecutorConfig(data['executor_id'],resolve(data['identities_file']),resolve(data['secrets_file']),resolve(data['model_config']),data['sandbox_image'],paths,source,verifier,auto)
+        search=data.get('search')
+        if search is not None:
+            from monsoon.web import SearchConfig
+            SearchConfig.parse(search)
+        lexicon=None
+        safety=data.get('safety')
+        if safety is not None:
+            if type(safety) is not dict or set(safety)!={'lexicon_file'}:raise ValueError
+            lexicon=resolve(safety['lexicon_file'])
+            from monsoon.safety import ContentPolicy
+            ContentPolicy.load(lexicon)
+        mail=data.get('mail')
+        if mail is not None:
+            from monsoon.mail import MailConfig
+            MailConfig.parse(mail)
+        return LocalExecutorConfig(data['executor_id'],resolve(data['identities_file']),resolve(data['secrets_file']),resolve(data['model_config']),data['sandbox_image'],paths,source,verifier,auto,search,lexicon,mail)
     except (OSError,TypeError,ValueError,RecursionError):raise InvalidInput('invalid local executor configuration') from None

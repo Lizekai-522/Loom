@@ -1,15 +1,15 @@
 """Preview and claim one existing, approved workbench task; never create a Goal."""
 from pathlib import Path
 import json
-import sqlite3
 
+from . import storage
 from .artifacts import ArtifactService, _hash
 from .artifact_schemas import ARTIFACT_ROLES
 from .auth import LocalIdentity, is_controller
 from .development_suites import DevelopmentSuiteService
 from .execution import freeze_tests
 from .model_pricing import role_tariff,prompt_token_bound
-from .store import Claim, Conflict, InvalidInput, Store, _Connection, digest
+from .store import Claim, Conflict, InvalidInput, Store, digest
 
 
 class ReadOnlyStore(Store):
@@ -20,10 +20,7 @@ class ReadOnlyStore(Store):
         self.path=str(supplied.resolve())
 
     def connect(self):
-        db=sqlite3.connect(Path(self.path).as_uri()+'?mode=ro',uri=True,factory=_Connection,isolation_level=None,timeout=15)
-        db.row_factory=sqlite3.Row
-        db.execute('PRAGMA query_only=ON')
-        return db
+        return storage.SQLITE.connect_read_only(self.path)
 
 
 class ApprovedExecutionService:

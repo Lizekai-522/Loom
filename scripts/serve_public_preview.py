@@ -7,7 +7,7 @@ import uvicorn
 from loom.api import create_app
 from loom.auth import load_identities
 from loom.executor_config import load_executor_config
-from loom.public_access import PreviewAccess, PreviewStore, PublicPreview
+from loom.public_access import PreviewAccess, PreviewStore, PublicPreview, load_members
 from prepare_public_preview import create_example,create_verified_example
 
 
@@ -18,13 +18,19 @@ def main():
     operator=next(i for i in identities if 'operator' in i.roles)
     human=next(i for i in identities if 'user' in i.roles)
     def access():
+        # Re-read on every request: a rotated code or a removed member takes effect at once.
         raw=(private/'access.json').read_bytes()
         if len(raw)>4096:raise ValueError('invalid access config')
         data=json.loads(raw)
-        return PreviewAccess(data['origin'],data['access_code'],human.token)
+        members=load_members(private/'members.json',identities)
+        if not members:raise ValueError('at least one named member is required; there is no shared login')
+        return PreviewAccess(data['origin'],data['access_code'],human.token,members=members)
     access()
     port=json.loads((private/'access.json').read_bytes())['port']
-    store=PreviewStore(private/'preview.db');executor=load_executor_config(private/'executor.json')
+    limits=json.loads((private/'access.json').read_bytes())
+    max_goals=limits.get('max_goals',20)
+    if type(max_goals) is not int or not 1<=max_goals<=200:raise ValueError('max_goals must be 1-200')
+    store=PreviewStore(private/'preview.db',max_goals=max_goals);executor=load_executor_config(private/'executor.json')
     app=create_app(store,{},identities=identities,local_console=False,executor_config=executor)
     def example(key):
         return create_example(store,Path(__file__).resolve().parents[1],next(iter(executor.host_tests)),operator,'preview-example:'+key)

@@ -135,6 +135,12 @@ pre.code{margin:0;background:var(--code);border:1px solid var(--line);border-rad
 
 .composer{display:flex;gap:8px;align-items:flex-end;max-width:780px;width:calc(100% - 40px);margin:0 auto 18px;background:var(--surface);border:1px solid var(--line-strong);border-radius:14px;padding:8px 8px 8px 14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .composer:focus-within{border-color:var(--accent)}
+.chat-attachments{display:flex;flex-wrap:wrap;gap:6px;max-width:780px;width:calc(100% - 40px);margin:0 auto 6px}
+.chat-attachments[hidden]{display:none}
+.as-attachment{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--sunken);font-size:12px}
+.as-attachment span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+.as-attachment button{padding:0 3px;border:0;background:none;color:var(--muted);font-size:16px}
+body.file-drag .composer{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 .composer textarea{flex:1;border:0;outline:0;resize:none;background:transparent;max-height:200px;padding:6px 0;line-height:1.5}
 .examples-box{max-width:780px;width:calc(100% - 40px);margin:0 auto 8px}
 .examples-box label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}

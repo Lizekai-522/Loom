@@ -19,7 +19,8 @@ from .store import InvalidInput,canonical
 
 HASH=r'^[0-9a-f]{64}$'
 TEXT=dict(min_length=1,max_length=200,pattern=r'^[A-Za-z0-9_.:@/-]+$')
-MODELS=frozenset({'deepseek-flash','deepseek-v4-pro'})
+from .model_pricing import ACCEPTED_VERIFIER_PAIRS,MODEL_PROVIDERS,VERIFIER_MODELS
+MODELS=frozenset(VERIFIER_MODELS)
 
 class VerificationError(InvalidInput):
     def __init__(self):super().__init__('VERIFICATION_SIGNATURE_INVALID')
@@ -41,8 +42,8 @@ class VerificationBinding(Strict):
     input_digest:str=Field(pattern=HASH)
 
 class GatewayReceipt(Strict):
-    provider:Literal['deepseek']
-    model_id:Literal['deepseek-flash','deepseek-v4-pro']
+    provider:Literal['deepseek','dashscope']
+    model_id:Literal['deepseek-flash','deepseek-v4-pro','qwen3.8-max-0902']
     call_id:str=Field(pattern=HASH)
     request_hash:str=Field(pattern=HASH)
     response_hash:str=Field(pattern=HASH)
@@ -97,7 +98,7 @@ def verify_pair(verdicts,binding,trusted_keys,*,now):
             key=trusted_keys.get(body.key_id)
             if (not isinstance(key,TrustedVerifier) or key.revoked is not False
                 or key.key_id!=body.key_id or key.verifier_id!=body.verifier_id or key.model_id!=body.receipt.model_id
-                or key.model_id not in MODELS or body.binding!=expected
+                or MODEL_PROVIDERS.get(key.model_id)!=body.receipt.provider or body.binding!=expected
                 or not body.issued_at<=now<body.expires_at or not 1<=body.expires_at-body.issued_at<=3600
                 or type(key.signing_not_before) is not int or type(key.signing_not_after) is not int
                 or not key.signing_not_before<=body.issued_at<=key.signing_not_after):raise ValueError
@@ -109,7 +110,7 @@ def verify_pair(verdicts,binding,trusted_keys,*,now):
             ids.add(body.verifier_id);models.add(key.model_id);fingerprints.add(fingerprint);calls.add(body.receipt.call_id)
             results.append(VerificationSignature(body.verifier_id,key.model_id,expected.content_hash,expected.ruleset_version,
                 f'{expected.task_id}:{expected.epoch}',body.passed,authenticated=True))
-        if models!=MODELS:raise ValueError
+        if frozenset(models) not in ACCEPTED_VERIFIER_PAIRS:raise ValueError
         return tuple(results)
     except (ValidationError,ValueError,TypeError,InvalidSignature,AttributeError,OverflowError):raise VerificationError() from None
 

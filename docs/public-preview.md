@@ -54,6 +54,18 @@
 ..\..\work\loom-venv\Scripts\python.exe -X utf8 .\scripts\check_public_preview.py
 ```
 
+## 团队成员与身份（0.35.0）
+
+每位受邀者有自己的访问码和具名身份。助手对话、待办、授权、审批卡和编程会话只有本人能看到和处理；页面右上角显示当前身份。原共享访问码在升级时自动成为管理员本人（`preview-user`）的码，不能再当公共入口。
+
+```powershell
+..\..\work\loom-venv\Scripts\python.exe -X utf8 .\scripts\manage_preview_members.py add --work-root ..\..\work --subject xiaoming --display 小明
+.\scripts\stop_public_preview.ps1
+.\scripts\start_public_preview.ps1
+```
+
+访问码只写在 `work/loom-public-preview/invites/<名字>.txt`，终端不打印；隧道地址变化时邀请文件的地址会一并更新。`rotate` 换码、`remove` 移除立即生效，无需重启；新增成员需要重启（服务和执行器在启动时读取身份）。仍是同一个体验租户：项目空间（`/console/expert`）的目标、每日预算和助手设置由全员共用，请使用测试内容。
+
 ## 会话和预算
 
 访问码只保存在本机私有目录。登录使用 Secure / HttpOnly / SameSite=Strict 的主机 Cookie，不向页面下发 API Bearer 或模型密钥；会话最多 4 小时，重启服务或修改访问策略后失效。所有写入检查精确 HTTPS Origin，限制登录/写入速率、请求体和活动会话数。公网禁用 worker 提交/认领、账单裁决、旧通用增任务、Swagger 与私有路径。

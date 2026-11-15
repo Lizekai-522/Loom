@@ -2,8 +2,8 @@
 from dataclasses import asdict, dataclass
 import json
 import re
-import sqlite3
 
+from . import storage
 from .auth import LocalIdentity, is_controller
 from .store import Conflict, InvalidInput, canonical, digest
 
@@ -93,12 +93,8 @@ class QuotaService:
             or type(expected_revision) is not int or expected_revision<0 or not isinstance(key,str) or not 1<=len(key)<=200
             or not isinstance(reason,str) or not reason.strip() or len(reason)>2000):raise InvalidInput('named operator and exact quota policy required')
         with self.store.transaction() as db:
-            statement=''
-            for line in SCHEMA.splitlines(True):
-                statement+=line
-                if sqlite3.complete_statement(statement):
-                    db.execute(statement);statement=''
-            db.execute("INSERT OR IGNORE INTO settings VALUES('quotas_enabled',1)")
+            storage.SQLITE.execute_script(db,SCHEMA)
+            db.execute("INSERT INTO settings VALUES('quotas_enabled',1) ON CONFLICT DO NOTHING")
             current=self._policy(db,identity.tenant_id)
             request=dict(actor='subject:'+identity.subject_id,policy=asdict(policy),expected_revision=expected_revision,reason=reason)
             old=db.execute('SELECT record,hash FROM quota_policies WHERE tenant=? AND command_key=?',(identity.tenant_id,key)).fetchone()

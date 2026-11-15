@@ -12,7 +12,8 @@ from .local_config import load_project_secrets
 from .store import InvalidInput
 from .verification_signatures import TrustedVerifier
 
-MODELS=('deepseek-flash','deepseek-v4-pro')
+from .model_pricing import VERIFIER_MODELS
+MODELS=VERIFIER_MODELS
 @dataclass(frozen=True)
 class VerificationConfig:
     tenant_id:str

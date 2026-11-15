@@ -7,7 +7,7 @@ from pathlib import Path
 from loom.approved_execution import ReadOnlyStore
 from loom.local_config import load_project_secrets
 from loom.model_gateway import ModelGateway,load_model_config
-from loom.store import LoomError,Store
+from loom.store import InvalidInput,LoomError,Store
 from loom.verification_config import load_verification_config
 from loom.verification_jobs import VerificationJobs
 from loom.verification_worker import VerificationWorker
@@ -21,7 +21,12 @@ async def drain(db,config):
     routes,roles=load_model_config(config.model_config)
     secrets=load_project_secrets(config.model_secrets_file,allowed_names={route.key_env for route in routes})
     async with ModelGateway(routes,role_aliases=roles,environ=secrets) as gateway:
-        return await VerificationWorker(jobs,gateway,directory=config.workspace,operator=operator,worker=worker,signing_keys=signing,trusted_keys=trusted).process(config.tenant_id,pending[0]['job_id'])
+        try:worker_=VerificationWorker(jobs,gateway,directory=config.workspace,operator=operator,worker=worker,signing_keys=signing,trusted_keys=trusted)
+        except InvalidInput:
+            # Missing key or route: keep the job queued and the service alive (no crash loop);
+            # it runs once the operator completes the private configuration.
+            return dict(passed=False,code='VERIFICATION_MODELS_NOT_READY',job_id=pending[0]['job_id'],automatic_retry=False)
+        return await worker_.process(config.tenant_id,pending[0]['job_id'])
 
 async def run(args):
     if not Path(args.db).is_file():raise ValueError('existing database required')

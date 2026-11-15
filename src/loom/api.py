@@ -303,22 +303,55 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
 
     @app.middleware("http")
     async def response_policy(request, call_next):
+        from secrets import token_urlsafe
+        request.state.style_nonce = token_urlsafe(24)
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Cache-Control"] = "no-store"
         response.headers["Referrer-Policy"] = "no-referrer"
         if request.url.path.startswith("/console"):
-            response.headers["Content-Security-Policy"] = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+            response.headers["Content-Security-Policy"] = "default-src 'none'; script-src 'self'; style-src 'self' 'nonce-" + request.state.style_nonce + "'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
         return response
 
     web = Path(__file__).with_name("web")
+    def terminal_page(name, request):
+        from fastapi.responses import HTMLResponse
+        content = (web / name).read_text(encoding='utf-8')
+        content = content.replace('</head>', '<meta name="verilo-style-nonce" content="' + request.state.style_nonce + '"></head>')
+        return HTMLResponse(content)
     app.mount("/console/assets", StaticFiles(directory=web, check_dir=False), name="console-assets")
 
     @app.get("/console", include_in_schema=False)
     @app.get("/console/", include_in_schema=False)
-    def console():
-        # Conversation-first workspace; the full audited workbench stays one click away.
-        return FileResponse(web / "chat.html")
+    def console(request: Request):
+        # Resident assistant: one long conversation plus background tasks, todos and approvals.
+        return terminal_page('assistant.html', request)
+
+    @app.get("/console/sessions", include_in_schema=False)
+    def coding_sessions(request: Request):
+        # Automatic coding sessions (requirements -> tests -> code -> held-out acceptance).
+        return terminal_page('chat.html', request)
+
+    @app.get('/console/projects', include_in_schema=False)
+    @app.get('/console/automations', include_in_schema=False)
+    @app.get('/console/market', include_in_schema=False)
+    def workspace_hub():
+        return FileResponse(web / 'workspace.html')
+
+    if local_console:
+        @app.get("/console/settings", include_in_schema=False)
+        def settings_console():
+            # Clickable settings hub: model/secrets/search/mail/verification/quotas/
+            # members/sandbox/host-tests/logs, aligned with the executor's private config.
+            return FileResponse(web / "preferences.html")
+
+        @app.get('/console/preferences', include_in_schema=False)
+        def preferences_console():
+            return FileResponse(web / 'preferences.html')
+
+        @app.get('/console/admin', include_in_schema=False)
+        def admin_console():
+            return FileResponse(web / 'settings.html')
 
     @app.get("/console/expert", include_in_schema=False)
     def expert_console():
@@ -377,30 +410,45 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
                                      acceptance=body.acceptance, cost_limit=body.cost_limit_microusd,
                                      token_limit=body.token_limit, **audit(identity))
 
+    SessionReader = Annotated[Principal, Depends(permitted("read"))]
+
+    def own_session(identity, session_id):
+        # A person sees and decides only their own sessions; instance principals keep the operator view.
+        if is_human(identity) and sessions.owner(identity.tenant_id, session_id) != identity.subject_id:
+            raise NotFound("session not found")
+
     @app.post("/v1/sessions", status_code=201)
     def create_session(body: SessionInput, identity: Approver, idempotency_key: Key):
         # The person's own request approves the plan it creates; nothing else is delegated as approval.
         if not registry.authorize(identity, "goal.write"):
             raise HTTPException(403, "automatic sessions require a named human user")
+        if body.parent_session_id is not None:
+            own_session(identity, body.parent_session_id)
         return sessions.create(identity, idempotency_key, prompt=body.prompt, title=body.title,
                                parent_session_id=body.parent_session_id,
                                examples=None if body.examples is None else [e.model_dump() for e in body.examples],
                                topology=body.topology)
 
     @app.get("/v1/sessions")
-    def list_sessions(tenant: Tenant):
-        return {"items": sessions.list(tenant)}
+    def list_sessions(identity: SessionReader):
+        items = sessions.list(identity.tenant_id)
+        if is_human(identity):
+            items = [item for item in items if item.get("owner") == identity.subject_id]
+        return {"items": items}
 
     @app.get("/v1/sessions/{session_id}")
-    def read_session(session_id: str, tenant: Tenant):
-        return sessions.get(tenant, session_id)
+    def read_session(session_id: str, identity: SessionReader):
+        own_session(identity, session_id)
+        return sessions.get(identity.tenant_id, session_id)
 
     @app.post("/v1/sessions/{session_id}/approve")
     def approve_session(session_id: str, body: SessionApprovalInput, identity: Approver, idempotency_key: Key):
+        own_session(identity, session_id)
         return sessions.approve(identity, session_id, idempotency_key, expected_digest=body.expected_digest)
 
     @app.post("/v1/sessions/{session_id}/resume")
     def resume_session(session_id: str, body: ControlInput, identity: Controller, idempotency_key: Key):
+        own_session(identity, session_id)
         return sessions.resume(identity, session_id, idempotency_key, reason=body.reason)
 
     @app.get("/v1/goals")
@@ -750,4 +798,28 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     app.state.platform = install_platform(
         app, store, Tenant=Tenant, Reader=Annotated[Principal, Depends(permitted("read"))], Writer=Writer,
         Controller=Controller, Key=Key, registry_auth=registry.authorize, sessions=sessions, workflows=workflows, packs=packs)
+    # Resident assistant (monsoon-harness core): conversation, background tasks, todos, mandates.
+    from monsoon.api import install as install_assistant
+    app.state.assistant = install_assistant(
+        app, store, Tenant=Tenant, Reader=Annotated[Principal, Depends(permitted("read"))], Writer=Writer,
+        Approver=Approver, Key=Key, sessions=sessions)
+    from .workspace_api import install_workspace_api
+    install_workspace_api(app, store, Reader=Annotated[Principal, Depends(permitted('read'))],
+                          Writer=Writer, executor_config=executor_config)
+    from .market_api import install_market_api
+    install_market_api(app, store, Reader=Annotated[Principal, Depends(permitted('read'))], Writer=Writer, Key=Key)
+    from .product_settings_api import install_product_settings_api
+    install_product_settings_api(app, store, Reader=Annotated[Principal, Depends(permitted('read'))],
+                                 Writer=Writer, Key=Key, executor_config=executor_config)
+    from .terminal_api import install_terminal_api
+    install_terminal_api(app, store, Reader=Annotated[Principal, Depends(permitted('read'))],
+                         Writer=Writer, executor_config=executor_config, local_console=local_console)
+    # Clickable settings for the loopback console only: every private-configuration
+    # step (model/secrets/search/mail/verification/quotas/members/sandbox/logs)
+    # gets an HTTP surface here. Public previews never gain these routes.
+    if local_console and executor_config is not None:
+        from .settings_api import install as install_settings
+        install_settings(app, store, executor_config=executor_config, identities=identities,
+                         status=executor_status,
+                         Reader=Annotated[Principal, Depends(permitted("read"))], Writer=Writer, Key=Key)
     return app

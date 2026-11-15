@@ -4,9 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <title>Loom · 项目空间</title>
+  <title>Verilo · 项目空间</title>
+  <link rel="icon" href="/console/assets/verilo-icon.svg?v=4" type="image/svg+xml">
+  <link rel="icon" href="/console/assets/verilo-taskbar-v4.ico?v=4" sizes="any">
   <link rel="stylesheet" href="/console/assets/console.css">
   <link rel="stylesheet" href="/console/assets/product.css">
+  <link rel="stylesheet" href="/console/assets/verilo-theme.css">
   <script src="/console/assets/console-zh.js" defer></script>
   <script src="/console/assets/console-suites.js" defer></script>
   <script src="/console/assets/console-review-decisions.js" defer></script>
@@ -20,9 +23,9 @@
 <body>
   <a class="skip-link" href="#workspace">跳到工作区</a>
   <header class="topbar">
-    <a class="brand" href="/console" aria-label="Loom 项目空间首页"><span class="brand-mark" aria-hidden="true">L</span>Loom</a>
+    <a class="brand" href="/console" aria-label="Verilo 项目空间首页"><span class="brand-mark" aria-hidden="true"><img src="/console/assets/verilo-mark.svg" alt=""></span>Verilo</a>
     <span class="environment">项目空间</span>
-    <div class="top-actions"><a class="back-to-chat" href="/console">← 返回会话</a><span id="identity-label" class="muted"></span><button id="theme-button" class="quiet" type="button" aria-label="切换深色外观" aria-pressed="false">深色</button><button id="controls-button" class="quiet" type="button" aria-expanded="false" aria-controls="actions-panel" hidden>运行详情</button><button id="refresh-button" class="quiet" hidden>刷新</button><button id="logout-button" class="quiet" hidden>退出</button></div>
+    <div class="top-actions"><a class="back-to-chat" href="/console">← 返回会话</a><a class="quiet back-to-chat" href="/console/settings">设置</a><span id="identity-label" class="muted"></span><button id="controls-button" class="quiet" type="button" aria-expanded="false" aria-controls="actions-panel" hidden>运行详情</button><button id="refresh-button" class="quiet" hidden>刷新</button><button id="logout-button" class="quiet" hidden>退出</button></div>
   </header>
   <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
   <section id="login-panel" class="login-panel" aria-labelledby="login-title">
@@ -46,10 +49,10 @@
     </aside>
     <section class="content" aria-labelledby="run-title">
       <div id="empty-selection" class="empty-state product-home">
-        <div class="home-intro"><span class="home-monogram" aria-hidden="true">L</span><p class="eyebrow">从想法到经过验证的结果</p><h1>今天想用 Loom 构建什么？</h1><p>描述你的目标。一起规划、执行，再逐步验证。</p></div>
+        <div class="home-intro"><span class="home-monogram" aria-hidden="true"><img src="/console/assets/verilo-mark.svg" alt=""></span><p class="eyebrow">从想法到经过验证的结果</p><h1>今天想用 Verilo 构建什么？</h1><p>描述你的目标。一起规划、执行，再逐步验证。</p></div>
         <form id="prompt-form" class="composer">
           <label class="sr-only" for="project-prompt">描述你的项目需求</label><textarea id="project-prompt" rows="4" maxlength="32000" placeholder="描述你要实现的功能、输入输出和验收要求…" required></textarea>
-          <div class="composer-footer"><span class="model-label"><span class="status-dot" aria-hidden="true"></span>DeepSeek Flash <span class="muted">· Pro 独立复核</span></span><button id="prompt-submit" class="primary" type="submit" data-cap="goal.write">创建项目 <span aria-hidden="true">↑</span></button></div>
+          <div class="composer-footer"><span class="model-label"><span class="status-dot" aria-hidden="true"></span><span id="model-label-text">模型配置读取中…</span> <a class="muted" id="verification-label" href="/console/settings" hidden>· 独立复核</a></span><button id="prompt-submit" class="primary" type="submit" data-cap="goal.write">创建项目 <span aria-hidden="true">↑</span></button></div>
         </form>
         <p class="composer-help">先创建需求草案，审阅并批准计划后执行。模型调用受项目预算约束。</p>
         <div id="home-examples" class="home-examples" aria-label="开始体验"><button id="home-verified-example" type="button" hidden>运行完整词频示例 <span aria-hidden="true">↗</span></button><button id="home-role-example" type="button" hidden>体验多角色协作 <span aria-hidden="true">↗</span></button><button id="home-advanced" type="button">自定义预算与验收 <span aria-hidden="true">↗</span></button></div>
@@ -65,7 +68,7 @@
         </nav>
         <section id="tab-conversation" class="tab-panel conversation-panel" aria-label="项目概览">
           <article class="message message-user"><div class="message-caption">你的需求</div><p id="conversation-request"></p></article>
-          <article class="message message-assistant"><div class="message-caption"><span class="mini-monogram" aria-hidden="true">L</span>Loom <span id="conversation-updated" class="muted"></span></div><h2 id="conversation-title">正在读取项目状态</h2><p id="conversation-summary"></p><ol id="conversation-steps" class="conversation-steps"></ol><div class="conversation-actions"><button id="conversation-next" class="primary" type="button">查看下一步</button><button id="conversation-source" type="button">查看任务与源码</button></div><p class="field-help">以下状态来自运行台账。候选提交、测试通过与独立验收分别记录。</p></article>
+          <article class="message message-assistant"><div class="message-caption"><span class="mini-monogram" aria-hidden="true"><img src="/console/assets/verilo-mark.svg" alt=""></span>Verilo <span id="conversation-updated" class="muted"></span></div><h2 id="conversation-title">正在读取项目状态</h2><p id="conversation-summary"></p><ol id="conversation-steps" class="conversation-steps"></ol><div class="conversation-actions"><button id="conversation-next" class="primary" type="button">查看下一步</button><button id="conversation-source" type="button">查看任务与源码</button></div><p class="field-help">以下状态来自运行台账。候选提交、测试通过与独立验收分别记录。</p></article>
         </section>
         <section id="tab-tasks" class="tab-panel" aria-label="任务列表"><div class="section-heading"><h2>执行状态</h2><span id="tasks-hint" class="muted"></span></div><div id="task-list" class="task-list"></div><section id="source-panel" class="suite-panel" aria-label="源码与版本导出" hidden></section></section>
         <section id="tab-progression" class="tab-panel" aria-label="七角色推进指引" hidden>

@@ -25,6 +25,19 @@
       "max_output_tokens": 8192,
       "thinking": "disabled",
       "reasoning_effort": "high"
+    },
+    {
+      "alias": "qwen3.8-max-0902",
+      "provider": "dashscope",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "model": "qwen3.8-max-0902",
+      "key_env": "DASHSCOPE_API_KEY",
+      "timeout_seconds": 120,
+      "max_response_bytes": 1048576,
+      "max_request_bytes": 262144,
+      "max_output_tokens": 8192,
+      "thinking": "disabled",
+      "reasoning_effort": "high"
     }
   ],
   "roles": {

@@ -16,7 +16,9 @@ from .store import InvalidInput, NotFound, digest
 from .tool_registry import TOOLS
 from .workflow import ROLE_SKILLS, ROLE_TOOLS
 
-MODEL_ALIASES = frozenset({'deepseek-flash', 'deepseek-v4-pro'})
+from .model_pricing import REVIEW_ONLY_MODELS, TARIFFS
+
+MODEL_ALIASES = frozenset(TARIFFS)
 SEMVER = re.compile(r'^(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})$')
 AGENT_ID = re.compile(r'^[a-z][a-z0-9_-]{1,47}$')
 
@@ -124,7 +126,7 @@ class AgentRegistry:
                 'tools may only narrow the base role')
         model = definition.get('model_alias', 'deepseek-flash')
         require(model in MODEL_ALIASES, 'unknown model alias')
-        require(model != 'deepseek-v4-pro' or base == 'reviewer', 'Pro is restricted to the reviewer role')
+        require(model not in REVIEW_ONLY_MODELS or base == 'reviewer', 'reviewer-only models are restricted to the reviewer role')
         description = text(definition.get('description', base), 'description', 1000)
         status = definition.get('status', 'active')
         require(status in {'active', 'retired'}, 'status must be active or retired')

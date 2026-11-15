@@ -61,7 +61,7 @@ def parse_requester(description):
 
 def record_requester(store, db, tenant, run_id, description):
     requester = parse_requester(description)
-    db.execute('INSERT OR IGNORE INTO goal_requesters VALUES(?,?,?,?,?)',
+    db.execute('INSERT INTO goal_requesters VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING',
                (tenant, run_id, requester, 'description-prefix' if requester else 'none', store.now(db)))
     return requester
 

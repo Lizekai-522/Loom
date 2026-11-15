@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Verilo</title>
+  <link rel="icon" href="/console/assets/verilo-icon.svg?v=4" type="image/svg+xml">
+  <link rel="icon" href="/console/assets/verilo-taskbar-v4.ico?v=4" sizes="any">
+  <link rel="stylesheet" href="/console/assets/chat.css">
+  <link rel="stylesheet" href="/console/assets/assistant.css">
+  <script src="/console/assets/assistant.js" defer></script>
+  <link rel="stylesheet" href="/console/assets/vendor-xterm.css">
+  <link rel="stylesheet" href="/console/assets/workspace-ui.css">
+  <script src="/console/assets/vendor-xterm.js" defer></script>
+  <script src="/console/assets/vendor-xterm-fit.js" defer></script>
+  <script src="/console/assets/workspace-ui.js" defer></script>
+</head>
+<body>
+  <div class="as-shell" id="shell">
+    <aside class="verilo-sidebar" aria-label="导航">
+      <a class="verilo-brand" href="/console"><img src="/console/assets/verilo-mark.svg" alt=""><span>VERILO</span></a>
+      <a class="verilo-new" href="/console/sessions">＋ <span>新建任务</span></a>
+      <nav class="verilo-nav" aria-label="工作区">
+        <a href="/console" aria-current="page"><span aria-hidden="true">◯</span>对话</a>
+        <button type="button" data-open-tab="active"><span aria-hidden="true">□</span>任务</button>
+        <a href="/console/projects"><span aria-hidden="true">▱</span>项目</a>
+        <a href="/console/automations"><span aria-hidden="true">◷</span>自动化</a>
+        <a href="/console/market"><span aria-hidden="true">⊞</span>插件市场</a>
+        <button type="button" data-open-tab="mail" id="nav-mail" hidden><span aria-hidden="true">✉</span>邮件</button>
+      </nav>
+      <div class="verilo-sidebar-footer"><a href="/console/settings">设置</a><span>Verilo</span></div>
+    </aside>
+    <main class="as-main">
+      <header class="as-head">
+        <a class="brand mobile-brand" href="/console"><img src="/console/assets/verilo-mark.svg" alt="">Verilo</a>
+        <div class="head-title"><strong>对话</strong></div>
+        <div class="as-status" id="status" title="执行器状态"><span class="dot" id="status-dot"></span><span id="status-text">连接中…</span></div>
+        <nav class="as-links">
+          <a class="settings-link" href="/console/settings">设置</a>
+          <button id="toggle-panel" class="ghost" type="button" aria-expanded="false" aria-controls="panel">任务<span id="badge" class="as-badge" hidden></span></button>
+          <span id="who" class="as-who" title="当前身份" hidden></span>
+          <button id="logout" class="ghost" type="button" hidden>退出体验</button>
+        </nav>
+      </header>
+      <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+      <section class="as-stream" id="stream" aria-live="polite">
+        <div class="welcome" id="welcome">
+          <h2>有什么要做的？</h2>
+          <div class="examples" id="examples"></div>
+        </div>
+        <div id="messages"></div>
+      </section>
+      <div class="as-attachments" id="attachments" aria-label="待发送文件" hidden></div>
+      <form class="composer as-composer" id="composer">
+        <input id="file-input" type="file" accept=".txt,.md,.csv,.json,.jsonl,.py,.js,.ts,.tsx,.jsx,.html,.css,.yaml,.yml,.xml,.log,.sh,.ps1,.toml,.ini,.c,.h,.cpp,.hpp,.java,.go,.rs,.sql,.rb,.php,.swift,.kt,.vue,.svelte,.scala,.cs,.bat" multiple hidden>
+        <button id="attach" class="ghost as-attach" type="button" aria-label="添加文本或代码文件" title="添加文本或代码文件">＋</button>
+        <textarea id="prompt" rows="1" maxlength="8000" placeholder="输入消息…" aria-label="消息"></textarea>
+        <button id="send" type="submit" class="primary">发送</button>
+      </form>
+    </main>
+    <aside class="as-panel" id="panel" aria-label="任务与待办" hidden>
+      <div class="verilo-panel-head">
+        <strong>任务</strong>
+        <div class="verilo-panel-actions">
+          <button id="panel-narrow" type="button" aria-label="缩窄任务面板" title="缩窄">−</button>
+          <button id="panel-widen" type="button" aria-label="加宽任务面板" title="加宽">＋</button>
+          <button id="close-panel" type="button" aria-label="关闭任务面板" title="关闭">×</button>
+        </div>
+      </div>
+      <div class="as-tabs" role="tablist">
+        <button role="tab" data-tab="active" aria-selected="true">进行中</button>
+        <button role="tab" data-tab="approvals" aria-selected="false">待批准<span class="as-count" id="count-approvals"></span></button>
+        <button role="tab" data-tab="results" aria-selected="false">成果</button>
+        <button role="tab" data-tab="todos" aria-selected="false">待办</button>
+        <button role="tab" data-tab="mail" aria-selected="false" id="tab-mail" hidden>邮件</button>
+        <button role="tab" data-tab="settings" aria-selected="false">授权</button>
+      </div>
+      <div class="as-tab-body" id="tab-body"></div>
+    </aside>
+  </div>
+</body>
+</html>

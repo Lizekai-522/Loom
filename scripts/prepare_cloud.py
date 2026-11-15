@@ -29,7 +29,9 @@ def initialize(work_root, *, origin, image, secrets_file):
     PreviewAccess(origin,secrets.token_urlsafe(32),secrets.token_urlsafe(32))
     if Path(secrets_file).resolve().is_relative_to(repo.parent):
         raise ValueError('secret input must be outside distributed source')
-    project_secrets=load_project_secrets(secrets_file,allowed_names={'DEEPSEEK_API_KEY'})
+    # DASHSCOPE_API_KEY (Alibaba Cloud Model Studio, Beijing) serves the second,
+    # different-vendor verifier model; without it independent review stays unavailable.
+    project_secrets=load_project_secrets(secrets_file,allowed_names={'DEEPSEEK_API_KEY','DASHSCOPE_API_KEY'})
     if 'DEEPSEEK_API_KEY' not in project_secrets:raise ValueError('model secret required')
     previous=os.umask(0o077)
     try:
@@ -54,7 +56,8 @@ def initialize(work_root, *, origin, image, secrets_file):
             key='cloud-initial-quotas-v1',expected_revision=0,reason='Single-host invite preview admission limits')
         # The invite is a private file, never stdout or a public deployment report.
         invite=public/'访问信息.txt'
-        invite.write_text(origin+'/console\n访问码：'+access['access_code']+'\n',encoding='utf-8')
+        invite.write_text(origin+'/console\n访问码（管理员本人，身份 preview-user）：'+access['access_code']+'\n'
+                          '给团队成员发码：scripts/manage_preview_members.py add --work-root <目录> --subject <名字>\n',encoding='utf-8')
         invite.chmod(0o600)
         return dict(passed=True,initialized=True,model_requests=0,existing_state_overwritten=False,
                     production_ready=False,run_id=result['run_id'])

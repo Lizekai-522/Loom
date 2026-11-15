@@ -2,6 +2,7 @@
 import json
 
 from .review_inputs import ReviewInputService
+from .model_pricing import ACCEPTED_VERIFIER_PAIRS
 from .store import Conflict, digest
 
 
@@ -32,7 +33,7 @@ def resolve_validation_input_in(store,db,tenant,spec):
     if state['state']!='verified' or state.get('task_verified') is not True or state['binding']!=binding.model_dump():
         raise Conflict('VALIDATION_SOURCE_PROOF_CHANGED')
     signed=jobs._attestations_in(db,tenant,rows[0]['id'])
-    if (len(signed)!=2 or {s['body']['receipt']['model_id'] for s in signed}!={'deepseek-flash','deepseek-v4-pro'}
+    if (len(signed)!=2 or frozenset(s['body']['receipt']['model_id'] for s in signed) not in ACCEPTED_VERIFIER_PAIRS
             or any(s['body']['passed'] is not True for s in signed)):
         raise Conflict('VALIDATION_SOURCE_PROOF_CHANGED')
     finished=[json.loads(row['envelope'])|{'hash':row['hash']} for row in db.execute(

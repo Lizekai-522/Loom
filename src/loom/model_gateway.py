@@ -1,4 +1,6 @@
-"""Bounded, non-retrying DeepSeek HTTP gateway; configuration is operator-owned.
+"""Bounded, non-retrying model HTTP gateway (DeepSeek and Alibaba Cloud Model Studio).
+
+Configuration is operator-owned.
 
 This module does not reserve budgets or sign verification results. Provider
 usage and model reports are not independent evidence of task correctness.
@@ -22,9 +24,14 @@ import httpx
 _ALIAS = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\Z")
 _KEY_ENV = re.compile(r"[A-Z_][A-Z0-9_]{0,127}\Z")
 _REQUEST_ID = re.compile(r"[A-Za-z0-9_.:/-]{1,200}\Z")
-# Official documentation verified 2026-10-29; these are moving API aliases,
-# not a cryptographically pinned model snapshot.
-VERIFIED_MODELS = frozenset({("deepseek", "deepseek-flash"),("deepseek","deepseek-v4-pro")})
+# Official documentation verified 2026-10-29 (DeepSeek: moving API aliases) and
+# 2026-11-06 (Alibaba Cloud Model Studio: ``qwen3.8-max-0902`` is a dated snapshot).
+VERIFIED_MODELS = frozenset({("deepseek", "deepseek-flash"), ("deepseek", "deepseek-v4-pro"),
+                             ("dashscope", "qwen3.8-max-0902")})
+# Alibaba Cloud Model Studio, Beijing region only (keys are region-bound): the
+# legacy shared host or a workspace host, both on the OpenAI-compatible path.
+_DASHSCOPE_HOST = re.compile(r"(?:dashscope\.aliyuncs\.com|[a-z0-9][a-z0-9-]{0,62}\.cn-beijing\.maas\.aliyuncs\.com)\Z")
+_EFFORT = {"deepseek": ("low", "high", "max"), "dashscope": ("low", "medium", "xhigh")}
 
 
 class GatewayError(ValueError):
@@ -85,15 +92,20 @@ class ModelRoute:
 
     def __post_init__(self) -> None:
         _require(isinstance(self.alias, str) and bool(_ALIAS.fullmatch(self.alias)))
-        _require(self.provider == "deepseek")
+        _require(self.provider in ("deepseek", "dashscope"))
         _require(isinstance(self.model, str) and bool(_ALIAS.fullmatch(self.model)))
         _require(isinstance(self.key_env, str) and bool(_KEY_ENV.fullmatch(self.key_env)))
         _require(isinstance(self.base_url, str))
         try:
             url = urlsplit(self.base_url)
-            valid = (url.scheme == "https" and url.hostname == "api.deepseek.com"
+            if self.provider == "deepseek":
+                host = url.hostname == "api.deepseek.com" and url.path in ("", "/", "/v1", "/v1/")
+            else:
+                host = (url.hostname is not None and bool(_DASHSCOPE_HOST.fullmatch(url.hostname))
+                        and url.path in ("/compatible-mode/v1", "/compatible-mode/v1/"))
+            valid = (url.scheme == "https" and host
                      and url.port in (None, 443) and url.username is None and url.password is None
-                     and url.path in ("", "/", "/v1", "/v1/") and not url.query and not url.fragment
+                     and not url.query and not url.fragment
                      and not any(ord(char) <= 32 for char in self.base_url))
         except ValueError:
             valid = False
@@ -106,7 +118,9 @@ class ModelRoute:
         _require(_integer(self.max_request_bytes, 256, 4_194_304))
         _require(_integer(self.max_output_tokens, 1, 393_216))
         _require(self.thinking in ("enabled", "disabled"))
-        _require(self.reasoning_effort in ("low", "high", "max"))
+        # Effort is only sent with thinking enabled; a disabled route keeps the default.
+        _require(self.reasoning_effort in _EFFORT[self.provider]
+                 or (self.thinking == "disabled" and self.reasoning_effort == "high"))
 
     @property
     def endpoint(self) -> str:
@@ -226,7 +240,7 @@ class ModelGateway:
         return await self.generate(self.role_aliases[role], messages, max_output_tokens, json_mode=json_mode)
 
     def prepare_request(self, route_alias: str, messages: Sequence[Mapping[str, str]],
-                        max_output_tokens: int, *, json_mode: bool = False) -> bytes:
+                        max_output_tokens: int, *, json_mode: bool = False, stream: bool = False) -> bytes:
         """Validate exact wire bytes without looking up credentials or doing I/O.
 
         Trusted executors can reject oversized input before recording a paid
@@ -234,7 +248,7 @@ class ModelGateway:
         """
         route = self._route(route_alias)
         _require((route.provider, route.model) in VERIFIED_MODELS, "MODEL_UNVERIFIED")
-        _require(type(json_mode) is bool, "INVALID_MODEL_INPUT")
+        _require(type(json_mode) is bool and type(stream) is bool, "INVALID_MODEL_INPUT")
         _require(_integer(max_output_tokens, 1, route.max_output_tokens), "INVALID_MODEL_INPUT")
         _require(isinstance(messages, (list, tuple)) and 1 <= len(messages) <= 128, "INVALID_MODEL_INPUT")
         copied = []
@@ -243,8 +257,20 @@ class ModelGateway:
             _require(isinstance(message["role"], str) and message["role"] in {"system", "user", "assistant"}
                      and isinstance(message["content"], str) and bool(message["content"].strip()), "INVALID_MODEL_INPUT")
             copied.append({"role": message["role"], "content": message["content"]})
-        payload = {"model": route.model, "messages": copied, "max_tokens": max_output_tokens,
-                   "stream": False, "thinking": {"type": route.thinking}}
+        if route.provider == "deepseek":
+            payload = {"model": route.model, "messages": copied, "max_tokens": max_output_tokens,
+                       "stream": stream, "thinking": {"type": route.thinking}}
+        else:
+            # Model Studio: thinking is a boolean (on by default for Max models, so it
+            # is always sent) and the output bound is max_completion_tokens.
+            payload = {"model": route.model, "messages": copied, "max_completion_tokens": max_output_tokens,
+                       "stream": stream, "enable_thinking": route.thinking == "enabled"}
+            # The provider refuses JSON mode unless a message mentions JSON; fail
+            # before any paid intent instead of after.
+            _require(not json_mode or any("json" in m["content"].lower() for m in copied), "INVALID_MODEL_INPUT")
+        if stream:
+            # The final chunk must report usage so the reservation can be settled.
+            payload["stream_options"] = {"include_usage": True}
         if route.thinking == "enabled":
             payload["reasoning_effort"] = route.reasoning_effort
         if json_mode:
@@ -294,6 +320,94 @@ class ModelGateway:
             raise GatewayError("MODEL_TIMEOUT") from None
         except httpx.HTTPError:
             raise GatewayError("MODEL_TRANSPORT_ERROR") from None
+
+
+    async def generate_stream(self, route_alias: str, messages: Sequence[Mapping[str, str]],
+                              max_output_tokens: int, on_delta=None) -> ModelResult:
+        """Server-sent-event generation for live conversation replies.
+
+        Same route, key, size and identity checks as :meth:`generate`. ``on_delta``
+        receives the text accumulated so far (never the key or raw frames). The
+        call fails closed unless a final usage report arrives, so every streamed
+        reply is still settled against its reservation.
+        """
+        route = self._route(route_alias)
+        state = self.readiness(route_alias)
+        if not state.ready:
+            raise GatewayError(state.reason)
+        raw = self.prepare_request(route_alias, messages, max_output_tokens, stream=True)
+        key = self._key(route)
+        if key is None:
+            raise GatewayError("MODEL_KEY_MISSING_OR_INVALID")
+        try:
+            async with asyncio.timeout(route.timeout_seconds):
+                async with self._client.stream("POST", route.endpoint, content=raw,
+                        headers={"Authorization": "Bearer " + key, "Content-Type": "application/json",
+                                 "Accept": "text/event-stream", "Accept-Encoding": "identity"},
+                        timeout=httpx.Timeout(route.timeout_seconds)) as response:
+                    if response.status_code != 200:
+                        raise GatewayError("MODEL_HTTP_ERROR", status_code=response.status_code)
+                    _require(response.headers.get("content-type", "").split(";", 1)[0].strip().lower() == "text/event-stream",
+                             "INVALID_MODEL_RESPONSE")
+                    _require(response.headers.get("content-encoding", "identity").lower() == "identity",
+                             "INVALID_MODEL_RESPONSE")
+                    return await _consume_stream(response, route, max_output_tokens, on_delta)
+        except (httpx.TimeoutException, TimeoutError):
+            raise GatewayError("MODEL_TIMEOUT") from None
+        except httpx.HTTPError:
+            raise GatewayError("MODEL_TRANSPORT_ERROR") from None
+
+
+async def _consume_stream(response, route: ModelRoute, output_limit: int, on_delta) -> ModelResult:
+    received, text, request_id, created, finish, usage, done = 0, [], None, None, None, None, False
+    async for line in response.aiter_lines():
+        received += len(line) + 1
+        if received > route.max_response_bytes:
+            raise GatewayError("MODEL_RESPONSE_TOO_LARGE")
+        line = line.strip()
+        if not line or line.startswith(":"):
+            continue
+        _require(line.startswith("data:") and not done, "INVALID_MODEL_RESPONSE")
+        body = line[5:].strip()
+        if body == "[DONE]":
+            done = True
+            continue
+        chunk = _strict_json(body.encode("utf-8"))
+        _require(isinstance(chunk, dict) and chunk.get("object") == "chat.completion.chunk", "INVALID_MODEL_RESPONSE")
+        _require(chunk.get("model") == route.model, "MODEL_IDENTITY_MISMATCH")
+        identifier = chunk.get("id")
+        _require(isinstance(identifier, str) and bool(_REQUEST_ID.fullmatch(identifier)) and request_id in (None, identifier),
+                 "INVALID_MODEL_RESPONSE")
+        request_id = identifier
+        _require(_integer(chunk.get("created"), 0, 2**63 - 1), "INVALID_MODEL_RESPONSE")
+        created = chunk["created"]
+        choices = chunk.get("choices")
+        _require(isinstance(choices, list) and len(choices) <= 1, "INVALID_MODEL_RESPONSE")
+        if choices:
+            choice = choices[0]
+            _require(isinstance(choice, dict) and choice.get("index") == 0, "INVALID_MODEL_RESPONSE")
+            delta = choice.get("delta") or {}
+            _require(isinstance(delta, dict) and delta.get("tool_calls") in (None, []) and delta.get("function_call") is None,
+                     "INVALID_MODEL_RESPONSE")
+            piece = delta.get("content")
+            _require(piece is None or isinstance(piece, str), "INVALID_MODEL_RESPONSE")
+            if piece:
+                text.append(piece)
+                if on_delta is not None:
+                    on_delta("".join(text))
+            if choice.get("finish_reason") is not None:
+                _require(choice["finish_reason"] in ("stop", "length") and finish is None, "MODEL_INCOMPLETE_RESPONSE")
+                finish = choice["finish_reason"]
+        if chunk.get("usage") is not None:
+            usage = chunk["usage"]
+    _require(done and finish is not None and created is not None, "MODEL_INCOMPLETE_RESPONSE")
+    _require(isinstance(usage, dict), "INVALID_MODEL_USAGE")
+    content = "".join(text)
+    _require(bool(content.strip()), "INVALID_MODEL_RESPONSE")
+    fake = {"id": request_id, "object": "chat.completion", "created": created, "model": route.model,
+            "choices": [{"index": 0, "finish_reason": finish, "message": {"role": "assistant", "content": content}}],
+            "usage": usage}
+    return _parse_result(json.dumps(fake, ensure_ascii=False).encode("utf-8"), route, output_limit)
 
 
 def _parse_result(raw: bytes, route: ModelRoute, output_limit: int) -> ModelResult:

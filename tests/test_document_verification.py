@@ -20,7 +20,7 @@ def document_case(node_case,tmp_path,role='analyst',*,acceptance=None):
     assert generated['execution']['status']=='submitted'
     jobs=VerificationJobs(b['store']);task=b['run']+':work';preview=jobs.preview('a',b['run'],task)
     req=jobs.request(OP,b['run'],task,'document-review',expected_preview_digest=preview['preview_digest'],reason='独立复核结构化产物，不能把schema有效当作语义正确')
-    signing={model:Ed25519PrivateKey.generate() for model in ('deepseek-flash','deepseek-v4-pro')}
+    signing={model:Ed25519PrivateKey.generate() for model in ('deepseek-flash','qwen3.8-max-0902')}
     trusted={model:TrustedVerifier(model,'verifier:'+model,model,key.public_key()) for model,key in signing.items()}
     b.update(jobs=jobs,job=req['job_id'],task=task,preview=preview,signing=signing,trusted=trusted,directory=tmp_path/'document-reviews')
     return b
