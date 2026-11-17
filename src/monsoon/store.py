@@ -20,6 +20,7 @@ from uuid import uuid4
 from loom.platform_ledger import Ledger
 from loom.store import Conflict, InvalidInput, NotFound, canonical
 
+from .cards import project_card
 from .safety import redact, redact_value
 
 
@@ -234,6 +235,62 @@ class AssistantStore:
                 self._audit(db, tenant, message_id, dict(op='message.updated', status=status), current['author'])
             return {**current, 'text': body, 'status': status, 'meta': merged}
 
+    def message(self, tenant, message_id):
+        with self.store.connect() as db:
+            row = db.execute('SELECT * FROM ms_messages WHERE tenant=? AND id=?', (tenant, message_id)).fetchone()
+        if row is None:
+            raise NotFound('message not found')
+        return self._message(row)
+
+    def interrupt_streaming(self, db, tenant, thread_id, *, actor, reason):
+        """Mark in-flight replies finished so the worker stops publishing them."""
+        rows = db.execute(
+            "SELECT * FROM ms_messages WHERE tenant=? AND thread_id=? AND role='assistant' AND status='streaming'",
+            (tenant, thread_id)).fetchall()
+        ids = []
+        for row in rows:
+            current = self._message(row)
+            merged = {**current['meta'], 'interrupted': True, 'interrupt_reason': reason[:200]}
+            body = current['text'] or '（已打断）'
+            now = self.store.now(db)
+            db.execute('UPDATE ms_messages SET text=?,status=?,meta=?,updated_at=? WHERE tenant=? AND id=?',
+                       (body, 'done', canonical(merged), now, tenant, current['id']))
+            updated = {**current, 'text': body, 'status': 'done', 'meta': merged, 'updated_at': now}
+            self.emit(db, tenant, thread_id, 'message.updated', updated)
+            ids.append(current['id'])
+        if ids:
+            self.emit(db, tenant, thread_id, 'turn.interrupted',
+                      dict(message_ids=ids, reason=reason[:200], actor=actor))
+            self._audit(db, tenant, thread_id, dict(op='turn.interrupted', messages=len(ids), reason=reason[:200]), actor)
+        return ids
+
+    def fire_hooks(self, db, tenant, thread_id, event):
+        """Browser-notification hooks only. No shell, no network."""
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='product_entries'").fetchone() is None:
+            return []
+        thread = self._thread(db, tenant, thread_id)
+        rows = db.execute(
+            "SELECT title, config, enabled FROM product_entries WHERE tenant=? AND subject=? AND kind='hooks'",
+            (tenant, thread['subject'])).fetchall()
+        fired = []
+        for row in rows:
+            if not row['enabled']:
+                continue
+            try:
+                config = json.loads(row['config'] or '{}')
+            except ValueError:
+                continue
+            if not isinstance(config, dict) or config.get('event') != event or config.get('action') != 'browser.notification':
+                continue
+            title = redact(row['title'])[:120]
+            self.emit(db, tenant, thread_id, 'hook', dict(event=event, title=title, action='browser.notification'))
+            fired.append(title)
+        return fired
+
+    def notify_hooks(self, tenant, thread_id, event):
+        with self.store.transaction() as db:
+            return self.fire_hooks(db, tenant, thread_id, event)
+
     def messages(self, tenant, thread_id, *, limit=50, before=None):
         with self.store.connect() as db:
             self._thread(db, tenant, thread_id)
@@ -257,6 +314,7 @@ class AssistantStore:
         item['state'] = redact_value(json.loads(item['state']))
         item['title'], item['brief'] = redact(item['title']), redact(item['brief'])
         item.pop('tenant', None)
+        item['card'] = project_card(item)
         return item
 
     def create_task(self, tenant, thread_id, *, kind, title, brief, origin, actor, status='queued', state=None, db=None):
@@ -273,6 +331,7 @@ class AssistantStore:
                         origin=origin, state=state or {}, created_at=now, updated_at=now)
             db.execute('INSERT INTO ms_tasks VALUES(?,?,?,?,?,?,?,?,?,?,?)',
                        (tenant, task['id'], thread_id, kind, title, brief, status, origin, canonical(task['state']), now, now))
+            task['card'] = project_card(task)
             self.emit(db, tenant, thread_id, 'task', task)
             self._audit(db, tenant, task['id'], dict(op='task.created', kind=kind, origin=origin, status=status), actor)
             return task
@@ -296,9 +355,12 @@ class AssistantStore:
             db.execute('UPDATE ms_tasks SET status=?,state=?,updated_at=? WHERE tenant=? AND id=?',
                        (status or task['status'], canonical(merged), now, tenant, task_id))
             updated = {**task, 'status': status or task['status'], 'state': merged, 'updated_at': now}
+            updated['card'] = project_card(updated)
             self.emit(db, tenant, task['thread_id'], 'task', updated)
             if status is not None and status != task['status']:
                 self._audit(db, tenant, task_id, dict(op='task.status', status=status, previous=task['status']), actor)
+                if status == 'completed':
+                    self.fire_hooks(db, tenant, task['thread_id'], 'task.completed')
             return updated
 
     def task(self, tenant, task_id):

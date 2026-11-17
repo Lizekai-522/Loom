@@ -170,6 +170,62 @@ def html_to_text(raw):
     return parser.title.strip()[:200], body
 
 
+class _Elements(HTMLParser):
+    """Bounded CSS-path outline. Layout boxes need a real renderer; this does not invent them."""
+
+    SKIP = _Text.SKIP
+    INTERESTING = {'a', 'button', 'input', 'textarea', 'select', 'label', 'img', 'h1', 'h2', 'h3', 'p', 'li'}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.path, self.child_counts, self.items, self.skip = [], [{}], [], 0
+        self._capture = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self.SKIP:
+            self.skip += 1
+        counts = self.child_counts[-1]
+        counts[tag] = counts.get(tag, 0) + 1
+        attr = {key: value for key, value in attrs if isinstance(value, str)}
+        ident = attr.get('id', '')
+        if re.fullmatch(r'[A-Za-z][\w-]{0,80}', ident):
+            selector = '#' + ident
+        else:
+            piece = f'{tag}:nth-of-type({counts[tag]})'
+            selector = f'{self.path[-1]} > {piece}' if self.path else piece
+        self.path.append(selector[:300])
+        self.child_counts.append({})
+        if self.skip == 0 and tag in self.INTERESTING and len(self.items) < 40:
+            kept = {key: attr[key][:80] for key in ('type', 'name', 'placeholder') if key in attr}
+            self._capture = dict(selector=self.path[-1], tag=tag, text='', attrs=kept)
+            self.items.append(self._capture)
+        else:
+            self._capture = None
+
+    def handle_endtag(self, tag):
+        if self.path:
+            self.path.pop()
+        if len(self.child_counts) > 1:
+            self.child_counts.pop()
+        if tag in self.SKIP and self.skip:
+            self.skip -= 1
+        self._capture = None
+
+    def handle_data(self, data):
+        if self._capture is not None and not self.skip:
+            self._capture['text'] = (self._capture['text'] + data).strip()[:160]
+
+
+def extract_elements(raw):
+    parser = _Elements()
+    try:
+        parser.feed(raw or '')
+        parser.close()
+    except Exception:
+        return []
+    return parser.items
+
+
 class Web:
     def __init__(self, config: SearchConfig, *, secrets=None, transport=None, resolver=socket.getaddrinfo):
         self.config, self.secrets, self.resolver = config, secrets or {}, resolver
@@ -243,8 +299,8 @@ class Web:
             raise WebError('SEARCH_RESPONSE_INVALID')
         return data
 
-    def fetch(self, url):
-        """Readable text of one public https page (untrusted)."""
+    def _read_document(self, url):
+        """Guarded download shared by text fetch and the element inspector."""
         current = url
         for _ in range(REDIRECTS + 1):
             check_url(current, self.resolver)
@@ -283,9 +339,22 @@ class Web:
                 decoded = bytes(data).decode(encoding, errors='replace')
             except LookupError:
                 decoded = bytes(data).decode('utf-8', errors='replace')
-            title, body = html_to_text(decoded) if 'html' in kind else ('', decoded)
-            return dict(url=current, title=title, text=body[:MAX_TEXT], truncated=len(body) > MAX_TEXT)
+            return dict(url=current, kind=kind, decoded=decoded)
         raise WebError('FETCH_TOO_MANY_REDIRECTS')
+
+    def fetch(self, url):
+        """Readable text of one public https page (untrusted)."""
+        document = self._read_document(url)
+        title, body = html_to_text(document['decoded']) if 'html' in document['kind'] else ('', document['decoded'])
+        return dict(url=document['url'], title=title, text=body[:MAX_TEXT], truncated=len(body) > MAX_TEXT)
+
+    def inspect(self, url):
+        """Same guards as fetch, plus a selector outline for the person to pick from."""
+        document = self._read_document(url)
+        title, body = html_to_text(document['decoded']) if 'html' in document['kind'] else ('', document['decoded'])
+        return dict(url=document['url'], title=title, text=body[:MAX_TEXT],
+                    html=document['decoded'][:200_000] if 'html' in document['kind'] else '',
+                    renderer='html-extract')
 
 
 URL_PATTERN = re.compile(r'https://[^\s<>"\'）)，。]+')

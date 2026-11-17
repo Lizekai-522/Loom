@@ -11,9 +11,6 @@
   const MAIL_STATUS = {new: "待处理", history: "历史邮件", skipped: "自动邮件", summarized: "已摘要", filtered: "已拦截", failed: "处理失败"};
   const OUTBOX = {queued: "排队发送", sending: "发送中", accepted: "服务器已接受", partial: "部分收件人被拒", rejected: "服务器拒收",
                   unknown: "发送结果待核对", failed: "发送失败"};
-  const EXAMPLES = ["帮我查一下 Python 3.13 有哪些重要变化，整理成带来源的要点",
-                    "记个待办：周五前整理客户反馈，需要查资料",
-                    "写一个程序：输入 {\"text\":字符串}，输出单词个数"];
   const STATUS = {queued: "排队中", running: "进行中", waiting_approval: "等你批准", blocked: "已暂停",
                   awaiting_confirmation: "待你确认", completed: "已完成", cancelled: "已取消"};
   const KIND = {research: "调研", coding: "编程"};
@@ -162,6 +159,24 @@
     if (holder) holder.replaceWith(node); else $("messages").append(node);
     $("welcome").hidden = state.order.length > 0;
     if (atBottom || m.role === "user") stream.scrollTop = stream.scrollHeight;
+    refreshInterrupt();
+    const badge = $("route-badge");
+    if (badge && m.meta && m.meta.route) {
+      const route = m.meta.route;
+      badge.hidden = false;
+      badge.textContent = (route.recommendation || "") + (route.reason ? " · " + route.reason : "");
+      badge.title = route.enforcement ? "已强制执行" : "影子评估，不代替批准";
+    }
+  }
+  function streamingNow() {
+    return [...state.messages.values()].some(item => item.role === "assistant" && item.status === "streaming");
+  }
+  function refreshInterrupt() {
+    const live = streamingNow();
+    const button = $("interrupt");
+    if (button) button.hidden = !live;
+    const send = $("send");
+    if (send && state.canWrite) send.textContent = live ? "发送并打断" : "发送";
   }
   function rerenderLinked(field, id) {
     for (const m of state.messages.values()) if (m.meta && m.meta[field] === id) renderMessage(m.id);
@@ -193,6 +208,7 @@
       if (before && before.status !== data.status && ["awaiting_confirmation", "blocked", "waiting_approval"].includes(data.status))
         ping("任务《" + data.title + "》", STATUS[data.status]);
     } else if (type === "todo") { state.todos.set(data.id, data); renderPanel(); }
+    else if (type === "hook") ping(data.title || "Verilo", data.event === "task.completed" ? "任务已完成" : "回复已完成");
     else if (type.startsWith("mail")) { refreshMailSoon(); }
     else if (type === "approval") {
       state.approvals.set(data.id, data); rerenderLinked("approval_id", data.id); renderPanel();
@@ -326,7 +342,7 @@
   }
   async function openMail(id) {
     state.mail.open = id; state.tab = "mail";
-    for (const t of document.querySelectorAll(".as-tabs button")) t.setAttribute("aria-selected", String(t.dataset.tab === "mail"));
+    for (const t of document.querySelectorAll("#panel .as-tabs button")) t.setAttribute("aria-selected", String(t.dataset.tab === "mail"));
     $("panel").classList.add("open");
     await refreshMail();
     renderPanel();
@@ -419,7 +435,9 @@
     const card = el("div", "as-item");
     const h = el("h4", null, (KIND[t.kind] || t.kind) + "：" + t.title);
     h.append(el("span", "as-pill " + t.status, STATUS[t.status] || t.status));
+    if (t.card && t.card.worker_state) h.append(el("span", "as-pill", t.card.worker_state));
     card.append(h, el("p", null, progressText(t) + (t.origin === "proactive" ? " · 授权内自动开始" : "")));
+    if (t.card && t.card.human_action) card.append(el("p", null, "需要：" + t.card.human_action));
     return card;
   }
   function renderSettings(body) {
@@ -568,6 +586,7 @@
     if (!text || !state.thread) return;
     if (text.length > 4000) return notice("消息与文件内容合计不能超过 4000 个字符。", true);
     const payload = {text, ...(window.VeriloWorkspace?.selections() || {})};
+    if (streamingNow()) payload.barge_in = true;
     const fingerprint = JSON.stringify(payload);
     if (!state.pendingMessage || state.pendingMessage.fingerprint !== fingerprint)
       state.pendingMessage = {fingerprint, key: key()};
@@ -580,13 +599,44 @@
     finally { $("send").disabled = !state.canWrite; }
   }
   function autoGrow() { const t = $("prompt"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 200) + "px"; }
+  async function loadBento() {
+    const host = $("bento");
+    if (!host) return;
+    host.replaceChildren();
+    const card = (title, body, href) => {
+      const item = el("article");
+      item.append(el("strong", null, title), el("p", null, body));
+      if (href) { const link = el("a", null, "打开"); link.href = href; item.append(link); }
+      return item;
+    };
+    try {
+      const [projects, approvals, automations] = await Promise.all([
+        request("GET", "/v1/workspace/projects").catch(() => ({items: []})),
+        request("GET", "/v1/assistant/approvals").catch(() => ({items: []})),
+        request("GET", "/v1/workspace/automations").catch(() => ({items: []})),
+      ]);
+      const pending = (approvals.items || []).filter(item => item.status === "pending");
+      if (pending.length) host.append(card("待批准", pending.length + " 项", null));
+      for (const project of (projects.items || []).slice(0, 3)) host.append(card(project.name, "项目", "/console/projects"));
+      for (const automation of (automations.items || []).slice(0, 3)) {
+        host.append(card(automation.name, (automation.mode || "observe") + (automation.enabled ? " · 已启用" : " · 未启用"), "/console/automations"));
+      }
+      if (!host.childElementCount) host.append(card("项目", "还没有项目", "/console/projects"));
+    } catch (error) { host.append(card("工作区", error.message || "暂时无法读取", "/console/projects")); }
+  }
   async function start() {
-    for (const text of EXAMPLES) {
-      const b = el("button", "example", text); b.type = "button";
-      b.addEventListener("click", () => { $("prompt").value = text; $("prompt").focus(); autoGrow(); });
-      $("examples").append(b);
-    }
     $("composer").addEventListener("submit", send);
+    $("interrupt")?.addEventListener("click", async () => {
+      if (!state.thread) return;
+      const text = $("prompt").value.trim();
+      const body = {reason: "user_interrupt", ...(window.VeriloWorkspace?.selections() || {})};
+      if (text) body.followup_text = text;
+      try {
+        await request("POST", `/v1/assistant/threads/${encodeURIComponent(state.thread.id)}/interrupt`, body);
+        if (text) { $("prompt").value = ""; autoGrow(); }
+        notice("");
+      } catch (error) { notice(explain(error), true); }
+    });
     $("attach").addEventListener("click", () => $("file-input").click());
     $("file-input").addEventListener("change", async (event) => {
       await addFiles(event.target.files); event.target.value = "";
@@ -602,9 +652,9 @@
     $("prompt").addEventListener("keydown", (event) => {
       if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); $("composer").requestSubmit(); }
     });
-    for (const tab of document.querySelectorAll(".as-tabs button")) tab.addEventListener("click", () => {
+    for (const tab of document.querySelectorAll("#panel .as-tabs button")) tab.addEventListener("click", () => {
       state.tab = tab.dataset.tab;
-      for (const t of document.querySelectorAll(".as-tabs button")) t.setAttribute("aria-selected", String(t === tab));
+      for (const t of document.querySelectorAll("#panel .as-tabs button")) t.setAttribute("aria-selected", String(t === tab));
       renderPanel();
     });
     for (const link of document.querySelectorAll("[data-open-tab]")) link.addEventListener("click", () => {
@@ -642,6 +692,7 @@
       await refreshSide();
       await refreshMail();
       for (const m of data.messages) upsertMessage(m);
+      loadBento();
       state.cursor = data.head_seq;
       $("stream").scrollTop = $("stream").scrollHeight;
       listen();

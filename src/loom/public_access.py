@@ -229,7 +229,7 @@ class PublicPreview:
             return bool(re.fullmatch(r'/v1/goals/[A-Za-z0-9_-]+/plan', path)) or path == '/v1/assistant/settings'
         if method == 'POST':
             return (path in {'/v1/goals', '/v1/sessions', '/v1/assistant/todos', '/v1/assistant/mandates'} or bool(re.fullmatch(
-                r'/v1/assistant/(?:threads/[A-Za-z0-9_-]+/messages|approvals/[A-Za-z0-9_-]+|todos/[A-Za-z0-9_-]+|tasks/[A-Za-z0-9_-]+/(?:confirm|cancel|retry)|mandates/[A-Za-z0-9_-]+/revoke)', path)) or bool(re.fullmatch(r'/v1/sessions/[A-Za-z0-9_-]+/(?:resume|approve)', path)) or bool(re.fullmatch(
+                r'/v1/assistant/(?:threads/[A-Za-z0-9_-]+/(?:messages|interrupt)|approvals/[A-Za-z0-9_-]+|todos/[A-Za-z0-9_-]+|tasks/[A-Za-z0-9_-]+/(?:confirm|cancel|retry)|mandates/[A-Za-z0-9_-]+/revoke)', path)) or bool(re.fullmatch(r'/v1/sessions/[A-Za-z0-9_-]+/(?:resume|approve)', path)) or bool(re.fullmatch(
                 r'/v1/(?:goals/[A-Za-z0-9_-]+/plan/approve|runs/[A-Za-z0-9_-]+/(?:control/(?:pause|resume|terminate)|pause|resume|terminate|tasks/[A-Za-z0-9:_-]+/(?:auxiliary-inputs|execution-requests|verification-requests)|execution-requests/[A-Za-z0-9_-]+/cancel|artifacts/[A-Za-z0-9_-]+/(?:development-suites|review-decisions)))', path)))
         return False
 

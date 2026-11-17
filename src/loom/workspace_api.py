@@ -3,6 +3,8 @@ import asyncio
 from contextlib import asynccontextmanager, suppress
 import logging
 
+from typing import Literal
+
 from fastapi import Header, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -35,6 +37,7 @@ class AutomationBody(Body):
     model: str | None = None
     interval_minutes: int | None = Field(default=None, ge=1, le=525600)
     due_at: str | float | None = None
+    mode: Literal['off', 'observe', 'auto'] = 'observe'
 
 
 class AutomationPatch(Body):
@@ -44,6 +47,12 @@ class AutomationPatch(Body):
     model: str | None = None
     interval_minutes: int | None = Field(default=None, ge=1, le=525600)
     due_at: str | float | None = None
+    mode: Literal['off', 'observe', 'auto'] | None = None
+
+
+class WorktreeBody(Body):
+    run_id: str = Field(min_length=1, max_length=80)
+    title: str = Field(default='task', min_length=1, max_length=200)
 
 
 def install_workspace_api(app, store, *, Reader, Writer, executor_config=None,
@@ -126,6 +135,30 @@ def install_workspace_api(app, store, *, Reader, Writer, executor_config=None,
     @app.get('/v1/workspace/automations/{automation_id}/runs')
     def runs(automation_id: str, identity: Reader):
         return dict(items=workspace.automation_runs(identity, automation_id))
+
+    @app.get('/v1/workspace/worktrees')
+    def list_worktrees(identity: Reader, project_id: str | None = None):
+        return dict(items=workspace.worktrees(identity, project_id))
+
+    @app.post('/v1/workspace/projects/{project_id}/worktrees', status_code=201)
+    def add_worktree(project_id: str, body: WorktreeBody, identity: Writer):
+        return workspace.ensure_worktree(human(identity), project_id, body.run_id, title=body.title, is_human_request=True)
+
+    @app.get('/v1/workspace/worktrees/{worktree_id}')
+    def one_worktree(worktree_id: str, identity: Reader):
+        return workspace.worktree(identity, worktree_id)
+
+    @app.get('/v1/workspace/worktrees/{worktree_id}/diff')
+    def worktree_diff(worktree_id: str, identity: Reader):
+        return workspace.worktree_diff(identity, worktree_id)
+
+    @app.post('/v1/workspace/worktrees/{worktree_id}/apply')
+    def apply_worktree(worktree_id: str, identity: Writer):
+        return workspace.apply_worktree(human(identity), worktree_id)
+
+    @app.delete('/v1/workspace/worktrees/{worktree_id}')
+    def delete_worktree(worktree_id: str, identity: Writer):
+        return workspace.remove_worktree(human(identity), worktree_id)
 
     if scheduler:
         previous_lifespan = app.router.lifespan_context

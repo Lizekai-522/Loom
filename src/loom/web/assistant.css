@@ -115,8 +115,15 @@ body.file-drag .as-composer{border-color:var(--accent);box-shadow:0 0 0 2px var(
 .as-tabs button[aria-selected=true]{color:var(--accent);border-bottom-color:var(--accent)}
 .as-item{border:0;border-bottom:1px solid var(--line);border-radius:0;padding:12px 3px}
 .welcome{max-width:780px;text-align:left}
-.welcome h2{font-size:22px;letter-spacing:0}
-.examples{display:none}
+.bento{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.bento article{border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px;background:var(--sunken)}
+.bento strong{display:block;font-size:13px}
+.inspector{border-top:1px solid var(--line);padding:8px 16px 12px;max-height:42vh;overflow:auto}
+.inspector .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.inspector input,.inspector select,.inspector textarea{border:1px solid var(--line);background:var(--surface);border-radius:var(--radius-sm);padding:6px 8px}
+.inspector pre{white-space:pre-wrap;font:12px/1.45 ui-monospace,monospace;background:var(--code);padding:8px;border-radius:var(--radius-sm)}
+.inspector img{max-width:100%;border:1px solid var(--line)}
+#interrupt{border:1px solid var(--line);background:transparent;border-radius:var(--radius-sm);padding:8px 12px}
 @media(max-width:1000px){
   .as-shell,.as-shell.panel-open,.as-shell.panel-open[data-panel-size="0"],.as-shell.panel-open[data-panel-size="2"]{grid-template-columns:200px minmax(0,1fr)}
   .as-panel{position:fixed;inset:56px 0 0 auto;width:min(360px,100vw);transform:translateX(100%);visibility:hidden;z-index:20}

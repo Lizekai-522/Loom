@@ -160,9 +160,17 @@ def install_product_settings_api(app, store, *, Reader, Writer, Key, executor_co
     @app.get('/v1/product/capabilities')
     def capabilities(identity: Reader):
         human(identity)
+        import os
+        browser_ready = getattr(app.state, 'browser_inspector', None) is not None
+        computer = getattr(app.state, 'computer_control', None)
+        computer_ready = computer is not None and os.name == 'nt'
         return dict(
-            browser=dict(available=False, reason='尚未安装独立浏览器控制桥接器。'),
-            computer=dict(available=False, reason='尚未安装屏幕与输入控制桥接器。'),
+            browser=dict(available=browser_ready, mode='guarded-html-pick' if browser_ready else None,
+                         reason=None if browser_ready else '浏览器点选只在本机控制台启用。'),
+            computer=dict(available=computer_ready, mounted=computer is not None,
+                          reason='本机屏幕控制已挂载。' if computer_ready else (
+                              '屏幕采集目前只在 Windows 上可用；本机接口已挂载。' if computer is not None
+                              else '尚未挂载屏幕与输入控制。')),
             remote_devices=dict(available=False, reason='尚未配置远程设备配对服务。'),
             subagents=dict(available=True, mode='pipeline_roles', roles=sorted(ROLE_SKILLS),
                            spawning_available=False, reason='编程流水线使用这些角色；自由派生子会话尚未接入。'),
