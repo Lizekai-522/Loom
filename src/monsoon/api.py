@@ -31,6 +31,15 @@ class MessageIn(Body):
     model_alias: str | None = Field(default=None, min_length=1, max_length=100)
     project_id: str | None = Field(default=None, min_length=1, max_length=100)
     confirmation_mode: Literal['ask', 'read_only'] | None = None
+    barge_in: bool = False
+
+
+class InterruptIn(Body):
+    reason: str | None = Field(default=None, min_length=1, max_length=200)
+    followup_text: str | None = Field(default=None, min_length=1, max_length=8000)
+    model_alias: str | None = Field(default=None, min_length=1, max_length=100)
+    project_id: str | None = Field(default=None, min_length=1, max_length=100)
+    confirmation_mode: Literal['ask', 'read_only'] | None = None
 
 
 class TodoIn(Body):
@@ -118,6 +127,26 @@ def install(app, store, *, Tenant, Reader, Writer, Approver, Key, sessions):
             raise NotFound('approval not found')
         return approval
 
+    def resolve_message_options(identity, *, model_alias=None, project_id=None, confirmation_mode=None):
+        meta = {}
+        workspace = getattr(app.state, 'workspace', None)
+        if workspace is not None:
+            preferences = workspace.preferences(identity)
+            alias = model_alias or preferences.get('preferred_model')
+            if alias:
+                aliases = {item['alias'] for item in workspace.models()['items']}
+                if alias not in aliases:
+                    raise InvalidInput('selected model is not configured')
+                meta['model_alias'] = alias
+            selected = project_id or preferences.get('selected_project_id')
+            if selected:
+                project = workspace.project(identity, selected)
+                meta.update(project_id=selected, project_name=project['name'])
+            meta['confirmation_mode'] = confirmation_mode or preferences.get('confirmation_mode', 'ask')
+        elif model_alias or project_id or confirmation_mode:
+            raise InvalidInput('workspace is not configured')
+        return meta
+
     @app.get('/v1/assistant/thread')
     def my_thread(identity: Reader, limit: int = Query(50, ge=1, le=200)):
         thread = data.thread_for(identity.tenant_id, identity.subject_id)
@@ -133,31 +162,44 @@ def install(app, store, *, Tenant, Reader, Writer, Approver, Key, sessions):
     @app.post('/v1/assistant/threads/{thread_id}/messages', status_code=201)
     def send_message(thread_id: str, body: MessageIn, identity: Writer, idempotency_key: Key):
         own_thread(identity, thread_id)
-        def message_options():
-            meta = {}
-            workspace = getattr(app.state, 'workspace', None)
-            if workspace is not None:
-                preferences = workspace.preferences(identity)
-                alias = body.model_alias or preferences.get('preferred_model')
-                if alias:
-                    aliases = {item['alias'] for item in workspace.models()['items']}
-                    if alias not in aliases:
-                        raise InvalidInput('selected model is not configured')
-                    meta['model_alias'] = alias
-                project_id = body.project_id or preferences.get('selected_project_id')
-                if project_id:
-                    project = workspace.project(identity, project_id)
-                    meta.update(project_id=project_id, project_name=project['name'])
-                meta['confirmation_mode'] = body.confirmation_mode or preferences.get('confirmation_mode', 'ask')
-            elif body.model_alias or body.project_id or body.confirmation_mode:
-                raise InvalidInput('workspace is not configured')
-            return meta
 
         def apply(db):
+            meta = resolve_message_options(identity, model_alias=body.model_alias, project_id=body.project_id,
+                                           confirmation_mode=body.confirmation_mode)
+            if body.barge_in:
+                interrupted = data.interrupt_streaming(
+                    db, identity.tenant_id, thread_id, actor='subject:' + identity.subject_id, reason='barge_in')
+                if interrupted:
+                    meta['barge_in_interrupted'] = interrupted
+                    meta['trigger'] = 'followup'
             return data.add_message(identity.tenant_id, thread_id, role='user', kind='text', body=body.text, status='queued',
-                                    author='subject:' + identity.subject_id, meta=message_options(), db=db)
+                                    author='subject:' + identity.subject_id, meta=meta, db=db)
         return store._command(identity.tenant_id, 'ms-msg:' + idempotency_key, 'assistant.message',
                               dict(thread_id=thread_id, **body.model_dump(exclude_none=True)), apply)
+
+    @app.post('/v1/assistant/threads/{thread_id}/interrupt')
+    def interrupt_thread(thread_id: str, identity: Writer, idempotency_key: Key, body: InterruptIn | None = None):
+        """Stop the reply that is streaming and optionally queue the next instruction."""
+        own_thread(identity, thread_id)
+        payload = body.model_dump(exclude_none=True) if body is not None else {}
+
+        def apply(db):
+            reason = body.reason if body is not None and body.reason else 'user_interrupt'
+            interrupted = data.interrupt_streaming(
+                db, identity.tenant_id, thread_id, actor='subject:' + identity.subject_id, reason=reason)
+            followup = None
+            if body is not None and body.followup_text:
+                meta = resolve_message_options(identity, model_alias=body.model_alias, project_id=body.project_id,
+                                               confirmation_mode=body.confirmation_mode)
+                meta['barge_in_interrupted'] = interrupted
+                meta['trigger'] = 'followup'
+                followup = data.add_message(
+                    identity.tenant_id, thread_id, role='user', kind='text', body=body.followup_text, status='queued',
+                    author='subject:' + identity.subject_id, meta=meta, db=db)
+            return dict(thread_id=thread_id, interrupted=interrupted, followup=followup)
+
+        return store._command(identity.tenant_id, 'ms-int:' + idempotency_key, 'assistant.interrupt',
+                              dict(thread_id=thread_id, **payload), apply)
 
     @app.get('/v1/assistant/threads/{thread_id}/events')
     def thread_events(thread_id: str, identity: Reader, after_seq: int = Query(0, ge=0), limit: int = Query(200, ge=1, le=1000)):
@@ -287,10 +329,23 @@ def install(app, store, *, Tenant, Reader, Writer, Approver, Key, sessions):
         # approves its analysis/test-design plan; the implementation plan asks again later.
         payload = approval['payload']
         session = sessions.create(identity, 'ms-coding:' + approval_id, prompt=payload['prompt'], title=payload['title'])
+        worktree = None
+        workspace = getattr(app.state, 'workspace', None)
+        project_id = payload.get('project_id')
+        if workspace is not None and project_id:
+            try:
+                worktree = workspace.ensure_worktree(
+                    identity, project_id, session['session_id'], title=payload['title'], is_human_request=True)
+            except (InvalidInput, NotFound, Conflict):
+                worktree = None
+        state = dict(session_id=session['session_id'], approval_id=approval_id, project_id=project_id,
+                     route=payload.get('route'))
+        if worktree is not None:
+            state['worktree_id'] = worktree['id']
+            state['worktree_branch'] = worktree['branch']
         task = data.create_task(identity.tenant_id, approval['thread_id'], kind='coding', title=payload['title'],
-                                brief=payload['prompt'], origin='user', actor=actor, status='running',
-                                state=dict(session_id=session['session_id'], approval_id=approval_id))
-        return dict(approval=approval, task=task, session_id=session['session_id'])
+                                brief=payload['prompt'], origin='user', actor=actor, status='running', state=state)
+        return dict(approval=approval, task=task, session_id=session['session_id'], worktree=worktree)
 
     # ----- mail (executor holds the mailbox password; this process never does) --------
     @app.get('/v1/assistant/mail/status')

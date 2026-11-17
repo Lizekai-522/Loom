@@ -814,6 +814,13 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
     from .terminal_api import install_terminal_api
     install_terminal_api(app, store, Reader=Annotated[Principal, Depends(permitted('read'))],
                          Writer=Writer, executor_config=executor_config, local_console=local_console)
+    if local_console:
+        from .computer_api import install_computer_api
+        install_computer_api(app, store, Reader=Annotated[Principal, Depends(permitted('read'))],
+                             Writer=Writer, local_console=True)
+        from monsoon.browser_api import install_browser_api
+        install_browser_api(app, Reader=Annotated[Principal, Depends(permitted('read'))],
+                            Writer=Writer, local_console=True)
     # Clickable settings for the loopback console only: every private-configuration
     # step (model/secrets/search/mail/verification/quotas/members/sandbox/logs)
     # gets an HTTP surface here. Public previews never gain these routes.

@@ -121,7 +121,7 @@ def test_automation_crud_and_due_dispatch_are_atomic_and_restart_idempotent(env)
     client, workspace, store = env
     automation = client.post('/v1/workspace/automations', headers=headers(), json={
         'name': '定时问候', 'prompt': '问候我', 'interval_minutes': 5,
-        'due_at': 1000.0, 'model': 'deepseek-flash'}).json()
+        'due_at': 1000.0, 'model': 'deepseek-flash', 'mode': 'auto'}).json()
     identifier = automation['id']
     assert automation['enabled'] is False
     assert workspace.dispatch_due(now=1001.0) == []
@@ -167,7 +167,7 @@ def test_run_now_requires_key_deduplicates_and_preserves_read_only_preference(en
 
 def test_dispatch_transaction_rolls_back_on_message_failure(env, monkeypatch):
     client, workspace, store = env
-    automation = client.post('/v1/workspace/automations', headers=headers(), json={'name': '失败', 'prompt': 'hello', 'due_at': 1000.0}).json()
+    automation = client.post('/v1/workspace/automations', headers=headers(), json={'name': '失败', 'prompt': 'hello', 'due_at': 1000.0, 'mode': 'auto'}).json()
     client.post('/v1/workspace/automations/' + automation['id'] + '/enable', headers=headers())
     def fail(*args, **kwargs):
         raise RuntimeError('test failure')
@@ -183,7 +183,7 @@ def test_real_lifespan_timer_queues_once_without_any_model_process(tmp_path):
     app, workspace, _ = app_for(tmp_path, scheduler=True)
     with TestClient(app) as client:
         item = client.post('/v1/workspace/automations', headers=headers(), json={
-            'name': '真实计时', 'prompt': '你好', 'due_at': time.time() + 0.15}).json()
+            'name': '真实计时', 'prompt': '你好', 'due_at': time.time() + 0.15, 'mode': 'auto'}).json()
         client.post('/v1/workspace/automations/' + item['id'] + '/enable', headers=headers())
         deadline = time.monotonic() + 4
         receipts = []

@@ -77,7 +77,9 @@
         const p=state.projects[0]||await request('POST','/v1/workspace/projects',{name:'我的项目'});
         projectId=p.id;await savePreference('selected_project_id',projectId);await reload();
       }
-      const item=await request('POST','/v1/terminals',{project_id:projectId,cols:100,rows:20});
+      const body={project_id:projectId,cols:100,rows:20};
+      if(window.VeriloWorkbench?.worktreeId)body.worktree_id=window.VeriloWorkbench.worktreeId;
+      const item=await request('POST','/v1/terminals',body);
       state.terminalId=item.id;state.cursor=0;
       $('terminal-project').textContent=state.projects.find(p=>p.id===projectId)?.name||'项目';
       $('terminal-state').textContent=item.shell;

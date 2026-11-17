@@ -15,6 +15,7 @@
   <script src="/console/assets/vendor-xterm.js" defer></script>
   <script src="/console/assets/vendor-xterm-fit.js" defer></script>
   <script src="/console/assets/workspace-ui.js" defer></script>
+  <script src="/console/assets/workbench.js" defer></script>
 </head>
 <body>
   <div class="as-shell" id="shell">
@@ -36,8 +37,11 @@
         <a class="brand mobile-brand" href="/console"><img src="/console/assets/verilo-mark.svg" alt="">Verilo</a>
         <div class="head-title"><strong>对话</strong></div>
         <div class="as-status" id="status" title="执行器状态"><span class="dot" id="status-dot"></span><span id="status-text">连接中…</span></div>
+        <span id="route-badge" class="as-pill" hidden></span>
         <nav class="as-links">
-          <a class="settings-link" href="/console/settings">设置</a>
+          <button id="open-inspector" class="ghost" type="button" aria-expanded="false" aria-controls="inspector">检查器</button>
+          <button id="open-settings" class="ghost" type="button" aria-expanded="false" aria-controls="settings-drawer">设置</button>
+          <a class="settings-link" href="/console/settings">全部设置</a>
           <button id="toggle-panel" class="ghost" type="button" aria-expanded="false" aria-controls="panel">任务<span id="badge" class="as-badge" hidden></span></button>
           <span id="who" class="as-who" title="当前身份" hidden></span>
           <button id="logout" class="ghost" type="button" hidden>退出体验</button>
@@ -46,8 +50,7 @@
       <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
       <section class="as-stream" id="stream" aria-live="polite">
         <div class="welcome" id="welcome">
-          <h2>有什么要做的？</h2>
-          <div class="examples" id="examples"></div>
+          <div class="bento" id="bento" aria-label="当前工作"></div>
         </div>
         <div id="messages"></div>
       </section>
@@ -56,8 +59,24 @@
         <input id="file-input" type="file" accept=".txt,.md,.csv,.json,.jsonl,.py,.js,.ts,.tsx,.jsx,.html,.css,.yaml,.yml,.xml,.log,.sh,.ps1,.toml,.ini,.c,.h,.cpp,.hpp,.java,.go,.rs,.sql,.rb,.php,.swift,.kt,.vue,.svelte,.scala,.cs,.bat" multiple hidden>
         <button id="attach" class="ghost as-attach" type="button" aria-label="添加文本或代码文件" title="添加文本或代码文件">＋</button>
         <textarea id="prompt" rows="1" maxlength="8000" placeholder="输入消息…" aria-label="消息"></textarea>
+        <button id="interrupt" type="button" hidden>打断</button>
         <button id="send" type="submit" class="primary">发送</button>
       </form>
+      <section id="inspector" class="inspector" hidden aria-label="检查器">
+        <div class="as-tabs" role="tablist">
+          <button type="button" data-inspector="diff" aria-selected="true">差异</button>
+          <button type="button" data-inspector="browser" aria-selected="false">浏览器</button>
+          <button type="button" data-inspector="computer" aria-selected="false">电脑</button>
+        </div>
+        <div id="inspector-body"></div>
+      </section>
+      <section id="settings-drawer" class="inspector" hidden aria-label="设置">
+        <div class="as-tabs" role="tablist">
+          <button type="button" data-settings="agent" aria-selected="true">Agent</button>
+          <button type="button" data-settings="runtime" aria-selected="false">Runtime</button>
+        </div>
+        <div id="settings-drawer-body"></div>
+      </section>
     </main>
     <aside class="as-panel" id="panel" aria-label="任务与待办" hidden>
       <div class="verilo-panel-head">

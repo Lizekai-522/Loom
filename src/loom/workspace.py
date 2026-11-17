@@ -2,12 +2,16 @@
 
 Scheduling commits an ordinary queued message and a receipt in one SQLite
 transaction. It never calls a model or claims the message has been answered.
+Automations default to observe: the schedule is recorded and no message is
+queued until a person switches the row to auto or presses run-now.
 """
 from datetime import datetime
 from hashlib import sha256
 import json
 import math
 from pathlib import Path
+import re
+import subprocess
 import time
 from types import SimpleNamespace
 from uuid import uuid4
@@ -31,6 +35,7 @@ CREATE TABLE IF NOT EXISTS ws_automations (
  prompt TEXT NOT NULL, project_id TEXT, model TEXT, interval_minutes INTEGER,
  due_at REAL, next_run_at REAL, enabled INTEGER NOT NULL DEFAULT 0,
  created_at REAL NOT NULL, updated_at REAL NOT NULL, deleted_at REAL,
+ mode TEXT NOT NULL DEFAULT 'observe',
  PRIMARY KEY(tenant,id));
 CREATE TABLE IF NOT EXISTS ws_automation_runs (
  tenant TEXT NOT NULL, subject TEXT NOT NULL, id TEXT NOT NULL,
@@ -38,7 +43,14 @@ CREATE TABLE IF NOT EXISTS ws_automation_runs (
  state TEXT NOT NULL, reason TEXT, created_at REAL NOT NULL,
  PRIMARY KEY(tenant,id), UNIQUE(tenant,automation_id,slot));
 CREATE INDEX IF NOT EXISTS ws_automation_due ON ws_automations(enabled,next_run_at);
+CREATE TABLE IF NOT EXISTS ws_worktrees (
+ tenant TEXT NOT NULL, subject TEXT NOT NULL, id TEXT NOT NULL, project_id TEXT NOT NULL,
+ run_id TEXT NOT NULL, branch TEXT NOT NULL, path TEXT NOT NULL, base_commit TEXT NOT NULL,
+ by_person INTEGER NOT NULL, status TEXT NOT NULL, created_at REAL NOT NULL, removed_at REAL,
+ PRIMARY KEY(tenant,id), UNIQUE(tenant,run_id));
 '''
+
+ADMISSION_MODES = ('off', 'observe', 'auto')
 
 DEFAULT_PREFERENCES = dict(appearance='light', font='system', font_size=14,
     shortcuts='default', confirmation_mode='ask', preferred_model=None,
@@ -70,6 +82,8 @@ def _due(value):
 
 
 class Workspace:
+    worker_slots = 16
+
     def __init__(self, store, *, executor_config=None, executor_config_path=None):
         self.store = store
         self.assistant = AssistantStore(store)
@@ -79,6 +93,9 @@ class Workspace:
         self.root = (parent / 'workspaces').resolve()
         with store.connect() as db:
             db.executescript(SCHEMA)
+            columns = {row['name'] for row in db.execute('PRAGMA table_info(ws_automations)')}
+            if 'mode' not in columns:
+                db.execute("ALTER TABLE ws_automations ADD COLUMN mode TEXT NOT NULL DEFAULT 'observe'")
 
     def _audit(self, db, identity, op, identifier):
         self.assistant.ledger.append_in(db, identity.tenant_id, 'workspace', identifier,
@@ -239,20 +256,25 @@ class Workspace:
         if interval is not None and (type(interval) is not int or not 1 <= interval <= 525600):
             raise InvalidInput('invalid interval')
         due = _due(data.get('due_at'))
+        mode = data.get('mode') or 'observe'
+        if mode not in ADMISSION_MODES:
+            raise InvalidInput('invalid automation mode')
         identifier, now = 'auto-' + uuid4().hex, time.time()
         with self.store.transaction() as db:
             project = data.get('project_id')
             if project is not None:
                 self._project_in(db, identity, project)
             model = self._model(data.get('model'))
-            db.execute('INSERT INTO ws_automations VALUES(?,?,?,?,?,?,?,?,?,?,0,?,?,NULL)',
+            db.execute('''INSERT INTO ws_automations
+                (tenant,subject,id,name,prompt,project_id,model,interval_minutes,due_at,next_run_at,enabled,created_at,updated_at,mode)
+                VALUES(?,?,?,?,?,?,?,?,?,?,0,?,?,?)''',
                 (identity.tenant_id, identity.subject_id, identifier, name, prompt, project, model, interval,
-                 due, due if due else (now + interval * 60 if interval else None), now, now))
+                 due, due if due else (now + interval * 60 if interval else None), now, now, mode))
             self._audit(db, identity, 'automation.created.disabled', identifier)
         return self.automation(identity, identifier)
 
     def update_automation(self, identity, identifier, changes):
-        allowed = {'name', 'prompt', 'project_id', 'model', 'interval_minutes', 'due_at'}
+        allowed = {'name', 'prompt', 'project_id', 'model', 'interval_minutes', 'due_at', 'mode'}
         if set(changes) - allowed:
             raise InvalidInput('unsupported automation field')
         with self.store.transaction() as db:
@@ -272,14 +294,22 @@ class Workspace:
                 next_run = data['due_at'] or (time.time() + interval * 60 if interval else None)
             if row['enabled'] and next_run is None:
                 raise InvalidInput('enabled automation requires a schedule')
-            db.execute('UPDATE ws_automations SET name=?,prompt=?,project_id=?,model=?,interval_minutes=?,due_at=?,next_run_at=?,updated_at=? WHERE tenant=? AND id=?',
-                (data['name'], data['prompt'], data['project_id'], data['model'], interval, data['due_at'], next_run, time.time(), identity.tenant_id, identifier))
+            mode = data.get('mode') or row.get('mode') or 'observe'
+            if mode not in ADMISSION_MODES:
+                raise InvalidInput('invalid automation mode')
+            enabled = 0 if mode == 'off' else row['enabled']
+            db.execute('''UPDATE ws_automations SET name=?,prompt=?,project_id=?,model=?,interval_minutes=?,due_at=?,next_run_at=?,updated_at=?,enabled=?,mode=?
+                WHERE tenant=? AND id=?''',
+                (data['name'], data['prompt'], data['project_id'], data['model'], interval, data['due_at'], next_run,
+                 time.time(), enabled, mode, identity.tenant_id, identifier))
             self._audit(db, identity, 'automation.updated', identifier)
         return self.automation(identity, identifier)
 
     def enable_automation(self, identity, identifier, enabled):
         with self.store.transaction() as db:
             row = self._automation_in(db, identity, identifier)
+            if enabled and (row.get('mode') or 'observe') == 'off':
+                raise InvalidInput('turn the automation to observe or auto before enabling')
             if enabled and row['next_run_at'] is None:
                 raise InvalidInput('automation requires due_at or interval_minutes')
             if enabled and row['project_id']:
@@ -322,7 +352,8 @@ class Workspace:
             body=row['prompt'], status='queued', author='subject:' + identity.subject_id,
             meta=dict(automation_id=row['id'], automation_run_id=receipt_id,
                       project_id=row['project_id'], model_alias=model_alias,
-                      confirmation_mode=preferences['confirmation_mode']), db=db)
+                      confirmation_mode=preferences['confirmation_mode'],
+                      admission=row.get('mode') or 'auto', route=self._route_badge()), db=db)
         db.execute('INSERT INTO ws_automation_runs VALUES(?,?,?,?,?,?,?,NULL,?)',
             (identity.tenant_id, identity.subject_id, receipt_id, row['id'], slot, message['id'], 'queued', now))
         self._audit(db, identity, 'automation.message.queued', receipt_id)
@@ -345,7 +376,8 @@ class Workspace:
         key = _text(key, 'idempotency key', 200)
         with self.store.transaction() as db:
             row = self._automation_in(db, identity, identifier)
-            return self._enqueue(db, identity, row, 'manual:' + key, time.time())
+            # A person pressing run-now is an explicit dispatch, including from observe/off.
+            return self._enqueue(db, identity, {**row, 'mode': 'manual'}, 'manual:' + key, time.time())
 
     def automation_runs(self, identity, identifier):
         with self.store.connect() as db:
@@ -367,8 +399,16 @@ class Workspace:
                 if not row['enabled'] or row['next_run_at'] is None or row['next_run_at'] > now:
                     continue
                 slot = 'schedule:' + repr(row['next_run_at'])
+                mode = row.get('mode') or 'auto'
+                if mode == 'off':
+                    db.execute('UPDATE ws_automations SET enabled=0,updated_at=? WHERE tenant=? AND id=?',
+                               (now, identity.tenant_id, row['id']))
+                    continue
                 try:
-                    receipt = self._enqueue(db, identity, row, slot, now)
+                    if mode == 'observe':
+                        receipt = self._observe(db, identity, row, slot, now)
+                    else:
+                        receipt = self._enqueue(db, identity, row, slot, now)
                 except (InvalidInput, NotFound):
                     # A removed model/project pauses the schedule and leaves an
                     # explicit durable receipt instead of spinning indefinitely.
@@ -383,3 +423,174 @@ class Workspace:
                     (next_run, int(bool(interval)), now, identity.tenant_id, row['id']))
                 receipts.append(receipt)
         return receipts
+
+    @staticmethod
+    def _route_badge():
+        from .lightpath_shadow import assess
+        result = assess(trusted_policy=True, frozen_suite=False, complete_spec=True,
+                        side_effect_free=False, semantic_review_required=True,
+                        budget_ok=True, unknown_state=False)
+        return dict(recommendation=result.recommendation, reason=result.reason, enforcement=False)
+
+    def _observe(self, db, identity, row, slot, now):
+        """Record the schedule without queueing a model message."""
+        prior = db.execute('SELECT * FROM ws_automation_runs WHERE tenant=? AND automation_id=? AND slot=?',
+                           (identity.tenant_id, row['id'], slot)).fetchone()
+        if prior:
+            return self._run_view(prior)
+        receipt_id = 'arun-' + uuid4().hex
+        badge = self._route_badge()
+        reason = badge['recommendation'] + ':' + badge['reason']
+        db.execute('INSERT INTO ws_automation_runs VALUES(?,?,?,?,?,NULL,?,?,?)',
+                   (identity.tenant_id, identity.subject_id, receipt_id, row['id'], slot, 'would_dispatch', reason[:500], now))
+        self._audit(db, identity, 'automation.would_dispatch', receipt_id)
+        return dict(id=receipt_id, automation_id=row['id'], slot=slot, message_id=None, state='would_dispatch',
+                    reason=reason[:500], created_at=now, model_called=False)
+
+    def _git(self, cwd, *args, check=True):
+        try:
+            proc = subprocess.run(['git', *args], cwd=cwd, capture_output=True, text=True, timeout=30, check=False)
+        except FileNotFoundError:
+            raise InvalidInput('git is not available') from None
+        except subprocess.TimeoutExpired:
+            raise InvalidInput('git timed out') from None
+        if check and proc.returncode != 0:
+            detail = (proc.stderr or proc.stdout or 'git failed').strip().splitlines()
+            raise InvalidInput(detail[-1][:200] if detail else 'git failed')
+        return proc
+
+    def _ensure_repository(self, directory):
+        directory.mkdir(parents=True, exist_ok=True)
+        if not (directory / '.git').exists():
+            self._git(directory, 'init')
+            self._git(directory, 'config', 'user.email', 'verilo@localhost')
+            self._git(directory, 'config', 'user.name', 'Verilo')
+        if self._git(directory, 'rev-parse', '--verify', 'HEAD', check=False).returncode != 0:
+            if self._git(directory, 'config', 'user.email', check=False).returncode != 0:
+                self._git(directory, 'config', 'user.email', 'verilo@localhost')
+                self._git(directory, 'config', 'user.name', 'Verilo')
+            self._git(directory, 'commit', '--allow-empty', '-m', 'verilo project root')
+        return self._git(directory, 'rev-parse', 'HEAD').stdout.strip()
+
+    def _worktree_root(self, identity):
+        owner = sha256((identity.tenant_id + '\0' + identity.subject_id).encode()).hexdigest()
+        root = (self.root / 'worktrees' / owner).resolve()
+        base = (self.root / 'worktrees').resolve()
+        if base not in root.parents:
+            raise InvalidInput('worktree path is outside the workspace boundary')
+        return root
+
+    @staticmethod
+    def _run_token(run_id):
+        if not isinstance(run_id, str) or not re.fullmatch(r'[A-Za-z0-9._:-]{1,80}', run_id):
+            raise InvalidInput('invalid run id')
+        return run_id
+
+    def _worktree_in(self, db, identity, worktree_id):
+        row = db.execute('SELECT * FROM ws_worktrees WHERE tenant=? AND subject=? AND id=? AND status=?',
+                         (identity.tenant_id, identity.subject_id, worktree_id, 'active')).fetchone()
+        if row is None:
+            raise NotFound('worktree not found')
+        return dict(row)
+
+    def _worktree_view(self, row):
+        path = Path(row['path']).resolve()
+        root = (self.root / 'worktrees').resolve()
+        if root not in path.parents:
+            raise InvalidInput('worktree path is outside the workspace boundary')
+        return dict(id=row['id'], project_id=row['project_id'], run_id=row['run_id'], branch=row['branch'],
+                    path=str(path), base_commit=row['base_commit'], by_person=bool(row['by_person']),
+                    status=row['status'], created_at=row['created_at'])
+
+    def worktrees(self, identity, project_id=None):
+        with self.store.connect() as db:
+            query = 'SELECT * FROM ws_worktrees WHERE tenant=? AND subject=? AND status=? ORDER BY created_at'
+            args = [identity.tenant_id, identity.subject_id, 'active']
+            if project_id is not None:
+                query += ' AND project_id=?'
+                args.append(project_id)
+            rows = db.execute(query, args).fetchall()
+        return [self._worktree_view(row) for row in rows]
+
+    def worktree(self, identity, worktree_id):
+        with self.store.connect() as db:
+            return self._worktree_view(self._worktree_in(db, identity, worktree_id))
+
+    def ensure_worktree(self, identity, project_id, run_id, *, title='', is_human_request=False):
+        """One git worktree per run, off the person's project checkout."""
+        run_id = self._run_token(run_id)
+        _text(title or 'task', 'worktree title', 200)
+        with self.store.transaction() as db:
+            self._project_in(db, identity, project_id)
+            existing = db.execute('SELECT * FROM ws_worktrees WHERE tenant=? AND run_id=? AND status=?',
+                                  (identity.tenant_id, run_id, 'active')).fetchone()
+            if existing is not None:
+                if existing['subject'] != identity.subject_id:
+                    raise NotFound('worktree not found')
+                return self._worktree_view(existing)
+            active = db.execute('SELECT by_person FROM ws_worktrees WHERE tenant=? AND subject=? AND status=?',
+                                (identity.tenant_id, identity.subject_id, 'active')).fetchall()
+            limit = self.worker_slots + (1 if is_human_request else 0)
+            if len(active) >= limit:
+                raise Conflict('worktree slot limit reached')
+            if not is_human_request and sum(not row['by_person'] for row in active) >= self.worker_slots:
+                raise Conflict('worktree slot limit reached')
+        directory = self._path(identity, project_id)
+        base = self._ensure_repository(directory)
+        branch = 'wt/' + run_id.replace(':', '-')
+        path = self._worktree_root(identity) / run_id.replace(':', '-')
+        if path.exists():
+            raise Conflict('worktree directory already exists')
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self._git(directory, 'worktree', 'add', '-b', branch, str(path), 'HEAD')
+        identifier = 'wt-' + uuid4().hex
+        with self.store.transaction() as db:
+            self._project_in(db, identity, project_id)
+            db.execute('''INSERT INTO ws_worktrees
+                (tenant,subject,id,project_id,run_id,branch,path,base_commit,by_person,status,created_at)
+                VALUES(?,?,?,?,?,?,?,?,?,'active',?)''',
+                (identity.tenant_id, identity.subject_id, identifier, project_id, run_id, branch, str(path),
+                 base, int(is_human_request), time.time()))
+            self._audit(db, identity, 'worktree.created', identifier)
+        return self.worktree(identity, identifier)
+
+    def worktree_diff(self, identity, worktree_id):
+        item = self.worktree(identity, worktree_id)
+        path = Path(item['path'])
+        self._git(path, 'add', '-A')
+        proc = self._git(path, 'diff', '--cached', '--no-ext-diff', item['base_commit'])
+        text = proc.stdout
+        if len(text) > 100_000:
+            text = text[:100_000] + '\n… diff truncated\n'
+        stat = self._git(path, 'diff', '--cached', '--stat', item['base_commit']).stdout[-2000:]
+        return dict(id=item['id'], branch=item['branch'], base_commit=item['base_commit'], stat=stat, diff=text)
+
+    def apply_worktree(self, identity, worktree_id):
+        """Copy the worktree diff onto the project checkout. Does not commit or push."""
+        item = self.worktree(identity, worktree_id)
+        project = self.project(identity, item['project_id'])
+        directory = Path(project['path'])
+        status = self._git(directory, 'status', '--porcelain').stdout.splitlines()
+        if any(not line.startswith('??') for line in status):
+            raise Conflict('project working tree has uncommitted changes')
+        diff = self.worktree_diff(identity, worktree_id)
+        if not diff['diff'].strip():
+            return dict(id=item['id'], applied=False, reason='empty')
+        proc = subprocess.run(['git', 'apply', '--index'], cwd=directory, input=diff['diff'],
+                              capture_output=True, text=True, timeout=30, check=False)
+        if proc.returncode != 0:
+            raise Conflict('worktree diff did not apply')
+        with self.store.transaction() as db:
+            self._audit(db, identity, 'worktree.applied', item['id'])
+        return dict(id=item['id'], applied=True, branch=item['branch'])
+
+    def remove_worktree(self, identity, worktree_id):
+        with self.store.connect() as db:
+            row = self._worktree_in(db, identity, worktree_id)
+        project = self._path(identity, row['project_id'])
+        removal = self._git(project, 'worktree', 'remove', '--force', row['path'], check=False)
+        with self.store.transaction() as db:
+            db.execute('UPDATE ws_worktrees SET status=?,removed_at=? WHERE tenant=? AND id=?',
+                       ('removed', time.time(), identity.tenant_id, worktree_id))
+            self._audit(db, identity, 'worktree.removed', worktree_id)
+        return dict(id=worktree_id, removed=True, git_removed=removal.returncode == 0)

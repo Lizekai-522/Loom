@@ -31,6 +31,7 @@ class TerminalInput(BaseModel):
 
 class TerminalCreate(TerminalInput):
     project_id: str = Field(min_length=1, max_length=128)
+    worktree_id: str | None = Field(default=None, min_length=1, max_length=80)
     cols: int = Field(default=100, ge=20, le=300)
     rows: int = Field(default=28, ge=5, le=120)
 
@@ -392,7 +393,7 @@ class TerminalSession:
     def summary(self):
         return dict(id=self.id, project_id=self.project_id, shell=self.backend.shell,
                     backend=self.backend.backend, state=self.state, cursor=self.seq,
-                    cols=self.cols, rows=self.rows)
+                    cols=self.cols, rows=self.rows, cwd=getattr(self, 'cwd', None))
 
     def output(self, after):
         self.touched = time.monotonic()
@@ -429,9 +430,9 @@ class TerminalManager:
                 with self.lock:
                     self.sessions.pop(session.id, None)
 
-    def create(self, identity, project, cols, rows):
+    def create(self, identity, project, cols, rows, directory=None):
         owner = (identity.tenant_id, identity.subject_id)
-        directory = Path(project['path']).resolve()
+        directory = Path(directory or project['path']).resolve()
         if not directory.is_dir():
             raise HTTPException(409, 'PROJECT_DIRECTORY_UNAVAILABLE')
         with self.lock:
@@ -449,6 +450,7 @@ class TerminalManager:
                 raise
             except Exception:
                 raise HTTPException(503, 'TERMINAL_START_FAILED') from None
+            session.cwd = str(directory)
             self.sessions[session.id] = session
             if self.sweeper is None:
                 self.sweeper = threading.Thread(target=self._reap, name='verilo-terminal-cleanup', daemon=True)
@@ -504,7 +506,13 @@ def install_terminal_api(app, store, *, Reader, Writer, executor_config=None, lo
         if workspace is None:
             raise HTTPException(503, 'WORKSPACE_NOT_CONFIGURED')
         project = workspace.project(identity, body.project_id)
-        return manager.create(identity, project, body.cols, body.rows).summary()
+        directory = None
+        if body.worktree_id:
+            worktree = workspace.worktree(identity, body.worktree_id)
+            if worktree['project_id'] != project['id']:
+                raise HTTPException(409, 'WORKTREE_PROJECT_MISMATCH')
+            directory = worktree['path']
+        return manager.create(identity, project, body.cols, body.rows, directory).summary()
 
     @app.get('/v1/terminals/{terminal_id}/output')
     def read_terminal(terminal_id: str, request: Request, identity: Reader,
