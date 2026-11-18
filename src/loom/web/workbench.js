@@ -43,13 +43,15 @@
   }
   function field(label, input) { const wrap = node("label", label); input.setAttribute("aria-label", label); wrap.append(input); return wrap; }
   async function renderDiff(host) {
-    host.replaceChildren(node("p", "选择项目后创建隔离工作树，差异在这里核对。"));
+    host.replaceChildren();
     const projects = await request("GET", "/v1/workspace/projects");
+    const items = projects.items || [];
+    if (!items.length) { host.append(node("p", "还没有项目。")); return; }
+    host.append(node("p", "选择项目后在这里核对差异。"));
     const row = node("div", undefined, "row");
     const select = node("select"); select.setAttribute("aria-label", "项目");
-    for (const project of projects.items || []) { const option = node("option", project.name); option.value = project.id; select.append(option); }
-    const open = node("button", "新建工作树"); open.type = "button";
-    row.append(select, open); host.append(row);
+    for (const project of items) { const option = node("option", project.name); option.value = project.id; select.append(option); }
+    row.append(select); host.append(row);
     const list = node("div"); host.append(list);
     async function reload() {
       list.replaceChildren();
@@ -88,11 +90,6 @@
       }
       if (!(trees.items || []).length) list.append(node("p", "这个项目还没有工作树。"));
     }
-    open.addEventListener("click", guard(host, async () => {
-      if (!select.value) return;
-      await request("POST", "/v1/workspace/projects/" + encodeURIComponent(select.value) + "/worktrees", {run_id: "manual-" + crypto.randomUUID(), title: "手工工作树"});
-      await reload();
-    }));
     select.addEventListener("change", () => reload().catch(error => list.replaceChildren(node("p", error.message))));
     await reload();
   }

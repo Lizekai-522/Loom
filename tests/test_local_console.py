@@ -63,7 +63,10 @@ def test_connection_page_has_no_credential_input(tmp_path):
         for page in ('/console','/console/sessions','/console/expert'):
             text=c.get(page).text
             assert 'id="access-token"' not in text and 'type="password"' not in text
-        assert 'assistant.js' in c.get('/console').text and 'chat.js' in c.get('/console/sessions').text
+        page = c.get('/console').text
+        assert 'assistant.js' in page and 'chat.js' in c.get('/console/sessions').text
+        assert 'id="account-trigger"' in page and '新建工作树' not in page
+        assert '新建工作树' not in c.get('/console/assets/workbench.js').text
         assert 'console-zh.js' in c.get('/console/expert').text
         js=c.get('/console/assets/console.js').text
         assert 'state.token' not in js and 'connect();' in js

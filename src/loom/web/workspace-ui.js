@@ -22,7 +22,8 @@
     const dark=prefs.appearance==='dark'||prefs.appearance==='system'&&matchMedia('(prefers-color-scheme: dark)').matches;
     document.documentElement.dataset.appearance=dark?'dark':'light';
     document.documentElement.style.setProperty('--user-font-size',(prefs.font_size||14)+'px');
-    document.documentElement.style.setProperty('--user-font',prefs.font==='mono'?'Consolas, monospace':prefs.font==='sans'?'"Segoe UI", "Microsoft YaHei", sans-serif':'system-ui, "Microsoft YaHei", sans-serif');
+    const textFont='-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif';
+    document.documentElement.style.setProperty('--user-font',prefs.font==='mono'?'ui-monospace, "SF Mono", Consolas, "Liberation Mono", Menlo, Courier':'system-ui, '+textFont);
     for(const [id,field] of [['workspace-project','selected_project_id'],['workspace-model','preferred_model'],['workspace-confirm','confirmation_mode']]) {
       if($(id))$(id).value=prefs[field]||($(id).options[0]?.value||'');
     }
