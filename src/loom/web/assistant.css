@@ -77,12 +77,14 @@
 /* Verilo workspace: the existing task and approval controls retain their handlers. */
 :root{color-scheme:light;--bg:#fff;--surface:#fff;--sunken:#f7f9f7;--ink:#1b2520;--muted:#65716a;--faint:#89958d;--line:#e6ebe7;--line-strong:#d3ddd5;--accent:#245b35;--accent-ink:#fff;--accent-soft:#eaf2ec;--ok:#245b35;--ok-soft:#edf5ef;--code:#f6f8f6}
 .as-shell{grid-template-columns:280px minmax(0,1fr)}
-.as-shell.panel-open{grid-template-columns:280px minmax(0,1fr) minmax(320px,42vw)}
-.as-shell.panel-open[data-panel-size="0"]{grid-template-columns:280px minmax(0,1fr) minmax(260px,34vw)}
-.as-shell.panel-open[data-panel-size="2"]{grid-template-columns:280px minmax(0,1fr) minmax(400px,48vw)}
+.as-shell.panel-open,.as-shell.panel-open[data-panel-size="0"],.as-shell.panel-open[data-panel-size="2"]{grid-template-columns:280px minmax(0,1fr) var(--inspector-width,420px)}
 .as-shell.rail{grid-template-columns:56px minmax(0,1fr)}
-.as-shell.rail.panel-open,.as-shell.rail.panel-open[data-panel-size="0"],.as-shell.rail.panel-open[data-panel-size="2"]{grid-template-columns:56px minmax(0,1fr) minmax(320px,42vw)}
-.rightbar{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--surface);border-left:1px solid var(--line);overflow:hidden}
+.as-shell.rail.panel-open,.as-shell.rail.panel-open[data-panel-size="0"],.as-shell.rail.panel-open[data-panel-size="2"]{grid-template-columns:56px minmax(0,1fr) var(--inspector-width,420px)}
+.rightbar{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--surface);border-left:1px solid var(--line);overflow:hidden}
+.inspector-resize{position:absolute;z-index:4;left:0;top:0;bottom:0;width:8px;cursor:col-resize;touch-action:none}
+.inspector-resize::after{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:transparent}
+.inspector-resize:hover::after,.inspector-resize:focus-visible::after{background:var(--accent)}
+body.inspector-resizing{cursor:col-resize;user-select:none}
 .rightbar[hidden]{display:none!important}
 .rightbar .as-panel{border-left:0;min-height:0}
 .verilo-sidebar.collapsed{padding:12px 6px;gap:10px}
@@ -119,10 +121,19 @@
 .verilo-account-trigger:hover,.verilo-account-trigger[aria-expanded=true]{background:var(--accent-soft)}
 .verilo-avatar{display:grid;place-items:center;flex:none;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px;font-weight:500;line-height:1}
 .verilo-account-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
-.verilo-account-menu{position:absolute;left:0;bottom:calc(100% + 4px);z-index:30;box-sizing:border-box;display:flex;flex-direction:column;min-width:168px;max-width:280px;padding:4px;border:0;border-radius:12px;background:var(--surface);box-shadow:0 8px 28px rgb(20 40 24 / .16),inset 0 0 0 .5px var(--line)}
+.verilo-account-menu{position:absolute;left:0;bottom:calc(100% + 4px);z-index:30;box-sizing:border-box;display:flex;flex-direction:column;width:248px;min-width:232px;padding:6px;border:0;border-radius:12px;background:var(--surface);box-shadow:0 8px 28px rgb(20 40 24 / .16),inset 0 0 0 .5px var(--line)}
 .verilo-account-menu[hidden]{display:none!important}
-.verilo-account-menu a,.verilo-account-menu button{display:flex;align-items:center;width:100%;min-height:34px;padding:6px 8px;border:0;border-radius:12px;background:transparent;color:var(--ink);font:inherit;font-size:13px;line-height:20px;font-weight:400;text-align:left;text-decoration:none;cursor:pointer}
+.verilo-account-menu a,.verilo-account-menu button{display:flex;align-items:center;gap:10px;width:100%;min-height:36px;padding:8px 10px;border:0;border-radius:8px;background:transparent;color:var(--ink);font:inherit;font-size:13px;line-height:20px;font-weight:400;text-align:left;text-decoration:none;cursor:pointer}
+.verilo-account-menu svg{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .verilo-account-menu a:hover,.verilo-account-menu button:hover,.verilo-account-menu a:focus-visible,.verilo-account-menu button:focus-visible{background:var(--accent-soft);color:var(--accent);outline:none}
+.verilo-account-menu a.verilo-account-usage{flex-direction:column;align-items:stretch;gap:8px;min-height:0;padding:8px 10px 10px}
+.verilo-account-usage-top{display:flex;align-items:center;gap:10px;width:100%}
+.verilo-account-usage-meta{margin-left:auto;color:var(--muted);font-size:12px;line-height:18px;font-variant-numeric:tabular-nums}
+.verilo-account-usage-bar{display:block;height:4px;border-radius:999px;background:var(--line);overflow:hidden}
+.verilo-account-usage-bar span{display:block;height:100%;width:0;border-radius:inherit;background:var(--accent)}
+.verilo-account-sep{height:1px;margin:4px 8px;background:var(--line)}
+.verilo-account-menu .verilo-account-danger{color:#7a342c}
+.verilo-account-menu .verilo-account-danger:hover,.verilo-account-menu .verilo-account-danger:focus-visible{background:#f6ebe9;color:#7a342c}
 .verilo-account-trigger:focus-visible,.verilo-icon:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .verilo-sidebar.collapsed .verilo-account-trigger{width:36px;height:36px;justify-content:center;padding:0}
 .verilo-sidebar.collapsed .verilo-sidebar-footer{flex-direction:column;align-items:center;padding:8px 4px}
@@ -163,7 +174,13 @@ body.file-drag .as-composer{border-color:var(--accent);box-shadow:0 0 0 2px var(
 .bento{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
 .bento article{border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px;background:var(--sunken)}
 .bento strong{display:block;font-size:13px}
-.inspector{border-top:0;padding:8px 16px 12px;max-height:none;overflow:auto;flex:1}
+.inspector{display:flex;flex-direction:column;border-top:0;padding:0 0 12px;max-height:none;overflow:hidden;flex:1;min-height:0}
+.inspector-tabs{flex:none}
+.inspector-tab{display:flex;align-items:center;flex:1;min-width:0}
+.inspector-tab[hidden]{display:none!important}
+.inspector-tab > button[data-inspector]{flex:1;min-width:0}
+.inspector .inspector-tab-close{flex:none;width:22px;min-width:22px;min-height:28px;padding:0;border-bottom:0;color:var(--muted);font-size:14px}
+#inspector-body{flex:1;overflow:auto;padding:8px 16px 0}
 .inspector .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
 .inspector input,.inspector select,.inspector textarea{border:1px solid var(--line);background:var(--surface);border-radius:var(--radius-sm);padding:6px 8px}
 .inspector pre{white-space:pre-wrap;font:12px/1.45 ui-monospace,monospace;background:var(--code);padding:8px;border-radius:var(--radius-sm)}
@@ -172,7 +189,7 @@ body.file-drag .as-composer{border-color:var(--accent);box-shadow:0 0 0 2px var(
 @media(max-width:1000px){
   .as-shell,.as-shell.panel-open,.as-shell.panel-open[data-panel-size="0"],.as-shell.panel-open[data-panel-size="2"]{grid-template-columns:220px minmax(0,1fr)}
   .as-shell.rail,.as-shell.rail.panel-open,.as-shell.rail.panel-open[data-panel-size="0"],.as-shell.rail.panel-open[data-panel-size="2"]{grid-template-columns:56px minmax(0,1fr)}
-  .rightbar{position:fixed;inset:56px 0 0 auto;width:min(420px,100vw);z-index:24;box-shadow:-8px 0 24px rgb(0 0 0 / .12)}
+  .rightbar{position:fixed;inset:56px 0 0 auto;width:min(var(--inspector-width,420px),100vw);z-index:24;box-shadow:-8px 0 24px rgb(0 0 0 / .12)}
   .as-panel{position:static;width:auto;transform:none;visibility:visible;inset:auto}
   .verilo-panel-actions #panel-narrow,.verilo-panel-actions #panel-widen{display:none}
   .only-mobile{display:inline-flex!important}
@@ -186,9 +203,11 @@ body.file-drag .as-composer{border-color:var(--accent);box-shadow:0 0 0 2px var(
   .verilo-nav{flex-direction:row;overflow:auto;gap:1px}
   .verilo-nav a,.verilo-nav button{width:auto;min-height:36px;padding:6px 8px;white-space:nowrap;font-size:12px}
   .verilo-nav span,#session-rail,.verilo-search,#open-skills,.verilo-account-name,#collapse-sidebar{display:none}
+  .verilo-sidebar{position:relative}
   .verilo-sidebar-footer{margin-top:0;padding:0;border-top:0}
   .verilo-account-trigger{width:36px;height:36px;justify-content:center;padding:0}
-  .verilo-account-menu{top:calc(100% + 4px);bottom:auto}
+  .verilo-account{position:static}
+  .verilo-account-menu{left:auto;right:8px;top:calc(100% + 4px);bottom:auto;width:min(248px,calc(100vw - 16px))}
   .verilo-new{min-height:0;line-height:18px}
   .as-head{padding:8px 14px;min-height:48px}
   .as-links a.settings-link{display:inline}

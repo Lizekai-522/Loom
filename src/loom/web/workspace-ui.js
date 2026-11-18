@@ -24,6 +24,7 @@
     document.documentElement.style.setProperty('--user-font-size',(prefs.font_size||14)+'px');
     const textFont='-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif';
     document.documentElement.style.setProperty('--user-font',prefs.font==='mono'?'ui-monospace, "SF Mono", Consolas, "Liberation Mono", Menlo, Courier':'system-ui, '+textFont);
+    window.dispatchEvent(new CustomEvent('verilo:preferences'));
     for(const [id,field] of [['workspace-project','selected_project_id'],['workspace-model','preferred_model'],['workspace-confirm','confirmation_mode']]) {
       if($(id))$(id).value=prefs[field]||($(id).options[0]?.value||'');
     }

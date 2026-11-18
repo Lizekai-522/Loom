@@ -22,7 +22,8 @@
       return extra;
     },
     addMention(path) { if (path && !state.mentions.includes(path) && state.mentions.length < 8) { state.mentions.push(path); renderChips(); } },
-    onSent() { state.mentions = []; state.linked = null; renderChips(); }
+    onSent() { state.mentions = []; state.linked = null; renderChips(); },
+    sessions() { return state.sessions.slice(); }
   };
   function renderChips() {
     const host = $("mention-chips");
@@ -93,6 +94,7 @@
       state.sessions = sessions.items || [];
     } catch { state.tasks = []; state.sessions = []; }
     await renderRail($("task-search")?.value || "");
+    window.VeriloInspector?.sync({sessions: state.sessions});
   }
   function closePalette() { const box = $("command-palette"); if (box) box.hidden = true; }
   async function openPalette() {
