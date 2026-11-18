@@ -465,7 +465,12 @@ def install(app, store, *, Tenant, Reader, Writer, Approver, Key, sessions):
 
     @app.get('/v1/assistant/settings')
     def read_settings(tenant: Tenant):
-        return dict(data.settings(tenant), runtime=data.runtime(tenant))
+        settings = data.settings(tenant)
+        # Today's assistant spend is the same figure the daily budget checks before a call.
+        from .runtime import local_day_start
+        import time
+        start, _local = local_day_start(time.time(), settings['tz_offset_minutes'])
+        return dict(settings, spent_today_microusd=data.spend_since(tenant, start), runtime=data.runtime(tenant))
 
     @app.put('/v1/assistant/settings')
     def write_settings(body: SettingsIn, identity: Writer):

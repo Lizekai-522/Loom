@@ -2,10 +2,50 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Verilo · 工作区</title>
-<link rel="icon" href="/console/assets/verilo-taskbar-v4.ico?v=4"><link rel="stylesheet" href="/console/assets/chat.css"><link rel="stylesheet" href="/console/assets/verilo-theme.css"><link rel="stylesheet" href="/console/assets/workspace-ui.css"><link rel="stylesheet" href="/console/assets/workspace.css">
-<script src="/console/assets/workspace-ui.js" defer></script><script src="/console/assets/workspace.js" defer></script>
+<link rel="icon" href="/console/assets/verilo-taskbar-v4.ico?v=4"><link rel="stylesheet" href="/console/assets/verilo-theme.css"><link rel="stylesheet" href="/console/assets/assistant.css"><link rel="stylesheet" href="/console/assets/frame.css"><link rel="stylesheet" href="/console/assets/workspace.css">
+<script src="/console/assets/frame.js" defer></script><script src="/console/assets/workspace-ui.js" defer></script><script src="/console/assets/workspace.js" defer></script>
 </head>
-<body><div class="hub-shell"><aside class="hub-sidebar"><a class="brand" href="/console"><img src="/console/assets/verilo-icon.svg" alt="" width="28" height="28">Verilo</a><nav><a href="/console/sessions">＋ 新建任务</a><a href="/console">对话</a><a href="/console/projects">项目</a><a href="/console/automations">自动化</a><a href="/console/market">插件市场</a></nav><a class="hub-settings" href="/console/settings">设置</a></aside><main class="hub-main"><header><h1 id="hub-title"></h1><button id="add" type="button" class="primary" hidden>新建</button></header><p id="notice" role="status" hidden></p><div id="hub-content"></div></main></div>
-<dialog id="editor"><form id="editor-form"><div class="dialog-head"><h2 id="editor-title">新建</h2><button id="editor-close" type="button" aria-label="关闭">×</button></div><div id="editor-fields"></div><div class="dialog-actions"><button id="editor-save" class="primary" type="submit">保存</button></div></form></dialog>
+<body>
+<div class="app-frame">
+<aside class="app-side" aria-label="导航">
+<a class="app-brand" href="/console"><img src="/console/assets/verilo-mark.svg" alt=""><span>VERILO</span></a>
+<a class="app-new" href="/console/sessions">＋ <span>新建任务</span></a>
+<nav class="app-nav" aria-label="工作区">
+<a href="/console"><span aria-hidden="true">◯</span>对话</a>
+<a href="/console/tasks"><span aria-hidden="true">□</span>任务</a>
+<a href="/console/projects"><span aria-hidden="true">▱</span>项目</a>
+<a href="/console/automations"><span aria-hidden="true">◷</span>自动化</a>
+<a href="/console/market"><span aria-hidden="true">⊞</span>插件市场</a>
+</nav>
+<div class="app-foot verilo-sidebar-footer">
+<div class="verilo-account">
+<button type="button" id="account-trigger" class="verilo-account-trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="account-menu" aria-label="账号菜单">
+<span class="verilo-avatar" id="account-avatar" aria-hidden="true"></span>
+<span class="verilo-account-name" id="account-name"></span>
+</button>
+<div id="account-menu" class="verilo-account-menu" role="menu" hidden>
+<a id="account-usage" class="verilo-account-usage" role="menuitem" href="/console/settings#usage" hidden>
+<span class="verilo-account-usage-top"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 12 16 8"/></svg><span id="account-usage-title">今日预算</span><span id="account-usage-meta"></span></span>
+<span class="verilo-account-usage-bar" aria-hidden="true"><span id="account-usage-fill"></span></span>
+</a>
+<div class="verilo-account-sep" id="account-usage-sep" hidden></div>
+<a role="menuitem" href="/console/settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="8" cy="7" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="10" cy="17" r="1.6"/></svg>设置</a>
+<a role="menuitem" href="/console/settings#appearance"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z"/></svg>外观</a>
+<a role="menuitem" href="/console/settings#general"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 19c1.4-3 3.6-4.5 7-4.5s5.6 1.5 7 4.5"/></svg>账号</a>
+<a role="menuitem" href="/console/settings#guide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5"/><path d="M19 5 10 14"/><path d="M8 6H6v12h12v-2"/></svg>引导</a>
+<div class="verilo-account-sep" id="account-signout-sep" hidden></div>
+<button type="button" role="menuitem" id="account-signout" class="verilo-account-danger" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 7V5H5v14h5v-2"/><path d="M10 12h9"/><path d="M16 8l4 4-4 4"/></svg>退出登录</button>
+</div>
+</div>
+<button type="button" id="collapse-sidebar" class="verilo-icon" aria-label="折叠侧栏">⟨</button>
+</div>
+</aside>
+<main class="app-main hub-main">
+<header class="app-head"><h1 id="hub-title"></h1><button id="add" type="button" class="app-btn primary" hidden>新建</button></header>
+<p id="notice" role="status" hidden></p>
+<div id="hub-content" class="app-page"></div>
+</main>
+</div>
+<dialog id="editor"><form id="editor-form"><div class="dialog-head"><h2 id="editor-title">新建</h2><button id="editor-close" type="button" aria-label="关闭">×</button></div><div id="editor-fields"></div><div class="dialog-actions"><button id="editor-save" class="app-btn primary" type="submit">保存</button></div></form></dialog>
 <dialog id="details"><div class="dialog-head"><h2 id="details-title">运行记录</h2><button id="details-close" type="button" aria-label="关闭详情">×</button></div><div id="details-body"></div></dialog>
 </body></html>

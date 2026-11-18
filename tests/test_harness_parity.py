@@ -283,8 +283,40 @@ def test_console_keeps_green_tokens_and_the_audit_wiring():
     assert 'id="account-trigger"' in assistant and 'id="account-name"' in assistant and 'id="account-avatar"' in assistant
     assert 'href="/console/settings"' in assistant and 'href="/console/settings#appearance"' in assistant
     assert 'href="/console/settings#general"' in assistant and '退出登录' in assistant
+    assert 'href="/console/settings#usage"' in assistant and 'href="/console/settings#guide"' in assistant
+    assert 'id="account-usage"' in assistant and 'id="account-signout"' in assistant and 'verilo-account-danger" hidden' in assistant
+    assert 'href="/console/tasks"' in assistant
+    tasks = (root / 'tasks.html').read_text(encoding='utf-8')
+    assert 'data-filter="active"' in tasks and 'data-filter="paused"' in tasks and 'data-filter="ended"' in tasks and 'data-filter="all"' in tasks
+    assert 'id="task-search"' in tasks and 'id="task-detail"' in tasks and '新建任务' in tasks
+    assert '#1f6feb' not in (root / 'settings.css').read_text(encoding='utf-8')
+    assert '#245b35' in theme
+    assert 'id="inspector-resize"' in assistant and 'data-close-inspector="files"' in assistant
+    assert 'id="rightbar" class="rightbar" hidden' in assistant and 'id="inspector" class="inspector" hidden' in assistant
+    assert 'Premium' not in assistant and 'Super' not in assistant and 'Grok' not in assistant and '添加账户' not in assistant
     assert '新建工作树' not in workbench and '还没有项目。' in workbench
+    assert 'verilo.inspector.width' in workbench and 'verilo.inspector.memory' in workbench
+    assert '当前没有任务或会话在使用检查器。' in workbench and 'spent_today_microusd' not in workbench
     assert 'account-name' in script and 'state.me.subject_id' in script and 'display_name' in script
+    assert 'spent_today_microusd' in script and 'account-signout-sep' in script
+    assert 'authentication !== "public-session"' in script
     css = (root / 'assistant.css').read_text(encoding='utf-8')
     assert 'bottom:calc(100% + 4px)' in css and '#245b35' in theme
-    assert 'zekai' not in assistant.lower() and 'zinc' not in css
+    assert '--inspector-width' in css and 'verilo-account-usage-bar' in css
+    assert 'zekai' not in assistant.lower() and 'zinc' not in css and 'zinc' not in theme
+
+
+def test_settings_report_today_spend_against_the_daily_budget(env):
+    client = env['client']
+    fresh = client.get('/v1/assistant/settings', headers=local()).json()
+    assert fresh['spent_today_microusd'] == 0
+    assert fresh['daily_budget_microusd'] == 1_000_000
+    data = env['data']
+    thread = data.thread_for('a', 'alice')
+    run = env['store'].create_run('a', 'spend-today', acceptance=['schema.valid'])
+    with env['store'].transaction() as db:
+        db.execute('UPDATE runs SET spent=? WHERE tenant=? AND id=?', (500, 'a', run['run_id']))
+    data.record_job('a', run['run_id'], purpose='assistant-reply', owner=thread['id'], proactive=False)
+    body = client.get('/v1/assistant/settings', headers=local()).json()
+    assert body['spent_today_microusd'] == 500
+    assert body['daily_budget_microusd'] == 1_000_000

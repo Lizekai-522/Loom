@@ -9,6 +9,7 @@
   <link rel="icon" href="/console/assets/verilo-taskbar-v4.ico?v=4" sizes="any">
   <link rel="stylesheet" href="/console/assets/chat.css">
   <link rel="stylesheet" href="/console/assets/verilo-theme.css">
+  <link rel="stylesheet" href="/console/assets/frame.css">
   <script src="/console/assets/chat.js" defer></script>
   <link rel="stylesheet" href="/console/assets/vendor-xterm.css">
   <link rel="stylesheet" href="/console/assets/workspace-ui.css">
@@ -25,6 +26,13 @@
         <button id="close-sidebar" class="icon-button only-mobile" type="button" aria-label="收起侧栏">×</button>
       </div>
       <button id="new-session" class="new-session" type="button">＋ 新建会话</button>
+      <nav class="app-nav session-nav" aria-label="工作区">
+        <a href="/console"><span aria-hidden="true">◯</span>对话</a>
+        <a href="/console/tasks"><span aria-hidden="true">□</span>任务</a>
+        <a href="/console/projects"><span aria-hidden="true">▱</span>项目</a>
+        <a href="/console/automations"><span aria-hidden="true">◷</span>自动化</a>
+        <a href="/console/market"><span aria-hidden="true">⊞</span>插件市场</a>
+      </nav>
       <nav class="session-list" id="session-list" aria-label="历史会话"></nav>
       <div class="side-foot">
         <a id="identity" class="foot-link session-foot-button" href="/console/settings" aria-label="账户与设置"></a>

@@ -182,7 +182,11 @@
     for (const m of state.messages.values()) if (m.meta && m.meta[field] === id) renderMessage(m.id);
   }
 
+  function syncInspector() {
+    window.VeriloInspector?.sync({tasks: [...state.tasks.values()], messages: [...state.messages.values()]});
+  }
   function syncRightbar() {
+    if (window.VeriloInspector?.layout) { window.VeriloInspector.layout(); return; }
     const bar = $("rightbar");
     if (!bar) return;
     const open = ($("panel") && !$("panel").hidden) || ($("inspector") && !$("inspector").hidden);
@@ -212,6 +216,7 @@
     } else if (type === "task") {
       const before = state.tasks.get(data.id);
       state.tasks.set(data.id, data); noticeRunning(data, before); rerenderLinked("task_id", data.id); renderPanel();
+      syncInspector();
       if (before && before.status !== data.status && ["awaiting_confirmation", "blocked", "waiting_approval"].includes(data.status))
         ping("任务《" + data.title + "》", STATUS[data.status]);
     } else if (type === "todo") { state.todos.set(data.id, data); renderPanel(); }
@@ -549,6 +554,7 @@
     $("status-text").textContent = rt.online ? (modelNote ? "模型异常" : "在线") : "离线";
     for (const id of state.order) renderMessage(id);
     renderPanel();
+    syncInspector();
   }
 
   // Text is read locally and travels in the same authenticated message as the
@@ -640,6 +646,27 @@
       if (!host.childElementCount) host.append(card("项目", "还没有项目", "/console/projects"));
     } catch (error) { host.append(card("工作区", error.message || "暂时无法读取", "/console/projects")); }
   }
+  async function loadAccountUsage() {
+    const row = $("account-usage");
+    if (!row) return;
+    try {
+      const settings = await request("GET", "/v1/assistant/settings");
+      const budget = Number(settings.daily_budget_microusd || 0);
+      const spent = Number(settings.spent_today_microusd || 0);
+      const sep = $("account-usage-sep");
+      if (!budget && !spent) { row.hidden = true; if (sep) sep.hidden = true; return; }
+      const pct = budget > 0 ? Math.round(spent / budget * 100) : null;
+      $("account-usage-meta").textContent = pct === null ? usd(spent) : pct + "% 已用";
+      const fill = $("account-usage-fill");
+      if (fill) fill.style.width = Math.min(100, pct || 0) + "%";
+      row.title = "今日已用 " + usd(spent) + (budget > 0 ? " / 预算 " + usd(budget) : "");
+      row.hidden = false;
+      if (sep) sep.hidden = false;
+    } catch {
+      row.hidden = true;
+      if ($("account-usage-sep")) $("account-usage-sep").hidden = true;
+    }
+  }
   async function start() {
     $("composer").addEventListener("submit", send);
     $("interrupt")?.addEventListener("click", async () => {
@@ -685,24 +712,21 @@
       showPanel(false);
       $("toggle-panel").focus();
     });
-    $("panel-narrow").addEventListener("click", () => {
-      const size = Number($("shell").dataset.panelSize || 1);
-      $("shell").dataset.panelSize = String(Math.max(0, size - 1));
-    });
-    $("panel-widen").addEventListener("click", () => {
-      const size = Number($("shell").dataset.panelSize || 1);
-      $("shell").dataset.panelSize = String(Math.min(2, size + 1));
-    });
+    $("panel-narrow").addEventListener("click", () => window.VeriloInspector?.resizeBy(-80));
+    $("panel-widen").addEventListener("click", () => window.VeriloInspector?.resizeBy(80));
     async function signOut() {
       try { await fetch("/preview/logout", {method: "POST", credentials: "same-origin"}); } finally { location.assign("/preview/login"); }
     }
     $("logout").addEventListener("click", signOut);
     $("account-signout")?.addEventListener("click", signOut);
+    $("account-trigger")?.addEventListener("click", () => loadAccountUsage());
     try {
       state.me = await request("GET", "/v1/me");
       const hideSignOut = state.me.authentication !== "public-session";
       $("logout").hidden = hideSignOut;
       if ($("account-signout")) $("account-signout").hidden = hideSignOut;
+      if ($("account-signout-sep")) $("account-signout-sep").hidden = hideSignOut;
+      loadAccountUsage();
       const login = String(state.me.display_name || state.me.subject_id || "").trim();
       $("who").textContent = (state.me.authentication === "public-session" ? "体验成员 · " : "本机 · ") + state.me.subject_id; $("who").hidden = false;
       if ($("account-name")) $("account-name").textContent = login;

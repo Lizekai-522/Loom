@@ -51,6 +51,7 @@
     const row = node("div", undefined, "row");
     const select = node("select"); select.setAttribute("aria-label", "项目");
     for (const project of items) { const option = node("option", project.name); option.value = project.id; select.append(option); }
+    if (state.projectId && [...select.options].some(option => option.value === state.projectId)) select.value = state.projectId;
     row.append(select); host.append(row);
     const list = node("div"); host.append(list);
     async function reload() {
@@ -95,6 +96,18 @@
   }
   async function renderBrowser(host) {
     host.replaceChildren();
+    const sources = state.browserSources || [];
+    if (sources.length) {
+      host.append(node("p", "这个任务正在使用的页面。"));
+      const list = node("ul");
+      for (const item of sources.slice(0, 8)) {
+        const li = node("li");
+        const link = node("a", item.title || item.url);
+        link.href = item.url; link.target = "_blank"; link.rel = "noreferrer noopener";
+        li.append(link); list.append(li);
+      }
+      host.append(list);
+    }
     const url = node("input"); url.type = "url"; url.placeholder = "https://"; url.setAttribute("aria-label", "页面地址");
     const go = node("button", "预览"); go.type = "button";
     const row = node("div", undefined, "row"); row.append(url, go); host.append(row);
@@ -176,6 +189,7 @@
     const projects = await request("GET", "/v1/workspace/projects");
     const select = node("select"); select.setAttribute("aria-label", "项目文件");
     for (const project of projects.items || []) { const option = node("option", project.name); option.value = project.id; select.append(option); }
+    if (state.projectId && [...select.options].some(option => option.value === state.projectId)) select.value = state.projectId;
     const query = node("input"); query.type = "search"; query.setAttribute("aria-label", "过滤文件");
     const row = node("div", undefined, "row"); row.append(select, query); host.append(row);
     const list = node("div"); host.append(list);
@@ -207,16 +221,29 @@
   async function renderDag(host) {
     host.replaceChildren(node("p", "编程会话的角色进度。批准仍由你本人做出。"));
     const tasks = await request("GET", "/v1/assistant/tasks");
-    const coding = (tasks.items || []).filter(task => task.kind === "coding" && task.state && task.state.session_id);
-    if (!coding.length) { host.append(node("p", "还没有编程会话。")); return; }
-    for (const task of coding) {
+    const sessions = await request("GET", "/v1/sessions").catch(() => ({items: []}));
+    const ids = [];
+    const titles = new Map();
+    for (const task of tasks.items || []) {
+      const sessionId = task.kind === "coding" && task.state && task.state.session_id;
+      if (sessionId && !ids.includes(sessionId)) { ids.push(sessionId); titles.set(sessionId, task.title); }
+    }
+    for (const session of sessions.items || []) {
+      if (["running", "awaiting_approval", "paused", "needs_attention"].includes(session.state) && !ids.includes(session.session_id)) {
+        ids.push(session.session_id); titles.set(session.session_id, session.title);
+      }
+    }
+    if (!ids.length) { host.append(node("p", "还没有编程会话。")); return; }
+    for (const sessionId of ids) {
       const card = node("article");
-      const summary = task.card ? task.card.worker_state + " · " + task.card.card_summary : task.status;
-      card.append(node("strong", task.title), node("p", summary));
+      card.append(node("strong", titles.get(sessionId) || "编程会话"));
       try {
-        const view = await request("GET", "/v1/sessions/" + encodeURIComponent(task.state.session_id));
+        const view = await request("GET", "/v1/sessions/" + encodeURIComponent(sessionId));
+        const labels = {running: "进行中", awaiting_approval: "等你批准", paused: "已暂停", needs_attention: "需要处理", delivered: "已交付", verified: "已复核", terminated: "已结束"};
+        card.append(node("p", labels[view.state] || view.state || ""));
         const list = node("ol");
-        for (const step of view.steps || []) list.append(node("li", (step.label || step.role || step.key) + " · " + (step.status || "")));
+        const stepLabel = {queued: "排队", waiting: "等待", running: "进行中", done: "完成", succeeded: "完成", skipped: "跳过", failed: "失败", blocked: "已暂停", pending: "未开始"};
+        for (const step of view.steps || []) list.append(node("li", (step.label || step.role || step.key) + " · " + (stepLabel[step.status] || step.status || "")));
         card.append(list);
         if (view.state === "awaiting_approval" && view.approval && view.approval.digest) {
           card.append(node("p", view.approval.message || ""));
@@ -299,14 +326,218 @@
       else await renderAgent(host);
     } catch (error) { host.replaceChildren(node("p", error.message)); }
   }
+  const TABS = ["files", "diff", "browser", "computer", "dag"];
+  const ACTIVE = new Set(["queued", "running", "blocked", "waiting_approval", "awaiting_confirmation"]);
+  const SESSION_ACTIVE = new Set(["running", "awaiting_approval", "paused", "needs_attention"]);
+  const WEB_STEPS = new Set(["search", "read", "write", "done"]);
+  const MEMORY_KEY = "verilo.inspector.memory";
+  const WIDTH_KEY = "verilo.inspector.width";
+  let memory = {dismissed: [], reasons: {}};
+  try { memory = {...memory, ...JSON.parse(sessionStorage.getItem(MEMORY_KEY) || "{}")}; } catch { /* keep defaults */ }
+  if (!Array.isArray(memory.dismissed)) memory.dismissed = [];
+  if (!memory.reasons || typeof memory.reasons !== "object") memory.reasons = {};
+  const dismissed = new Set(memory.dismissed);
+  let currentReasons = {};
+  let rendered = "";
+  const storedWidth = Number(localStorage.getItem(WIDTH_KEY));
+  let width = Number.isFinite(storedWidth) && storedWidth >= 280 ? storedWidth : 420;
+  let computerOn = false;
+  let computerChecked = 0;
+  let last = {tasks: [], sessions: [], messages: []};
+  function persistMemory() {
+    memory.dismissed = [...dismissed];
+    try { sessionStorage.setItem(MEMORY_KEY, JSON.stringify(memory)); } catch { /* private mode */ }
+  }
+  function clampWidth(px) {
+    const max = Math.max(280, Math.min(840, Math.round(window.innerWidth * 0.68)));
+    return Math.max(280, Math.min(max, Math.round(px)));
+  }
+  function applyWidth() {
+    const px = clampWidth(width);
+    $("shell")?.style.setProperty("--inspector-width", px + "px");
+    const handle = $("inspector-resize");
+    if (handle) {
+      handle.setAttribute("aria-valuenow", String(px));
+      handle.setAttribute("aria-valuemax", String(Math.max(280, Math.min(840, Math.round(window.innerWidth * 0.68)))));
+    }
+  }
+  function setWidth(px, persist) {
+    width = Math.max(280, Math.min(840, Math.round(px)));
+    if (persist) { try { localStorage.setItem(WIDTH_KEY, String(width)); } catch { /* private mode */ } }
+    applyWidth();
+  }
+  function resizeBy(delta) { setWidth(width + delta, true); }
+  function layout() {
+    const inspectorOpen = $("inspector") && !$("inspector").hidden;
+    const panelOpen = $("panel") && !$("panel").hidden;
+    const open = Boolean(inspectorOpen || panelOpen);
+    const bar = $("rightbar");
+    if (bar) bar.hidden = !open;
+    $("shell")?.classList.toggle("panel-open", open);
+    $("open-inspector")?.setAttribute("aria-expanded", String(Boolean(inspectorOpen)));
+    if (open) applyWidth();
+  }
+  function visibleIds() { return TABS.filter(id => currentReasons[id] && !dismissed.has(id)); }
+  function paint() {
+    const shown = visibleIds();
+    for (const id of TABS) {
+      const tab = document.querySelector(`[data-inspector-tab="${id}"]`);
+      if (tab) tab.hidden = !shown.includes(id);
+    }
+    const inspector = $("inspector");
+    if (inspector) inspector.hidden = shown.length === 0;
+    if (shown.length && !shown.includes(state.inspector)) state.inspector = shown[0];
+    for (const button of document.querySelectorAll("#inspector [data-inspector]")) {
+      button.setAttribute("aria-selected", String(shown.includes(button.dataset.inspector) && button.dataset.inspector === state.inspector));
+    }
+    const signature = shown.includes(state.inspector)
+      ? state.inspector + "|" + (state.inspector === "browser" ? (state.browserSources || []).map(item => item.url).join(",") : "") + "|" + (state.inspector === "dag" ? currentReasons.dag || "" : "")
+      : "";
+    if (signature && rendered !== signature) { rendered = signature; renderInspector(); }
+    if (!signature) rendered = "";
+    layout();
+  }
+  function computeReasons() {
+    const reasons = {};
+    const projects = new Set();
+    const trees = new Set();
+    const sessionIds = [];
+    const sources = [];
+    const browserIds = [];
+    for (const task of last.tasks) {
+      if (!task || !ACTIVE.has(task.status)) continue;
+      const detail = task.state || {};
+      if (task.kind === "coding" && detail.session_id && !sessionIds.includes(detail.session_id)) sessionIds.push(detail.session_id);
+      if (task.kind === "coding" && detail.project_id) projects.add(detail.project_id);
+      if (task.kind === "coding" && detail.worktree_id) trees.add(detail.worktree_id);
+      if (task.kind === "research" && WEB_STEPS.has(detail.step || "")) browserIds.push(task.id);
+      if (task.kind === "research") {
+        for (const item of [...(detail.pages || []), ...(detail.results || []), ...(detail.sources || [])]) {
+          if (item && item.url && !sources.some(source => source.url === item.url)) sources.push({url: item.url, title: item.title || item.url});
+        }
+      }
+    }
+    for (const session of last.sessions) {
+      if (session && SESSION_ACTIVE.has(session.state) && !sessionIds.includes(session.session_id)) sessionIds.push(session.session_id);
+    }
+    const selected = $("workspace-project")?.value || "";
+    if (selected && sessionIds.length) projects.add(selected);
+    if (state.worktreeId) {
+      trees.add(state.worktreeId);
+      if (selected) projects.add(selected);
+    }
+    const mentionKey = last.messages.filter(message => Array.isArray(message?.meta?.mentions) && message.meta.mentions.length).map(message => message.id).sort().join(",");
+    if (mentionKey) projects.add("mentions");
+    state.browserSources = sources;
+    if (sessionIds.length) reasons.dag = sessionIds.slice().sort().join(",");
+    if (projects.size || mentionKey) reasons.files = [...projects].sort().join(",") + "|" + mentionKey;
+    if (trees.size) reasons.diff = [...trees].sort().join(",");
+    if (browserIds.length) reasons.browser = browserIds.slice().sort().join(",");
+    if (state.computerSession || computerOn) reasons.computer = state.computerSession || "enabled";
+    return reasons;
+  }
+  function consider() {
+    const reasons = computeReasons();
+    for (const id of TABS) {
+      if (!reasons[id]) continue;
+      if (memory.reasons[id] !== reasons[id]) dismissed.delete(id);
+      memory.reasons[id] = reasons[id];
+    }
+    currentReasons = reasons;
+    persistMemory();
+    paint();
+  }
+  function closeTab(id) {
+    dismissed.add(id);
+    persistMemory();
+    paint();
+  }
+  function toggle() {
+    const shown = visibleIds();
+    if (shown.length) {
+      for (const id of shown) dismissed.add(id);
+      persistMemory();
+      paint();
+      return;
+    }
+    if (!Object.keys(currentReasons).length) {
+      const banner = $("notice");
+      if (banner) { banner.hidden = false; banner.className = "notice"; banner.textContent = "当前没有任务或会话在使用检查器。"; }
+      return;
+    }
+    for (const id of Object.keys(currentReasons)) dismissed.delete(id);
+    persistMemory();
+    paint();
+  }
+  async function refreshComputer() {
+    if (Date.now() - computerChecked < 15000) return;
+    computerChecked = Date.now();
+    let on = false;
+    try {
+      const status = await request("GET", "/v1/computer/status");
+      on = Boolean(status.enabled || status.session_id);
+      if (status.session_id) state.computerSession = state.computerSession || status.session_id;
+    } catch { on = Boolean(state.computerSession); }
+    if (on !== computerOn) { computerOn = on; consider(); }
+  }
+  function sync(partial = {}) {
+    if (partial.tasks) last.tasks = partial.tasks;
+    if (partial.sessions) last.sessions = partial.sessions;
+    else if (window.VeriloHarness?.sessions) last.sessions = window.VeriloHarness.sessions();
+    if (partial.messages) last.messages = partial.messages;
+    consider();
+    refreshComputer();
+  }
+  function bindResize() {
+    const handle = $("inspector-resize");
+    if (!handle) return;
+    handle.addEventListener("pointerdown", event => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      const startX = event.clientX;
+      const startW = clampWidth(width);
+      handle.setPointerCapture(event.pointerId);
+      document.body.classList.add("inspector-resizing");
+      const move = e => setWidth(startW + (startX - e.clientX), false);
+      const end = () => {
+        handle.removeEventListener("pointermove", move);
+        document.body.classList.remove("inspector-resizing");
+        setWidth(clampWidth(width), true);
+      };
+      handle.addEventListener("pointermove", move);
+      handle.addEventListener("pointerup", end, {once: true});
+      handle.addEventListener("pointercancel", end, {once: true});
+    });
+    handle.addEventListener("keydown", event => {
+      if (event.key === "ArrowLeft") { event.preventDefault(); resizeBy(24); }
+      else if (event.key === "ArrowRight") { event.preventDefault(); resizeBy(-24); }
+      else if (event.key === "Home") { event.preventDefault(); setWidth(420, true); }
+    });
+    handle.addEventListener("dblclick", () => setWidth(420, true));
+    window.addEventListener("resize", applyWidth);
+  }
+  window.VeriloInspector = {sync, layout, resizeBy, toggle, closeTab};
   function bind() {
-    $("open-inspector")?.addEventListener("click", () => { const open = $("inspector").hidden; show("inspector", open); if (open) renderInspector(); });
+    bindResize();
+    applyWidth();
+    layout();
+    $("open-inspector")?.addEventListener("click", () => toggle());
     $("open-settings")?.addEventListener("click", () => { const open = $("settings-drawer").hidden; show("settings-drawer", open); if (open) renderSettings(); });
     for (const button of document.querySelectorAll("#inspector [data-inspector]")) button.addEventListener("click", () => {
       state.inspector = button.dataset.inspector;
-      for (const item of document.querySelectorAll("#inspector [data-inspector]")) item.setAttribute("aria-selected", String(item === button));
-      renderInspector();
+      rendered = "";
+      paint();
     });
+    for (const button of document.querySelectorAll("[data-close-inspector]")) button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeTab(button.dataset.closeInspector);
+    });
+    document.addEventListener("change", event => {
+      if (event.target && (event.target.id === "workspace-project" || event.target.id === "workspace-branch")) sync();
+    });
+    window.addEventListener("verilo:worktree", () => sync());
+    window.addEventListener("verilo:preferences", () => sync());
     for (const button of document.querySelectorAll("#settings-drawer [data-settings]")) button.addEventListener("click", () => {
       state.settings = button.dataset.settings;
       for (const item of document.querySelectorAll("#settings-drawer [data-settings]")) item.setAttribute("aria-selected", String(item === button));

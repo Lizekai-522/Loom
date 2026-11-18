@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Verilo · 任务</title>
+<link rel="icon" href="/console/assets/verilo-icon.svg?v=4" type="image/svg+xml">
+<link rel="stylesheet" href="/console/assets/verilo-theme.css">
+<link rel="stylesheet" href="/console/assets/assistant.css">
+<link rel="stylesheet" href="/console/assets/frame.css">
+<script src="/console/assets/frame.js" defer></script>
+<script src="/console/assets/tasks.js" defer></script>
+</head>
+<body>
+<div class="app-frame">
+  <aside class="app-side" aria-label="导航">
+    <a class="app-brand" href="/console"><img src="/console/assets/verilo-mark.svg" alt=""><span>VERILO</span></a>
+    <a class="app-new" href="/console/sessions">＋ <span>新建任务</span></a>
+    <nav class="app-nav" aria-label="工作区">
+      <a href="/console"><span aria-hidden="true">◯</span>对话</a>
+      <a href="/console/tasks" aria-current="page"><span aria-hidden="true">□</span>任务</a>
+      <a href="/console/projects"><span aria-hidden="true">▱</span>项目</a>
+      <a href="/console/automations"><span aria-hidden="true">◷</span>自动化</a>
+      <a href="/console/market"><span aria-hidden="true">⊞</span>插件市场</a>
+    </nav>
+    <div class="app-foot verilo-sidebar-footer">
+      <div class="verilo-account">
+        <button type="button" id="account-trigger" class="verilo-account-trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="account-menu" aria-label="账号菜单">
+          <span class="verilo-avatar" id="account-avatar" aria-hidden="true"></span>
+          <span class="verilo-account-name" id="account-name"></span>
+        </button>
+        <div id="account-menu" class="verilo-account-menu" role="menu" hidden>
+          <a id="account-usage" class="verilo-account-usage" role="menuitem" href="/console/settings#usage" hidden>
+            <span class="verilo-account-usage-top">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 12 16 8"/></svg>
+              <span id="account-usage-title">今日预算</span>
+              <span id="account-usage-meta"></span>
+            </span>
+            <span class="verilo-account-usage-bar" aria-hidden="true"><span id="account-usage-fill"></span></span>
+          </a>
+          <div class="verilo-account-sep" id="account-usage-sep" hidden></div>
+          <a role="menuitem" href="/console/settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="8" cy="7" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="10" cy="17" r="1.6"/></svg>设置</a>
+          <a role="menuitem" href="/console/settings#appearance"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z"/></svg>外观</a>
+          <a role="menuitem" href="/console/settings#general"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 19c1.4-3 3.6-4.5 7-4.5s5.6 1.5 7 4.5"/></svg>账号</a>
+          <a role="menuitem" href="/console/settings#guide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5"/><path d="M19 5 10 14"/><path d="M8 6H6v12h12v-2"/></svg>引导</a>
+          <div class="verilo-account-sep" id="account-signout-sep" hidden></div>
+          <button type="button" role="menuitem" id="account-signout" class="verilo-account-danger" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 7V5H5v14h5v-2"/><path d="M10 12h9"/><path d="M16 8l4 4-4 4"/></svg>退出登录</button>
+        </div>
+      </div>
+      <button type="button" id="collapse-sidebar" class="verilo-icon" aria-label="折叠侧栏">⟨</button>
+    </div>
+  </aside>
+  <main class="app-main">
+    <header class="app-head">
+      <h1>任务</h1>
+      <a class="app-btn primary" href="/console/sessions">新建任务</a>
+    </header>
+    <div class="app-toolbar">
+      <input id="task-search" class="app-search" type="search" aria-label="搜索任务" placeholder="搜索标题或编号">
+      <div class="app-filters" role="group" aria-label="状态">
+        <button type="button" data-filter="active" aria-pressed="true">进行中</button>
+        <button type="button" data-filter="paused" aria-pressed="false">已暂停</button>
+        <button type="button" data-filter="ended" aria-pressed="false">已结束</button>
+        <button type="button" data-filter="all" aria-pressed="false">全部</button>
+      </div>
+    </div>
+    <p id="notice" role="status" hidden></p>
+    <div class="app-split">
+      <div id="task-list" class="app-list" aria-label="任务列表"></div>
+      <div id="task-detail" class="app-detail"></div>
+    </div>
+  </main>
+</div>
+</body>
+</html>
