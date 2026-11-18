@@ -111,8 +111,8 @@ body.inspector-resizing{cursor:col-resize;user-select:none}
 .verilo-brand img{display:block;width:100px;height:34px;object-fit:contain}
 .verilo-new{display:flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:36px;padding:0 14px;background:var(--accent);border:0;border-radius:12px;color:var(--accent-ink);text-decoration:none;font-size:14px;line-height:22px;font-weight:500}
 .verilo-new:hover{background:color-mix(in srgb,var(--accent) 86%,#000)}
-.verilo-nav{display:flex;flex-direction:column;gap:4px}
-.verilo-nav a,.verilo-nav button{display:flex;align-items:center;gap:12px;width:100%;min-height:40px;padding:8px 12px;border:0;border-radius:8px;background:transparent;color:var(--ink);font:inherit;font-size:14px;line-height:22px;text-decoration:none;text-align:left}
+.verilo-nav{display:flex;flex-direction:column;gap:2px}
+.verilo-nav a,.verilo-nav button{display:flex;align-items:center;gap:6px;width:100%;min-height:32px;padding:0 12px;border:0;border-radius:12px;background:transparent;color:var(--ink);font:inherit;font-size:14px;line-height:22px;text-decoration:none;text-align:left}
 .verilo-nav a:hover,.verilo-nav button:hover,.verilo-nav [aria-current=page]{background:var(--accent-soft);color:var(--accent)}
 .verilo-nav span{width:18px;text-align:center;color:var(--accent)}
 .verilo-sidebar-footer{display:flex;align-items:center;gap:4px;margin-top:auto;padding:8px 8px 10px;border-top:1px solid var(--line)}
@@ -121,9 +121,9 @@ body.inspector-resizing{cursor:col-resize;user-select:none}
 .verilo-account-trigger:hover,.verilo-account-trigger[aria-expanded=true]{background:var(--accent-soft)}
 .verilo-avatar{display:grid;place-items:center;flex:none;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px;font-weight:500;line-height:1}
 .verilo-account-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
-.verilo-account-menu{position:absolute;left:0;bottom:calc(100% + 4px);z-index:30;box-sizing:border-box;display:flex;flex-direction:column;width:248px;min-width:232px;padding:6px;border:0;border-radius:12px;background:var(--surface);box-shadow:0 8px 28px rgb(20 40 24 / .16),inset 0 0 0 .5px var(--line)}
+.verilo-account-menu{position:absolute;left:0;bottom:calc(100% + 4px);z-index:30;box-sizing:border-box;display:flex;flex-direction:column;width:248px;min-width:232px;padding:4px;border:0;border-radius:16px;background:var(--surface);box-shadow:0 8px 28px rgb(20 40 24 / .16),inset 0 0 0 .5px var(--line)}
 .verilo-account-menu[hidden]{display:none!important}
-.verilo-account-menu a,.verilo-account-menu button{display:flex;align-items:center;gap:10px;width:100%;min-height:36px;padding:8px 10px;border:0;border-radius:8px;background:transparent;color:var(--ink);font:inherit;font-size:13px;line-height:20px;font-weight:400;text-align:left;text-decoration:none;cursor:pointer}
+.verilo-account-menu a,.verilo-account-menu button{display:flex;align-items:center;gap:10px;width:100%;min-height:32px;padding:6px 10px;border:0;border-radius:12px;background:transparent;color:var(--ink);font:inherit;font-size:13px;line-height:20px;font-weight:400;text-align:left;text-decoration:none;cursor:pointer}
 .verilo-account-menu svg{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .verilo-account-menu a:hover,.verilo-account-menu button:hover,.verilo-account-menu a:focus-visible,.verilo-account-menu button:focus-visible{background:var(--accent-soft);color:var(--accent);outline:none}
 .verilo-account-menu a.verilo-account-usage{flex-direction:column;align-items:stretch;gap:8px;min-height:0;padding:8px 10px 10px}
@@ -156,7 +156,7 @@ body.inspector-resizing{cursor:col-resize;user-select:none}
 .as-stream{padding:34px 28px 16px}
 .as-msg.user{align-self:flex-start;background:transparent;border:0;border-radius:0;padding:8px 0;max-width:100%;font-weight:600}
 .as-msg.assistant{padding:8px 0}
-.as-composer{max-width:780px;width:calc(100% - 56px);margin:8px auto 24px;border-color:var(--line-strong);box-shadow:0 2px 10px rgb(24 60 34 / .04)}
+.as-composer{max-width:780px;width:calc(100% - 56px);margin:8px auto 24px;border:0.5px solid var(--line-strong);border-radius:28px;box-shadow:0 2px 10px rgb(24 60 34 / .04)}
 .as-attachments{display:flex;flex-wrap:wrap;gap:6px;max-width:780px;width:calc(100% - 56px);margin:0 auto 2px}
 .as-attachment{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--sunken);font-size:12px}
 .as-attachment span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}

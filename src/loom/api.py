@@ -327,6 +327,10 @@ def create_app(store: Store, tenant_keys: dict[str, str], *, identities: tuple[L
         # Resident assistant: one long conversation plus background tasks, todos and approvals.
         return terminal_page('assistant.html', request)
 
+    @app.get("/console/tasks", include_in_schema=False)
+    def task_manager(request: Request):
+        return terminal_page('tasks.html', request)
+
     @app.get("/console/sessions", include_in_schema=False)
     def coding_sessions(request: Request):
         # Automatic coding sessions (requirements -> tests -> code -> held-out acceptance).

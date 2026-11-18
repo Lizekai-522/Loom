@@ -285,6 +285,12 @@ def test_console_keeps_green_tokens_and_the_audit_wiring():
     assert 'href="/console/settings#general"' in assistant and '退出登录' in assistant
     assert 'href="/console/settings#usage"' in assistant and 'href="/console/settings#guide"' in assistant
     assert 'id="account-usage"' in assistant and 'id="account-signout"' in assistant and 'verilo-account-danger" hidden' in assistant
+    assert 'href="/console/tasks"' in assistant
+    tasks = (root / 'tasks.html').read_text(encoding='utf-8')
+    assert 'data-filter="active"' in tasks and 'data-filter="paused"' in tasks and 'data-filter="ended"' in tasks and 'data-filter="all"' in tasks
+    assert 'id="task-search"' in tasks and 'id="task-detail"' in tasks and '新建任务' in tasks
+    assert '#1f6feb' not in (root / 'settings.css').read_text(encoding='utf-8')
+    assert '#245b35' in theme
     assert 'id="inspector-resize"' in assistant and 'data-close-inspector="files"' in assistant
     assert 'id="rightbar" class="rightbar" hidden' in assistant and 'id="inspector" class="inspector" hidden' in assistant
     assert 'Premium' not in assistant and 'Super' not in assistant and 'Grok' not in assistant and '添加账户' not in assistant

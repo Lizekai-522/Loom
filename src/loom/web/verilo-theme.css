@@ -6,3 +6,8 @@
 .session-foot-button{display:block;padding:8px 10px;border-radius:7px;color:var(--ink);text-decoration:none}
 .session-foot-button:hover,.session-foot-button:focus-visible{background:var(--accent-soft);color:var(--accent)}
 .avatar img{width:100%;height:100%;object-fit:contain}
+.console-app button{border-radius:12px}
+.console-app button.small,.console-app button.quiet,.console-app button.text-button{border-radius:8px}
+.console-app input,.console-app textarea,.console-app select{border-radius:12px}
+.console-app .topbar{height:56px}
+.console-app h1{font-size:20px;letter-spacing:0}

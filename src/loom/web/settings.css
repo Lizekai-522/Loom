@@ -1,15 +1,15 @@
 /* Settings hub: same visual family as the assistant console, no external assets. */
-:root { --card-border: #e2e2e6; --ok: #1a7f37; --warn: #9a6700; --err: #cf222e; --muted: #6e7781; }
-body { background: #f6f7f9; color: #1f2328; font: 15px/1.6 system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; margin: 0; }
+:root { --card-border: var(--line, #e6ebe7); --ok: var(--accent, #245b35); --warn: #9a6700; --err: #a83d37; }
+body { background: var(--bg, #fff); color: var(--ink, #1b2520); font: 14px/22px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; margin: 0; }
 .settings-top { align-items: center; background: #fff; border-bottom: 1px solid var(--card-border); display: flex; gap: 24px; padding: 10px 24px; position: sticky; top: 0; z-index: 5; }
 .brand { color: inherit; display: flex; font-weight: 600; gap: 8px; text-decoration: none; }
 .brand-mark { align-items: center; background: #1f2328; border-radius: 6px; color: #fff; display: inline-flex; height: 24px; justify-content: center; width: 24px; }
 .settings-links { display: flex; gap: 16px; margin-left: auto; }
-.settings-links a { color: #1f2328; text-decoration: none; }
+.settings-links a { color: inherit; text-decoration: none; }
 .settings-links a:hover { text-decoration: underline; }
 .settings-main { margin: 0 auto; max-width: 960px; padding: 20px 16px 80px; }
-.settings-section { background: #fff; border: 1px solid var(--card-border); border-radius: 10px; margin-top: 18px; padding: 18px 20px 22px; }
-.settings-section h1 { font-size: 20px; margin: 0 0 6px; }
+.settings-section { background: var(--surface, #fff); border: 0.5px solid var(--card-border); border-radius: 20px; margin-top: 16px; padding: 16px 20px 20px; }
+.settings-section h1 { font-size: 16px; margin: 0 0 6px; }
 .settings-section h2 { font-size: 17px; margin: 0 0 6px; }
 .muted { color: var(--muted); font-size: 13px; }
 .notice { border-radius: 8px; margin-top: 14px; padding: 10px 14px; }
@@ -17,7 +17,7 @@ body { background: #f6f7f9; color: #1f2328; font: 15px/1.6 system-ui, -apple-sys
 .notice.error { background: #ffebe9; border-color: var(--err); color: var(--err); }
 .restart-banner { background: #fff8c5; border: 1px solid #d4a72c; border-radius: 10px; display: flex; gap: 14px; margin-top: 14px; padding: 10px 14px; }
 .cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); margin-top: 12px; }
-.card { border: 1px solid var(--card-border); border-radius: 10px; padding: 12px 14px; }
+.card { border: 0.5px solid var(--card-border); border-radius: 20px; padding: 12px 14px; }
 .card h3 { font-size: 14px; margin: 0 0 4px; }
 .card h3 a { color: inherit; text-decoration: none; }
 .card .hint { color: var(--muted); font-size: 12px; margin: 0; }
@@ -26,12 +26,13 @@ body { background: #f6f7f9; color: #1f2328; font: 15px/1.6 system-ui, -apple-sys
 form.as-form { display: grid; gap: 12px; margin-top: 12px; max-width: 640px; }
 label { display: flex; flex-direction: column; font-size: 13px; gap: 4px; }
 label > span { color: var(--muted); }
-input, select, textarea { border: 1px solid var(--card-border); border-radius: 8px; font: inherit; padding: 7px 10px; }
-button.primary, button.ghost { border-radius: 8px; cursor: pointer; font: inherit; padding: 7px 16px; }
-button.primary { background: #1f6feb; border: 1px solid #1f6feb; color: #fff; }
+input, select, textarea { border: 0.5px solid var(--card-border); border-radius: 12px; font: inherit; padding: 7px 12px; background: var(--bg, #fff); color: inherit; }
+button.primary, button.ghost { border-radius: 12px; cursor: pointer; font: inherit; height: 36px; padding: 0 14px; }
+button.primary { background: var(--accent, #245b35); border: 0; color: #fff; }
 button.primary:disabled { opacity: .6; }
-button.ghost { background: #fff; border: 1px solid var(--card-border); color: #1f2328; }
-button.danger { background: #fff; border: 1px solid var(--err); border-radius: 8px; color: var(--err); cursor: pointer; font: inherit; padding: 4px 10px; }
+button.ghost { background: transparent; border: 0; color: var(--ink, #1b2520); height: 28px; border-radius: 8px; }
+button.ghost:hover { background: var(--accent-soft, #eaf2ec); color: var(--accent, #245b35); }
+button.danger { background: transparent; border: 0; border-radius: 8px; color: var(--err); cursor: pointer; font: inherit; height: 28px; padding: 0 10px; }
 .row { align-items: center; display: flex; gap: 10px; margin-top: 10px; }
 pre.logs { background: #0d1117; border-radius: 10px; color: #c9d1d9; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; max-height: 320px; overflow: auto; padding: 12px; white-space: pre-wrap; }
 table.members { border-collapse: collapse; margin-top: 12px; width: 100%; }

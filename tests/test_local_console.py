@@ -60,11 +60,12 @@ def test_ambiguous_or_absent_operator_refuses_startup(tmp_path,identities):
 
 def test_connection_page_has_no_credential_input(tmp_path):
     with client(tmp_path) as c:
-        for page in ('/console','/console/sessions','/console/expert'):
+        for page in ('/console','/console/sessions','/console/tasks','/console/expert'):
             text=c.get(page).text
             assert 'id="access-token"' not in text and 'type="password"' not in text
         page = c.get('/console').text
         assert 'assistant.js' in page and 'chat.js' in c.get('/console/sessions').text
+        assert 'tasks.js' in c.get('/console/tasks').text and '进行中' in c.get('/console/tasks').text
         assert 'id="account-trigger"' in page and '新建工作树' not in page
         assert '新建工作树' not in c.get('/console/assets/workbench.js').text
         assert 'console-zh.js' in c.get('/console/expert').text
