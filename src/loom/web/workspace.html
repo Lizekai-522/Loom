@@ -2,13 +2,13 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Verilo · 工作区</title>
-<link rel="icon" href="/console/assets/verilo-taskbar-v4.ico?v=4"><link rel="stylesheet" href="/console/assets/verilo-theme.css"><link rel="stylesheet" href="/console/assets/assistant.css"><link rel="stylesheet" href="/console/assets/frame.css"><link rel="stylesheet" href="/console/assets/workspace.css">
+<link rel="icon" href="/console/assets/verilo-taskbar-v4.ico?v=4"><link rel="stylesheet" href="/console/assets/verilo-theme.css"><link rel="stylesheet" href="/console/assets/assistant.css"><link rel="stylesheet" href="/console/assets/frame.css"><link rel="stylesheet" href="/console/assets/workspace.css"><link rel="stylesheet" href="/console/assets/harness-chrome.css">
 <script src="/console/assets/frame.js" defer></script><script src="/console/assets/workspace-ui.js" defer></script><script src="/console/assets/workspace.js" defer></script>
 </head>
 <body>
 <div class="app-frame">
 <aside class="app-side" aria-label="导航">
-<a class="app-brand" href="/console"><img src="/console/assets/verilo-mark.svg" alt=""><span>VERILO</span></a>
+<a class="app-brand" href="/console"><img src="/console/assets/verilo-mark.svg" alt=""><span>Verilo</span></a>
 <a class="app-new" href="/console/sessions">＋ <span>新建任务</span></a>
 <nav class="app-nav" aria-label="工作区">
 <a href="/console"><span aria-hidden="true">◯</span>对话</a>
@@ -41,9 +41,15 @@
 </div>
 </aside>
 <main class="app-main hub-main">
-<header class="app-head"><h1 id="hub-title"></h1><button id="add" type="button" class="app-btn primary" hidden>新建</button></header>
+<div class="hub-scroll">
+<div class="hub-column">
+<header class="app-head hub-head"><h1 id="hub-title"></h1><button id="add" type="button" class="app-btn primary" hidden>新建</button></header>
+<div id="hub-tools"></div>
 <p id="notice" role="status" hidden></p>
-<div id="hub-content" class="app-page"></div>
+<div id="hub-content"></div>
+</div>
+<aside id="hub-detail" class="hub-detail" hidden></aside>
+</div>
 </main>
 </div>
 <dialog id="editor"><form id="editor-form"><div class="dialog-head"><h2 id="editor-title">新建</h2><button id="editor-close" type="button" aria-label="关闭">×</button></div><div id="editor-fields"></div><div class="dialog-actions"><button id="editor-save" class="app-btn primary" type="submit">保存</button></div></form></dialog>

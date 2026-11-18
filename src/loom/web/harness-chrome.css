@@ -1,0 +1,145 @@
+/* Loom console chrome adapted from the DeepSeek Harness web shell
+   (sidebar, conversation header, composer, and module pages).
+   Colors are Loom's white-and-green theme, not the upstream palette.
+   DeepSeek wordmarks, logos, and product names are not used.
+
+   MIT License
+   Copyright (c) 2026 DeepSeek
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+   Geometry adapted from the upstream shell (apps/web via ui-layout, ui-sidebar,
+   ui-conversation, ui-schedule): sidebar 280px / rail 56px, nav row 32px,
+   new-session control 38px with 12px radius, conversation header 76px,
+   composer panel radius 28px, circular 32px send, module title 20px/28px,
+   page column 960px, detail pane 47%. */
+
+.app-frame,.as-shell,.shell{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Helvetica Neue",Helvetica,Arial,sans-serif;font-size:14px;line-height:22px}
+.app-side,.verilo-sidebar,.shell .sidebar{gap:0;padding:6px 8px;background:#f7faf8;border-right:0.5px solid var(--line)}
+.app-brand,.verilo-brand,.shell .brand{flex-direction:row;align-items:center;gap:8px;height:60px;margin:0;padding:8px 0 8px 8px;color:var(--accent);font-size:18px;font-weight:600;line-height:24px;letter-spacing:.04em;text-decoration:none}
+.app-brand img,.verilo-brand img,.shell .brand img{width:28px;height:22px;object-fit:contain}
+.app-new,.verilo-new,.new-session{box-sizing:border-box;height:38px;min-height:38px;margin:0 4px 6px;padding:0 12px;border:0.5px solid color-mix(in srgb,var(--accent) 28%,var(--line));border-radius:12px;background:var(--surface);color:var(--accent);font-size:14px;line-height:22px;font-weight:500;box-shadow:none}
+.app-new:hover,.verilo-new:hover,.new-session:hover{background:var(--accent-soft);color:var(--accent)}
+.app-nav,.verilo-nav,.session-nav{gap:2px;margin-bottom:8px}
+.app-nav a,.verilo-nav a,.verilo-nav button,.session-nav a{min-height:32px;padding:5px 12px;border-radius:12px;font-size:14px;line-height:22px}
+.verilo-sidebar-footer,.shell .side-foot{display:flex;align-items:center;gap:4px;margin-top:auto;padding:8px 4px 4px;border-top:0.5px solid var(--line)}
+.verilo-account{position:relative;flex:1;min-width:0}
+.verilo-account-trigger{display:flex;align-items:center;gap:8px;width:100%;height:36px;padding:4px 6px;border:0;border-radius:12px;background:transparent;color:var(--ink);font:inherit;font-size:14px;line-height:22px;text-align:left;cursor:pointer}
+.verilo-account-trigger:hover,.verilo-account-trigger[aria-expanded=true]{background:var(--accent-soft)}
+.verilo-avatar{display:grid;place-items:center;flex:none;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px;font-weight:500}
+.verilo-account-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.verilo-account-menu{position:absolute;left:0;bottom:calc(100% + 4px);z-index:30;box-sizing:border-box;display:flex;flex-direction:column;width:248px;padding:4px;border-radius:16px;background:var(--surface);box-shadow:0 8px 28px rgb(20 40 24 / .16),inset 0 0 0 .5px var(--line)}
+.verilo-account-menu[hidden]{display:none!important}
+.verilo-account-menu a,.verilo-account-menu button{display:flex;align-items:center;gap:10px;width:100%;min-height:32px;padding:6px 10px;border:0;border-radius:12px;background:transparent;color:var(--ink);font:inherit;font-size:13px;line-height:20px;text-align:left;text-decoration:none;cursor:pointer}
+.verilo-account-menu svg{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.verilo-account-menu a:hover,.verilo-account-menu button:hover{background:var(--accent-soft);color:var(--accent)}
+.verilo-account-menu a.verilo-account-usage{flex-direction:column;align-items:stretch;gap:8px}
+.verilo-account-usage-top{display:flex;align-items:center;gap:10px;width:100%}
+.verilo-account-usage-meta{margin-left:auto;color:var(--muted);font-size:12px}
+.verilo-account-usage-bar{display:block;height:4px;border-radius:999px;background:var(--line);overflow:hidden}
+.verilo-account-usage-bar span{display:block;height:100%;width:0;border-radius:inherit;background:var(--accent)}
+.verilo-account-sep{height:1px;margin:4px 8px;background:var(--line)}
+.verilo-account-danger{color:#7a342c}
+.verilo-icon{display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}
+.hub-row[aria-current=true]{background:var(--accent-soft)}
+.verilo-search{margin:0 4px 6px}
+.verilo-search input{height:28px;padding:0 10px;border:0;border-radius:8px;background:transparent}
+.verilo-search input:focus{background:var(--surface);outline:2px solid var(--accent);outline-offset:-2px}
+#open-skills{min-height:32px;margin:0 0 4px;padding:5px 12px;border-radius:12px}
+#session-rail{margin-top:4px}
+.session-row{min-height:32px;padding:5px 12px;border-radius:12px}
+.app-frame.is-rail,.as-shell.rail,.shell.rail{grid-template-columns:56px minmax(0,1fr)}
+.app-frame.is-rail .app-side,.verilo-sidebar.collapsed,.shell.rail .sidebar{padding:18px 10px 6px}
+.app-frame.is-rail .app-new,.verilo-sidebar.collapsed .verilo-new,.shell.rail .new-session{width:36px;height:36px;min-height:36px;margin:0 auto 12px;padding:0;border-color:transparent;background:transparent}
+.app-frame.is-rail .app-nav a,.verilo-sidebar.collapsed .verilo-nav a,.verilo-sidebar.collapsed .verilo-nav button,.shell.rail .session-nav a{width:36px;height:36px;min-height:36px;justify-content:center;margin:0 auto 12px;padding:0}
+.shell.rail .brand span,.shell.rail .new-session span,.shell.rail .session-nav a,.shell.rail .verilo-account-name{font-size:0}
+.shell.rail .session-nav span,.shell.rail .brand img{font-size:16px}
+.shell.rail .session-list,.shell.rail .verilo-account-name{display:none}
+.shell.rail .verilo-sidebar-footer{flex-direction:column;align-items:center}
+
+.as-head,.main-head{box-sizing:border-box;min-height:76px;padding:10px 28px 0 20px;border-bottom:0.5px solid var(--line);align-items:center}
+.as-head .head-title strong,.main-head h1{font-size:14px;line-height:20px;font-weight:500}
+.as-links .ghost,.head-actions .ghost,.head-actions button{height:28px;padding:0 10px;border:0;border-radius:8px;background:transparent;font-size:13px;line-height:20px;font-weight:500;color:var(--muted)}
+.as-links .ghost:hover,.head-actions .ghost:hover,.head-actions button:hover{background:var(--accent-soft);color:var(--accent)}
+
+.as-stream,.stream{display:flex;flex-direction:column}
+.as-stream:has(#welcome:not([hidden])),.stream:has(#welcome:not([hidden])){justify-content:center}
+.as-stream:not(:has(#welcome:not([hidden]))) #messages{flex:1}
+#composer{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 12px;align-items:center;box-sizing:border-box;width:min(912px,calc(100% - 32px));max-width:912px;margin:0 auto 16px;padding:8px 8px 8px;border:0;border-radius:28px;background:var(--surface);box-shadow:0 8px 28px rgb(20 40 24 / .06),inset 0 0 0 .5px var(--line)}
+#composer textarea{grid-column:1 / -1;min-height:52px;margin:0;padding:4px 8px 0 6px;border:0;background:transparent;line-height:24px;resize:none}
+#composer #workspace-notice,#composer #workspace-toolbar{grid-column:1 / -1;width:100%;max-width:none;margin:0}
+#composer #attach,#composer #toggle-examples,#composer #send{width:32px;height:32px;min-height:32px;padding:0;border:0;border-radius:999px}
+#composer #attach,#composer #toggle-examples{background:var(--sunken);color:var(--ink);font-size:18px;line-height:32px}
+#composer #send{position:relative;justify-self:end;background:var(--accent);color:var(--accent-ink);font-size:16px;font-weight:500}
+#composer #send.is-interrupt{width:auto;padding:0 12px;border-radius:999px;font-size:0}
+#composer #send .send-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+#composer #send.is-interrupt .send-label{position:static;width:auto;height:auto;clip:auto;font-size:13px}
+#composer #interrupt{height:28px;padding:0 10px;border:0;border-radius:8px;background:var(--accent-soft);color:var(--accent)}
+.as-stream:not(:has(#welcome:not([hidden]))) #composer,.stream:not(:has(#welcome:not([hidden]))) #composer{position:sticky;bottom:0;margin-top:auto;z-index:2}
+.welcome{max-width:912px;width:min(912px,calc(100% - 32px));margin:0 auto 12px}
+.bento{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.bento article{border:0;border-radius:16px;background:var(--sunken);padding:12px}
+
+.task-layout,.hub-scroll{display:flex;flex:1;min-width:0;min-height:0}
+.task-list-pane,.hub-column{flex:1;min-width:0;overflow:auto}
+.task-column,.hub-column{box-sizing:border-box;max-width:calc(960px + 2 * clamp(24px,4vw,48px));margin:0 auto;padding:0 clamp(24px,4vw,48px) 48px}
+.task-heading,.hub-head{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:0;padding:28px 0 0;margin:0 0 24px;border:0}
+.task-heading h1,.hub-head h1,.admin-main h1,.page-head h1{margin:0;font-size:20px;line-height:28px;font-weight:500}
+.task-heading .app-btn.primary,.hub-head .app-btn.primary,.admin-main button.primary{height:32px;padding:0 12px;border-radius:12px;font-size:13px;line-height:20px;font-weight:500}
+.task-filters,.hub-filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 14px}
+.task-filters button,.hub-filters button{height:28px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:14px;line-height:22px;cursor:pointer}
+.task-filters button[aria-pressed=true],.hub-filters button[aria-pressed=true],.task-filters button:hover,.hub-filters button:hover{background:var(--accent-soft);color:var(--accent)}
+#task-search,.hub-tools .app-search{box-sizing:border-box;width:100%;height:36px;margin:0 0 16px;padding:0 12px;border:0.5px solid var(--line-strong);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit}
+.hub-tools{display:flex;flex-direction:column}
+.task-row,.hub-row{display:flex;align-items:flex-start;gap:12px;width:100%;margin:0;padding:8px;border:0;border-radius:16px;background:transparent;color:var(--ink);text-align:left;font:inherit;cursor:pointer}
+.task-row{flex-direction:column;gap:2px}
+.task-row:hover,.task-row[aria-current=true],.hub-row:hover{background:var(--accent-soft)}
+.task-row strong,.hub-row h2{font-size:14px;line-height:23px;font-weight:500}
+.task-row small,.hub-row p{color:var(--muted);font-size:13px;line-height:21px}
+.hub-list{display:flex;flex-direction:column;gap:2px}
+.hub-row{align-items:center}
+.hub-row .hub-maintext{flex:1;min-width:0}
+.hub-row h2,.hub-row p{margin:0}
+.hub-row p{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hub-row .row{display:flex;flex:none;gap:4px;flex-wrap:wrap}
+.hub-row .row button,.hub-detail .row button,.task-detail .row button,.task-detail .app-btn{height:28px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--accent);font:inherit;font-size:13px;text-decoration:none;cursor:pointer}
+.hub-row .row button:hover,.hub-detail .row button:hover,.task-detail .row button:hover{background:var(--accent-soft)}
+.hub-row .row button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent)}
+.task-detail,.hub-detail{flex:0 0 47%;min-width:0;overflow:auto;padding:24px;border-left:0.5px solid var(--line-strong);background:var(--surface)}
+.task-detail h2,.hub-detail h2{margin:0 0 8px;font-size:20px;line-height:28px;font-weight:500}
+.task-empty,.hub-empty{display:flex;align-items:center;justify-content:center;min-height:240px;margin:0;padding:48px 20px;color:var(--muted);font-size:14px;font-weight:400;text-align:center}
+.hub-icon{display:grid;place-items:center;flex:none;width:48px;height:48px;border:0.5px solid var(--line);border-radius:16px;color:var(--accent);font-weight:600}
+.admin-app{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:100vh;margin:0;background:var(--bg);color:var(--ink)}
+.admin-side{padding:6px 8px;background:#f7faf8;border-right:0.5px solid var(--line)}
+.admin-side .brand{display:flex;align-items:center;gap:8px;height:60px;padding:8px;color:var(--accent);font-size:18px;font-weight:600;letter-spacing:.04em;text-decoration:none}
+.admin-side .brand img{width:28px;height:22px;object-fit:contain}
+.admin-side nav{display:flex;flex-direction:column;gap:2px}
+.admin-side a{display:flex;align-items:center;min-height:32px;padding:0 12px;border-radius:12px;color:var(--ink);font-size:14px;line-height:22px;text-decoration:none}
+.admin-side a:hover,.admin-side a[aria-current=true]{background:var(--accent-soft);color:var(--accent)}
+.admin-main{max-width:960px;padding:28px clamp(24px,4vw,48px) 64px}
+.admin-main .settings-section{border:0;border-radius:0;border-bottom:0.5px solid var(--line);margin:0;padding:20px 0}
+.admin-main input,.admin-main select,.admin-main textarea{border:0.5px solid var(--line-strong);border-radius:12px}
+@media(max-width:760px){
+  .task-layout,.hub-scroll{flex-direction:column}
+  .task-detail,.hub-detail{flex-basis:auto;border-left:0;border-top:0.5px solid var(--line)}
+  .admin-app{grid-template-columns:1fr}
+  .admin-side{border-right:0;border-bottom:0.5px solid var(--line)}
+  .admin-side nav{flex-direction:row;overflow:auto}
+  #composer{width:calc(100% - 24px)}
+}

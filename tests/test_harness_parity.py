@@ -304,6 +304,18 @@ def test_console_keeps_green_tokens_and_the_audit_wiring():
     assert 'bottom:calc(100% + 4px)' in css and '#245b35' in theme
     assert '--inspector-width' in css and 'verilo-account-usage-bar' in css
     assert 'zekai' not in assistant.lower() and 'zinc' not in css and 'zinc' not in theme
+    chrome = (root / 'harness-chrome.css').read_text(encoding='utf-8')
+    assert 'Copyright (c) 2026 DeepSeek' in chrome and 'Permission is hereby granted' in chrome
+    assert 'height:38px' in chrome and 'border-radius:28px' in chrome and 'width:32px' in chrome
+    assert 'font-size:20px' in chrome and 'flex:0 0 47%' in chrome
+    assert 'harness-chrome.css' in assistant and 'harness-chrome.css' in tasks and 'harness-chrome.css' in chat
+    assert 'id="account-trigger"' in chat and 'id="account-signout"' in chat and 'verilo-account-danger" hidden' in chat
+    assert '编程会话' in chat and 'DeepSeek' not in assistant and 'DeepSeek' not in chat and 'DeepSeek' not in tasks
+    assert 'verilo.sidebar.collapsed' in (root / 'frame.js').read_text(encoding='utf-8')
+    assert 'verilo.sidebar.collapsed' in (root / 'harness-ui.js').read_text(encoding='utf-8')
+    preferences = (root / 'preferences.html').read_text(encoding='utf-8')
+    admin = (root / 'settings.html').read_text(encoding='utf-8')
+    assert 'harness-chrome.css' in preferences and 'class="admin-app"' in admin and 'id="section-model"' in admin
 
 
 def test_settings_report_today_spend_against_the_daily_budget(env):

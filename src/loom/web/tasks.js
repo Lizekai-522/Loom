@@ -48,10 +48,10 @@
     const host = $("task-list");
     const visible = rows.filter(matches);
     host.replaceChildren();
-    if (!visible.length) { host.append(node("p", emptyText(), "app-empty")); return; }
+    if (!visible.length) { host.append(node("p", emptyText(), "task-empty")); return; }
     if (!visible.some(row => row.key === selected)) selected = visible[0].key;
     for (const row of visible) {
-      const button = node("button", "", "app-row");
+      const button = node("button", "", "task-row");
       button.type = "button";
       button.setAttribute("aria-current", String(row.key === selected));
       button.append(node("strong", row.title || "任务"), node("small", (KIND[row.kind] || row.kind) + " · " + (LABEL[row.status] || row.status)));
@@ -63,8 +63,8 @@
     const host = $("task-detail");
     const row = rows.find(item => item.key === selected && matches(item));
     host.replaceChildren();
-    if (!row) { host.append(node("p", emptyText(), "app-empty")); return; }
-    const card = node("article", "", "app-card");
+    if (!row) { host.append(node("p", emptyText(), "task-empty")); return; }
+    const card = node("article", "", "task-card");
     card.append(node("h2", row.title || "任务"));
     const meta = node("p");
     meta.append(node("span", LABEL[row.status] || row.status, "app-status"));

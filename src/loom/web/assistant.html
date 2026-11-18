@@ -13,6 +13,7 @@
   <script src="/console/assets/assistant.js" defer></script>
   <link rel="stylesheet" href="/console/assets/vendor-xterm.css">
   <link rel="stylesheet" href="/console/assets/workspace-ui.css">
+  <link rel="stylesheet" href="/console/assets/harness-chrome.css">
   <script src="/console/assets/vendor-xterm.js" defer></script>
   <script src="/console/assets/vendor-xterm-fit.js" defer></script>
   <script src="/console/assets/workspace-ui.js" defer></script>
@@ -22,11 +23,8 @@
 <body>
   <div class="as-shell" id="shell">
     <aside class="verilo-sidebar" aria-label="导航">
-      <a class="verilo-brand" href="/console"><img src="/console/assets/verilo-mark.svg" alt=""><span>VERILO</span></a>
+      <a class="verilo-brand" href="/console"><img src="/console/assets/verilo-mark.svg" alt=""><span>Verilo</span></a>
       <a class="verilo-new" href="/console/sessions">＋ <span>新建任务</span></a>
-      <label class="verilo-search"><input id="task-search" type="search" aria-label="搜索任务或文件"></label>
-      <button type="button" id="open-skills" class="verilo-nav-button">技能</button>
-      <div id="session-rail" aria-label="任务"></div>
       <nav class="verilo-nav" aria-label="工作区">
         <a href="/console" aria-current="page"><span aria-hidden="true">◯</span>对话</a>
         <a href="/console/tasks"><span aria-hidden="true">□</span>任务</a>
@@ -35,6 +33,9 @@
         <a href="/console/market"><span aria-hidden="true">⊞</span>插件市场</a>
         <button type="button" data-open-tab="mail" id="nav-mail" hidden><span aria-hidden="true">✉</span>邮件</button>
       </nav>
+      <label class="verilo-search"><input id="task-search" type="search" aria-label="搜索任务或文件" placeholder="搜索任务或文件"></label>
+      <button type="button" id="open-skills" class="verilo-nav-button">技能</button>
+      <div id="session-rail" aria-label="任务"></div>
       <div class="verilo-sidebar-footer">
         <div class="verilo-account">
           <button type="button" id="account-trigger" class="verilo-account-trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="account-menu" aria-label="账号菜单">
@@ -83,15 +84,15 @@
           <div class="bento" id="bento" aria-label="当前工作"></div>
         </div>
         <div id="messages"></div>
-      </section>
-      <div class="as-attachments" id="attachments" aria-label="待发送文件" hidden></div>
-      <form class="composer as-composer" id="composer">
+        <div class="as-attachments" id="attachments" aria-label="待发送文件" hidden></div>
+        <form class="composer as-composer" id="composer">
         <input id="file-input" type="file" accept=".txt,.md,.csv,.json,.jsonl,.py,.js,.ts,.tsx,.jsx,.html,.css,.yaml,.yml,.xml,.log,.sh,.ps1,.toml,.ini,.c,.h,.cpp,.hpp,.java,.go,.rs,.sql,.rb,.php,.swift,.kt,.vue,.svelte,.scala,.cs,.bat" multiple hidden>
         <button id="attach" class="ghost as-attach" type="button" aria-label="添加文本或代码文件">＋</button>
         <textarea id="prompt" rows="1" maxlength="8000" aria-label="消息"></textarea>
         <button id="interrupt" type="button" hidden>打断</button>
-        <button id="send" type="submit" class="primary">发送</button>
+        <button id="send" type="submit" class="primary" aria-label="发送"><span class="send-label">发送</span>↑</button>
       </form>
+      </section>
       <section id="settings-drawer" class="inspector" hidden aria-label="设置">
         <div class="as-tabs" role="tablist">
           <button type="button" data-settings="agent" aria-selected="true">Agent</button>

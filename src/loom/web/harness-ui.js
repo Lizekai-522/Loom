@@ -157,13 +157,25 @@
       $("open-settings")?.click();
       document.querySelector('#settings-drawer [data-settings="agent"]')?.click();
     });
-    $("collapse-sidebar")?.addEventListener("click", () => {
-      document.querySelector(".verilo-sidebar")?.classList.toggle("collapsed");
-      $("shell")?.classList.toggle("rail");
-    });
+    const railButton = $("collapse-sidebar");
+    if (railButton && !railButton.dataset.railBound) {
+      railButton.dataset.railBound = "1";
+      const applyRail = on => {
+        document.querySelector(".verilo-sidebar")?.classList.toggle("collapsed", on);
+        $("shell")?.classList.toggle("rail", on);
+        railButton.setAttribute("aria-pressed", String(on));
+      };
+      try { if (localStorage.getItem("verilo.sidebar.collapsed") === "1") applyRail(true); } catch { /* keep the expanded sidebar */ }
+      railButton.addEventListener("click", () => {
+        const on = railButton.getAttribute("aria-pressed") !== "true";
+        applyRail(on);
+        try { localStorage.setItem("verilo.sidebar.collapsed", on ? "1" : "0"); } catch { /* the layout still toggles */ }
+      });
+    }
     const accountTrigger = $("account-trigger");
     const accountMenu = $("account-menu");
-    if (accountTrigger && accountMenu) {
+    if (accountTrigger && accountMenu && !accountTrigger.dataset.accountBound) {
+      accountTrigger.dataset.accountBound = "1";
       const setAccountOpen = open => {
         accountMenu.hidden = !open;
         accountTrigger.setAttribute("aria-expanded", String(open));

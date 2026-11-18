@@ -10,17 +10,27 @@
   <link rel="stylesheet" href="/console/assets/chat.css">
   <link rel="stylesheet" href="/console/assets/settings.css">
   <link rel="stylesheet" href="/console/assets/verilo-theme.css">
+  <link rel="stylesheet" href="/console/assets/harness-chrome.css">
 </head>
-<body>
-  <header class="settings-top">
-    <a class="brand" href="/console"><span class="brand-mark" aria-hidden="true"><img src="/console/assets/verilo-mark.svg" alt=""></span>Verilo 设置</a>
-    <nav class="settings-links">
-      <a href="/console">助手</a>
-      <a href="/console/sessions">编程会话</a>
-      <a href="/console/expert">项目空间</a>
+<body class="admin-app">
+  <aside class="admin-side" aria-label="管理导航">
+    <a class="brand" href="/console"><img src="/console/assets/verilo-mark.svg" alt="">Verilo</a>
+    <nav>
+      <a href="/console">对话</a>
+      <a href="#section-overview">就绪度</a>
+      <a href="#section-model">模型与密钥</a>
+      <a href="#section-search">联网搜索</a>
+      <a href="#section-mail">域名邮箱</a>
+      <a href="#section-verification">独立复核</a>
+      <a href="#section-sandbox">沙箱镜像</a>
+      <a href="#section-hosttests">宿主用例</a>
+      <a href="#section-quotas">持久配额</a>
+      <a href="#section-members">成员与访问</a>
+      <a href="#section-executor">执行器</a>
+      <a href="/console/settings">返回设置</a>
     </nav>
-  </header>
-  <main class="settings-main">
+  </aside>
+  <main class="settings-main admin-main">
     <div id="notice" class="notice" hidden></div>
     <div id="restart-banner" class="restart-banner" hidden>
       <span id="restart-banner-text">执行器配置已更新，需要重启后生效。</span>

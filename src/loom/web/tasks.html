@@ -9,13 +9,14 @@
 <link rel="stylesheet" href="/console/assets/verilo-theme.css">
 <link rel="stylesheet" href="/console/assets/assistant.css">
 <link rel="stylesheet" href="/console/assets/frame.css">
+<link rel="stylesheet" href="/console/assets/harness-chrome.css">
 <script src="/console/assets/frame.js" defer></script>
 <script src="/console/assets/tasks.js" defer></script>
 </head>
 <body>
 <div class="app-frame">
   <aside class="app-side" aria-label="导航">
-    <a class="app-brand" href="/console"><img src="/console/assets/verilo-mark.svg" alt=""><span>VERILO</span></a>
+    <a class="app-brand" href="/console"><img src="/console/assets/verilo-mark.svg" alt=""><span>Verilo</span></a>
     <a class="app-new" href="/console/sessions">＋ <span>新建任务</span></a>
     <nav class="app-nav" aria-label="工作区">
       <a href="/console"><span aria-hidden="true">◯</span>对话</a>
@@ -51,24 +52,26 @@
       <button type="button" id="collapse-sidebar" class="verilo-icon" aria-label="折叠侧栏">⟨</button>
     </div>
   </aside>
-  <main class="app-main">
-    <header class="app-head">
-      <h1>任务</h1>
-      <a class="app-btn primary" href="/console/sessions">新建任务</a>
-    </header>
-    <div class="app-toolbar">
-      <input id="task-search" class="app-search" type="search" aria-label="搜索任务" placeholder="搜索标题或编号">
-      <div class="app-filters" role="group" aria-label="状态">
-        <button type="button" data-filter="active" aria-pressed="true">进行中</button>
-        <button type="button" data-filter="paused" aria-pressed="false">已暂停</button>
-        <button type="button" data-filter="ended" aria-pressed="false">已结束</button>
-        <button type="button" data-filter="all" aria-pressed="false">全部</button>
-      </div>
-    </div>
-    <p id="notice" role="status" hidden></p>
-    <div class="app-split">
-      <div id="task-list" class="app-list" aria-label="任务列表"></div>
-      <div id="task-detail" class="app-detail"></div>
+  <main class="app-main task-page">
+    <div class="task-layout">
+      <section class="task-list-pane">
+        <div class="task-column">
+          <header class="task-heading">
+            <h1>任务</h1>
+            <a class="app-btn primary" href="/console/sessions">新建任务</a>
+          </header>
+          <div class="task-filters" role="group" aria-label="状态">
+            <button type="button" data-filter="active" aria-pressed="true">进行中</button>
+            <button type="button" data-filter="paused" aria-pressed="false">已暂停</button>
+            <button type="button" data-filter="ended" aria-pressed="false">已结束</button>
+            <button type="button" data-filter="all" aria-pressed="false">全部</button>
+          </div>
+          <input id="task-search" type="search" aria-label="搜索任务" placeholder="搜索标题或编号">
+          <p id="notice" role="status" hidden></p>
+          <div id="task-list" class="hub-list" aria-label="任务列表"></div>
+        </div>
+      </section>
+      <div id="task-detail" class="task-detail"></div>
     </div>
   </main>
 </div>
