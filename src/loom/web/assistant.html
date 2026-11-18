@@ -35,7 +35,21 @@
         <a href="/console/market"><span aria-hidden="true">⊞</span>插件市场</a>
         <button type="button" data-open-tab="mail" id="nav-mail" hidden><span aria-hidden="true">✉</span>邮件</button>
       </nav>
-      <div class="verilo-sidebar-footer"><button type="button" id="collapse-sidebar" aria-label="折叠侧栏">⟨</button><a href="/console/settings">设置</a></div>
+      <div class="verilo-sidebar-footer">
+        <div class="verilo-account">
+          <button type="button" id="account-trigger" class="verilo-account-trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="account-menu" aria-label="账号菜单">
+            <span class="verilo-avatar" id="account-avatar" aria-hidden="true"></span>
+            <span class="verilo-account-name" id="account-name"></span>
+          </button>
+          <div id="account-menu" class="verilo-account-menu" role="menu" hidden>
+            <a role="menuitem" href="/console/settings">设置</a>
+            <a role="menuitem" href="/console/settings#appearance">外观</a>
+            <a role="menuitem" href="/console/settings#general">账号</a>
+            <button type="button" role="menuitem" id="account-signout" hidden>退出登录</button>
+          </div>
+        </div>
+        <button type="button" id="collapse-sidebar" class="verilo-icon" aria-label="折叠侧栏">⟨</button>
+      </div>
     </aside>
     <main class="as-main">
       <header class="as-head">

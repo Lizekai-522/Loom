@@ -159,6 +159,27 @@
       document.querySelector(".verilo-sidebar")?.classList.toggle("collapsed");
       $("shell")?.classList.toggle("rail");
     });
+    const accountTrigger = $("account-trigger");
+    const accountMenu = $("account-menu");
+    if (accountTrigger && accountMenu) {
+      const setAccountOpen = open => {
+        accountMenu.hidden = !open;
+        accountTrigger.setAttribute("aria-expanded", String(open));
+      };
+      accountTrigger.addEventListener("click", event => {
+        event.stopPropagation();
+        setAccountOpen(accountMenu.hidden);
+      });
+      accountMenu.addEventListener("click", event => {
+        if (event.target.closest("[role='menuitem']")) setAccountOpen(false);
+      });
+      document.addEventListener("click", event => {
+        if (!accountMenu.hidden && !accountTrigger.contains(event.target) && !accountMenu.contains(event.target)) setAccountOpen(false);
+      });
+      document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && !accountMenu.hidden) { setAccountOpen(false); accountTrigger.focus(); }
+      });
+    }
     $("command-palette-input")?.addEventListener("input", () => paintPalette($("command-palette-input").value));
     $("command-palette")?.addEventListener("keydown", event => { if (event.key === "Escape") closePalette(); });
     document.addEventListener("keydown", event => {

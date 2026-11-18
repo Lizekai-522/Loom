@@ -280,3 +280,11 @@ def test_console_keeps_green_tokens_and_the_audit_wiring():
     assert '今天要构建什么' not in chat and 'class="muted"' not in settings
     assert 'id="conversation"' in chat and 'id="prompt"' in chat and 'data-inspector="dag"' in assistant
     assert 'id="session-rail"' in assistant and 'id="rightbar"' in assistant
+    assert 'id="account-trigger"' in assistant and 'id="account-name"' in assistant and 'id="account-avatar"' in assistant
+    assert 'href="/console/settings"' in assistant and 'href="/console/settings#appearance"' in assistant
+    assert 'href="/console/settings#general"' in assistant and '退出登录' in assistant
+    assert '新建工作树' not in workbench and '还没有项目。' in workbench
+    assert 'account-name' in script and 'state.me.subject_id' in script and 'display_name' in script
+    css = (root / 'assistant.css').read_text(encoding='utf-8')
+    assert 'bottom:calc(100% + 4px)' in css and '#245b35' in theme
+    assert 'zekai' not in assistant.lower() and 'zinc' not in css

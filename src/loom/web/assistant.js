@@ -693,13 +693,22 @@
       const size = Number($("shell").dataset.panelSize || 1);
       $("shell").dataset.panelSize = String(Math.min(2, size + 1));
     });
-    $("logout").addEventListener("click", async () => {
+    async function signOut() {
       try { await fetch("/preview/logout", {method: "POST", credentials: "same-origin"}); } finally { location.assign("/preview/login"); }
-    });
+    }
+    $("logout").addEventListener("click", signOut);
+    $("account-signout")?.addEventListener("click", signOut);
     try {
       state.me = await request("GET", "/v1/me");
-      $("logout").hidden = state.me.authentication !== "public-session";
+      const hideSignOut = state.me.authentication !== "public-session";
+      $("logout").hidden = hideSignOut;
+      if ($("account-signout")) $("account-signout").hidden = hideSignOut;
+      const login = String(state.me.display_name || state.me.subject_id || "").trim();
       $("who").textContent = (state.me.authentication === "public-session" ? "体验成员 · " : "本机 · ") + state.me.subject_id; $("who").hidden = false;
+      if ($("account-name")) $("account-name").textContent = login;
+      const initial = Array.from(login)[0] || "";
+      if ($("account-avatar")) $("account-avatar").textContent = /[a-z]/i.test(initial) ? initial.toUpperCase() : initial;
+      if ($("account-trigger") && login) $("account-trigger").setAttribute("aria-label", "账号菜单，" + login);
       state.canWrite = state.me.capabilities.includes("goal.write");
       state.canApprove = state.me.capabilities.includes("plan.approve") && state.me.roles.includes("user");
       if (!state.canWrite) { $("prompt").disabled = true; $("send").disabled = true; $("attach").disabled = true; $("prompt").placeholder = "当前身份只读"; }
