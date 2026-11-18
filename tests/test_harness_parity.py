@@ -190,3 +190,93 @@ def test_browser_pick_uses_the_guarded_outline_and_computer_route_is_mounted(env
     assert status.json()['scope'] == 'local_manual_only'
     assert 'available' in status.json()
     assert client.get('/v1/computer/status').status_code == 401
+
+
+def test_worktree_apply_reports_untracked_conflicts_and_checkout_receives_program(env):
+    from pathlib import Path
+    client = env['client']
+    project = client.post('/v1/workspace/projects', headers=local('project-conflict'), json={'name': '冲突'}).json()
+    created = client.post(f"/v1/workspace/projects/{project['id']}/worktrees", headers=local('wt-conflict'),
+                          json={'run_id': 'run-conflict', 'title': '冲突'}).json()
+    root = Path(project['path'])
+    checkout = Path(created['path'])
+    (root / 'note.txt').write_text('local untracked\n', encoding='utf-8')
+    (checkout / 'note.txt').write_text('from worktree\n', encoding='utf-8')
+    applied = client.post('/v1/workspace/worktrees/' + created['id'] + '/apply', headers=local('apply-conflict'))
+    assert applied.status_code == 409, applied.text
+    assert applied.json()['code'] == 'WORKTREE_CONFLICT'
+    assert 'note.txt' in applied.json()['detail']
+    assert (root / 'note.txt').read_text(encoding='utf-8') == 'local untracked\n'
+    written = env['app'].state.workspace.write_program('a', 'run-conflict', 'print(1)\n')
+    assert written['written'] is True
+    assert (checkout / 'main.py').read_text(encoding='utf-8') == 'print(1)\n'
+    diff = client.get('/v1/workspace/worktrees/' + created['id'] + '/diff', headers=local())
+    assert 'print(1)' in diff.text
+    removed = client.delete('/v1/workspace/worktrees/' + created['id'], headers=local('remove-conflict'))
+    assert removed.status_code == 200 and removed.json()['removed'] is True
+
+
+def test_project_files_are_listed_and_secret_names_stay_out(env):
+    from pathlib import Path
+    client = env['client']
+    project = client.post('/v1/workspace/projects', headers=local('project-files'), json={'name': '文件'}).json()
+    root = Path(project['path'])
+    (root / 'src').mkdir()
+    (root / 'src' / 'app.py').write_text('print("ok")\n', encoding='utf-8')
+    (root / '.env').write_text('SECRET=1\n', encoding='utf-8')
+    listed = client.get(f"/v1/workspace/projects/{project['id']}/files?q=app", headers=local())
+    assert listed.status_code == 200
+    paths = [item['path'] for item in listed.json()['items']]
+    assert paths == ['src/app.py']
+    body = client.get(f"/v1/workspace/projects/{project['id']}/file", headers=local(), params={'rel': 'src/app.py'})
+    assert body.status_code == 200 and 'print' in body.json()['text']
+    hidden = client.get(f"/v1/workspace/projects/{project['id']}/file", headers=local(), params={'rel': '.env'})
+    assert hidden.status_code == 422
+    sent = client.post('/v1/assistant/threads/' + client.get('/v1/assistant/thread', headers=local()).json()['thread']['id'] + '/messages',
+                       headers=local('mention-file'), json={'text': '看这个文件', 'project_id': project['id'], 'mentions': ['src/app.py']})
+    assert sent.status_code == 201, sent.text
+    assert 'print' in sent.json()['meta']['mentions'][0]['text']
+    assert sent.json()['meta']['project_path'] == project['path']
+
+
+def test_png_rgb_round_trips_pixels_without_pillow():
+    import struct
+    import zlib
+    from loom.computer_api import _png_rgb_zlib
+    bgra = bytes([255, 0, 0, 255, 0, 255, 0, 128])
+    data = _png_rgb_zlib(2, 1, bgra)
+    assert data.startswith(b'\x89PNG\r\n\x1a\n')
+    assert data[12:16] == b'IHDR'
+    width, height = struct.unpack('!II', data[16:24])
+    assert (width, height) == (2, 1)
+    pos, idat = 8, b''
+    while pos < len(data):
+        length = struct.unpack('!I', data[pos:pos + 4])[0]
+        kind = data[pos + 4:pos + 8]
+        chunk = data[pos + 8:pos + 8 + length]
+        pos += 12 + length
+        if kind == b'IDAT':
+            idat += chunk
+        elif kind == b'IEND':
+            break
+    raw = zlib.decompress(idat)
+    assert raw[0] == 0 and raw[1:4] == bytes([0, 0, 255]) and raw[4:7] == bytes([0, 255, 0])
+
+
+def test_console_keeps_green_tokens_and_the_audit_wiring():
+    root = __import__('pathlib').Path('src/loom/web')
+    theme = (root / 'verilo-theme.css').read_text(encoding='utf-8')
+    assistant = (root / 'assistant.html').read_text(encoding='utf-8')
+    workbench = (root / 'workbench.js').read_text(encoding='utf-8')
+    ui = (root / 'workspace-ui.js').read_text(encoding='utf-8')
+    script = (root / 'assistant.js').read_text(encoding='utf-8')
+    chat = (root / 'chat.html').read_text(encoding='utf-8')
+    settings = (root / 'settings.html').read_text(encoding='utf-8')
+    assert '#245b35' in theme and 'verilo-theme.css' in assistant
+    assert '/console/admin#section-model' in workbench and '/console/settings#models' in ui
+    assert 'terminalWorktreeId' in ui and 'pre.wm-diff' in workbench
+    assert 'encodeURIComponent(item.id)' in workbench
+    assert 'waitingCode.length' in script and 'ok !== false' in script
+    assert '今天要构建什么' not in chat and 'class="muted"' not in settings
+    assert 'id="conversation"' in chat and 'id="prompt"' in chat and 'data-inspector="dag"' in assistant
+    assert 'id="session-rail"' in assistant and 'id="rightbar"' in assistant

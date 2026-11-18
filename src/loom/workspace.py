@@ -9,6 +9,7 @@ from datetime import datetime
 from hashlib import sha256
 import json
 import math
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -56,7 +57,7 @@ DEFAULT_PREFERENCES = dict(appearance='light', font='system', font_size=14,
     shortcuts='default', confirmation_mode='ask', preferred_model=None,
     selected_project_id=None)
 CHOICES = dict(appearance={'light', 'dark', 'system'}, font={'system', 'sans', 'mono'},
-    shortcuts={'default', 'vim', 'emacs'}, confirmation_mode={'ask', 'read_only'})
+    shortcuts={'default', 'vim', 'emacs'}, confirmation_mode={'ask', 'plan', 'read_only'})
 
 
 def _text(value, label, limit):
@@ -79,6 +80,51 @@ def _due(value):
     if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
         raise InvalidInput('invalid due_at')
     return float(value)
+
+
+def _porcelain_path(value):
+    text = value.strip()
+    if len(text) >= 2 and text[0] == '"' and text[-1] == '"':
+        text = text[1:-1]
+    return text
+
+
+def _added_paths(diff_text):
+    added = []
+    lines = diff_text.splitlines()
+    for index, line in enumerate(lines):
+        if not line.startswith('diff --git '):
+            continue
+        new_file = False
+        path = None
+        for nxt in lines[index + 1:index + 8]:
+            if nxt.startswith('diff --git '):
+                break
+            if nxt.startswith('new file mode '):
+                new_file = True
+            if nxt.startswith('+++ b/'):
+                path = nxt[6:]
+        if new_file and path and path != '/dev/null' and '..' not in Path(path).parts:
+            added.append(path)
+    return added
+
+
+def _clip_conflict(text):
+    line = (text or '').strip().splitlines()
+    return (line[-1] if line else 'untracked file')[:180]
+
+
+_SKIP_DIRS = frozenset({'.git', 'node_modules', '__pycache__', '.venv', 'venv', 'dist', 'build'})
+_SECRET_NAMES = frozenset({'.env', 'credentials.json', 'secrets.json', 'id_rsa', 'id_ed25519'})
+
+
+class WorktreeConflict(Conflict):
+    code = 'WORKTREE_CONFLICT'
+
+    def __init__(self, files):
+        self.files = tuple(files)
+        listed = ', '.join(self.files) or 'unknown'
+        super().__init__('WORKTREE_CONFLICT ' + listed)
 
 
 class Workspace:
@@ -558,11 +604,15 @@ class Workspace:
         item = self.worktree(identity, worktree_id)
         path = Path(item['path'])
         self._git(path, 'add', '-A')
-        proc = self._git(path, 'diff', '--cached', '--no-ext-diff', item['base_commit'])
-        text = proc.stdout
-        if len(text) > 100_000:
-            text = text[:100_000] + '\n… diff truncated\n'
-        stat = self._git(path, 'diff', '--cached', '--stat', item['base_commit']).stdout[-2000:]
+        try:
+            proc = self._git(path, 'diff', '--cached', '--no-ext-diff', item['base_commit'])
+            text = proc.stdout
+            if len(text) > 100_000:
+                text = text[:100_000] + '\n… diff truncated\n'
+            stat = self._git(path, 'diff', '--cached', '--stat', item['base_commit']).stdout[-2000:]
+        finally:
+            # A read of the diff must not leave the checkout staged.
+            self._git(path, 'reset', '-q', check=False)
         return dict(id=item['id'], branch=item['branch'], base_commit=item['base_commit'], stat=stat, diff=text)
 
     def apply_worktree(self, identity, worktree_id):
@@ -570,15 +620,21 @@ class Workspace:
         item = self.worktree(identity, worktree_id)
         project = self.project(identity, item['project_id'])
         directory = Path(project['path'])
-        status = self._git(directory, 'status', '--porcelain').stdout.splitlines()
+        status = self._git(directory, 'status', '--porcelain', '-uall').stdout.splitlines()
         if any(not line.startswith('??') for line in status):
             raise Conflict('project working tree has uncommitted changes')
         diff = self.worktree_diff(identity, worktree_id)
         if not diff['diff'].strip():
             return dict(id=item['id'], applied=False, reason='empty')
+        untracked = {_porcelain_path(line[3:]) for line in status if line.startswith('??')}
+        overlap = sorted(untracked & set(_added_paths(diff['diff'])))
+        if overlap:
+            raise WorktreeConflict(overlap)
         proc = subprocess.run(['git', 'apply', '--index'], cwd=directory, input=diff['diff'],
                               capture_output=True, text=True, timeout=30, check=False)
         if proc.returncode != 0:
+            if 'already exists' in (proc.stderr or '').lower():
+                raise WorktreeConflict(overlap or [_clip_conflict(proc.stderr)])
             raise Conflict('worktree diff did not apply')
         with self.store.transaction() as db:
             self._audit(db, identity, 'worktree.applied', item['id'])
@@ -594,3 +650,93 @@ class Workspace:
                        ('removed', time.time(), identity.tenant_id, worktree_id))
             self._audit(db, identity, 'worktree.removed', worktree_id)
         return dict(id=worktree_id, removed=True, git_removed=removal.returncode == 0)
+
+    def list_files(self, identity, project_id, query=''):
+        root = self._path(identity, project_id)
+        if not root.is_dir():
+            return []
+        needle = (query or '').strip().lower()[:80]
+        found = []
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [name for name in dirnames if name not in _SKIP_DIRS and not name.startswith('.')]
+            for name in filenames:
+                if name.startswith('.env') or name in _SECRET_NAMES:
+                    continue
+                path = Path(dirpath) / name
+                rel = path.relative_to(root).as_posix()
+                if needle and needle not in rel.lower():
+                    continue
+                try:
+                    size = path.stat().st_size
+                except OSError:
+                    continue
+                found.append(dict(path=rel, bytes=size))
+                if len(found) >= 200:
+                    found.sort(key=lambda item: item['path'])
+                    return found
+        found.sort(key=lambda item: item['path'])
+        return found
+
+    def read_project_file(self, identity, project_id, relative):
+        root = self._path(identity, project_id).resolve()
+        if (not isinstance(relative, str) or not relative or len(relative) > 240 or relative.startswith('/')
+                or '\\' in relative or '\x00' in relative or '..' in Path(relative).parts):
+            raise InvalidInput('invalid project file')
+        name = Path(relative).name
+        if name.startswith('.env') or name in _SECRET_NAMES:
+            raise InvalidInput('project file is not available')
+        target = (root / relative).resolve()
+        if target != root and root not in target.parents:
+            raise InvalidInput('project file is outside the project')
+        if not target.is_file():
+            raise NotFound('project file not found')
+        try:
+            if target.stat().st_size > 262144:
+                raise InvalidInput('project file is too large to attach')
+            raw = target.read_bytes()
+        except OSError:
+            raise InvalidInput('project file is not readable') from None
+        if b'\x00' in raw[:4096]:
+            raise InvalidInput('project file is not text')
+        text = redact(raw.decode('utf-8', errors='replace'))
+        return dict(path=Path(relative).as_posix(), text=text[:8000], truncated=len(text) > 8000)
+
+    def read_mentions(self, identity, project_id, paths):
+        if not isinstance(paths, list) or len(paths) > 8:
+            raise InvalidInput('too many file mentions')
+        items, seen = [], set()
+        for rel in paths:
+            if not isinstance(rel, str) or rel in seen:
+                continue
+            seen.add(rel)
+            items.append(self.read_project_file(identity, project_id, rel))
+        return items
+
+    def _trusted_checkout(self, path):
+        path = Path(path).resolve()
+        if not path.is_dir():
+            raise InvalidInput('worktree checkout is missing')
+        if path.parent.parent.name != 'worktrees' or path.parent.parent.parent.name != 'workspaces':
+            raise InvalidInput('worktree path is outside the workspace boundary')
+        return path
+
+    def write_program(self, tenant, run_id, source):
+        """Materialize one main.py into the worktree provisioned for this session."""
+        if not isinstance(source, str) or '\x00' in source or len(source.encode('utf-8')) > 131072:
+            raise InvalidInput('program source is not allowed in the worktree')
+        with self.store.connect() as db:
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='ws_worktrees'").fetchone() is None:
+                return None
+            row = db.execute('SELECT * FROM ws_worktrees WHERE tenant=? AND run_id=? AND status=?',
+                             (tenant, run_id, 'active')).fetchone()
+        if row is None:
+            return None
+        checkout = self._trusted_checkout(row['path'])
+        target = (checkout / 'main.py').resolve()
+        if target.parent != checkout:
+            raise InvalidInput('worktree path is outside the workspace boundary')
+        current = target.read_text(encoding='utf-8') if target.is_file() else None
+        if current == source:
+            return dict(written=False, path=str(target), worktree_id=row['id'])
+        target.write_text(source, encoding='utf-8')
+        return dict(written=True, path=str(target), worktree_id=row['id'])

@@ -342,7 +342,7 @@
     if (!state.canWrite) return;
     const busy = view && (view.state === "running" || view.state === "paused" || view.state === "awaiting_approval");
     prompt.disabled = !!busy; $("send").disabled = !!busy; $("toggle-examples").disabled = !!busy;
-    prompt.placeholder = !view ? "描述你想要的程序…" : busy ? (view.state === "awaiting_approval" ? "请先批准上方的实现计划" : "本轮完成后可继续补充") : "继续补充或修改要求…（会参考上一版程序）";
+    prompt.placeholder = "";
   }
   function scrollToEnd() { const s = $("stream"); s.scrollTop = s.scrollHeight; }
 

@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   window.VeriloStyleElement = element => { const nonce=document.querySelector('meta[name="verilo-style-nonce"]')?.content; if(nonce)element.nonce=nonce; return element; };
-  const state = {preferences: {}, projects: [], models: [], terminal: null, terminalId: null, cursor: 0, poll: null, fit: null, writing: Promise.resolve(), hooks: [], notified: new Set()};
+  const state = {preferences: {}, projects: [], models: [], terminal: null, terminalId: null, terminalWorktreeId: null, cursor: 0, poll: null, fit: null, writing: Promise.resolve(), hooks: [], notified: new Set()};
   const $ = id => document.getElementById(id);
   const node = (tag, text, cls) => { const e=document.createElement(tag); if(text!==undefined)e.textContent=text; if(cls)e.className=cls; return e; };
   const key = () => crypto.randomUUID();
@@ -49,6 +49,9 @@
     const result={confirmation_mode:$('workspace-confirm')?.value||state.preferences.confirmation_mode||'ask'};
     const model=$('workspace-model')?.value, project=$('workspace-project')?.value;
     if(model)result.model_alias=model;if(project)result.project_id=project;
+    const extra=window.VeriloHarness?.extras?.()||{};
+    if(extra.mentions?.length)result.mentions=extra.mentions;
+    if(extra.linked_session_id)result.linked_session_id=extra.linked_session_id;
     return result;
   }
   function terminalVisible(open) {
@@ -70,7 +73,13 @@
     }catch(e){$('terminal-state').textContent=e.message;state.poll=setTimeout(output,2000);}
   }
   async function openTerminal() {
-    if(state.terminalId){terminalVisible(true);return;}
+    const targetWorktree=window.VeriloWorkbench?.worktreeId||null;
+    if(state.terminalId&&state.terminalWorktreeId===targetWorktree){terminalVisible(true);return;}
+    if(state.terminalId&&state.terminalWorktreeId!==targetWorktree){
+      try{await request('DELETE','/v1/terminals/'+encodeURIComponent(state.terminalId));}catch(e){notice(e.message);}
+      state.terminalId=null;state.cursor=0;clearTimeout(state.poll);
+    }
+    state.terminalWorktreeId=targetWorktree;
     try {
       let projectId=$('workspace-project').value;
       if(!projectId){
@@ -80,7 +89,7 @@
       const body={project_id:projectId,cols:100,rows:20};
       if(window.VeriloWorkbench?.worktreeId)body.worktree_id=window.VeriloWorkbench.worktreeId;
       const item=await request('POST','/v1/terminals',body);
-      state.terminalId=item.id;state.cursor=0;
+      state.terminalId=item.id;state.terminalWorktreeId=targetWorktree;state.cursor=0;
       $('terminal-project').textContent=state.projects.find(p=>p.id===projectId)?.name||'项目';
       $('terminal-state').textContent=item.shell;
       if(!state.terminal){
@@ -97,15 +106,16 @@
     const composer=$('composer');if(!composer)return;
     const bar=node('div',undefined,'workspace-toolbar');bar.id='workspace-toolbar';
     const project=node('select');project.id='workspace-project';project.setAttribute('aria-label','选择项目');
-    const manage=node('a','项目');manage.href='/console/projects';manage.title='管理项目';
-    const confirm=node('select');confirm.id='workspace-confirm';confirm.setAttribute('aria-label','变更确认');
-    for(const [value,label] of [['ask','变更前确认'],['read_only','仅对话']]){const o=node('option',label);o.value=value;confirm.append(o);}
+    const manage=node('a','项目');manage.href='/console/projects';manage.setAttribute('aria-label','管理项目');
+    const confirm=node('select');confirm.id='workspace-confirm';confirm.setAttribute('aria-label','执行方式');
+    for(const [value,label] of [['ask','变更前确认'],['plan','先出计划'],['read_only','仅对话']]){const o=node('option',label);o.value=value;confirm.append(o);}
+    const branch=node('select');branch.id='workspace-branch';branch.setAttribute('aria-label','工作树分支');
     const model=node('select');model.id='workspace-model';model.setAttribute('aria-label','模型选择');
     const modelSettings=node('a','模型');modelSettings.href='/console/settings#models';
-    if(location.pathname.includes('/sessions')){model.hidden=true;modelSettings.textContent='生成模型';modelSettings.title='编程流水线使用服务端冻结的角色模型';}
-    bar.append(project,manage,confirm,model,modelSettings);composer.before(bar);
+    if(location.pathname.includes('/sessions')){model.hidden=true;modelSettings.textContent='生成模型';modelSettings.setAttribute('aria-label','编程流水线使用服务端冻结的角色模型');}
+    bar.append(project,manage,confirm,branch,model,modelSettings);composer.append(bar);
     const msg=node('div',undefined,'workspace-notice');msg.id='workspace-notice';msg.setAttribute('role','status');msg.hidden=true;bar.before(msg);
-    const button=node('button','>_','ghost terminal-toggle');button.id='toggle-terminal';button.type='button';button.setAttribute('aria-label','打开终端');button.setAttribute('aria-expanded','false');button.title='终端（Ctrl+`）';
+    const button=node('button','>_','ghost terminal-toggle');button.id='toggle-terminal';button.type='button';button.setAttribute('aria-label','打开终端');button.setAttribute('aria-expanded','false');
     const actions=document.querySelector('.as-links,.head-actions');actions?.prepend(button);
     const panel=node('section',undefined,'workspace-terminal');panel.id='workspace-terminal';panel.hidden=true;panel.setAttribute('aria-label','终端');
     const handle=node('div',undefined,'terminal-resize');handle.setAttribute('role','separator');handle.setAttribute('aria-label','调整终端高度');
@@ -116,8 +126,23 @@
     const close=node('button','×','ghost');close.type='button';close.setAttribute('aria-label','收起终端');head.append(stop,close);
     const screen=node('div');screen.id='terminal-screen';panel.append(handle,head,screen);composer.parentElement.append(panel);
     button.addEventListener('click',()=>{if(!panel.hidden)terminalVisible(false);else openTerminal();});close.addEventListener('click',()=>terminalVisible(false));
-    stop.addEventListener('click',async()=>{try{if(state.terminalId)await request('DELETE','/v1/terminals/'+encodeURIComponent(state.terminalId));state.terminalId=null;clearTimeout(state.poll);terminalVisible(false);}catch(e){notice(e.message);}});
-    project.addEventListener('change',()=>savePreference('selected_project_id',project.value));
+    stop.addEventListener('click',async()=>{try{if(state.terminalId)await request('DELETE','/v1/terminals/'+encodeURIComponent(state.terminalId));state.terminalId=null;state.terminalWorktreeId=null;clearTimeout(state.poll);terminalVisible(false);}catch(e){notice(e.message);}});
+    project.addEventListener('change',()=>{savePreference('selected_project_id',project.value);loadBranches();});
+    branch.addEventListener('change',()=>{
+      const bench=window.VeriloWorkbench||(window.VeriloWorkbench={});
+      bench.worktreeId=branch.value||null;bench.projectId=project.value||null;
+      window.dispatchEvent(new CustomEvent('verilo:worktree',{detail:{id:bench.worktreeId}}));
+    });
+    async function loadBranches(){
+      branch.replaceChildren();const empty=node('option','主目录');empty.value='';branch.append(empty);
+      if(!project.value)return;
+      try{
+        const trees=await request('GET','/v1/workspace/worktrees?project_id='+encodeURIComponent(project.value));
+        for(const item of trees.items||[]){const o=node('option',item.branch);o.value=item.id;branch.append(o);}
+        if(window.VeriloWorkbench?.worktreeId)branch.value=window.VeriloWorkbench.worktreeId;
+      }catch(e){notice(e.message);}
+    }
+    window.addEventListener('verilo:worktree',()=>{if(!$('workspace-terminal').hidden)openTerminal();else if(branch.value!==(window.VeriloWorkbench?.worktreeId||''))branch.value=window.VeriloWorkbench?.worktreeId||'';});
     model.addEventListener('change',()=>savePreference('preferred_model',model.value));
     confirm.addEventListener('change',()=>savePreference('confirmation_mode',confirm.value));
     handle.addEventListener('pointerdown',event=>{handle.setPointerCapture(event.pointerId);const y=event.clientY,h=panel.offsetHeight;const move=e=>panel.style.height=Math.max(160,Math.min(innerHeight*0.7,h+y-e.clientY))+'px';handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',()=>handle.removeEventListener('pointermove',move),{once:true});});
@@ -152,7 +177,7 @@
       if(position!==null)input.setSelectionRange(position,position);
       if(consume){e.preventDefault();e.stopPropagation();}
     },true);
-    reload().catch(e=>notice(e.message));
+    reload().then(loadBranches).catch(e=>notice(e.message));
     request('GET','/v1/product/entries/hooks').then(d=>{state.hooks=d.items||[];}).catch(()=>{});
     window.addEventListener('verilo:event',event=>{
       const {type,data}=event.detail;const completed=type==='task'&&data.status==='completed'?'task.completed':type==='message.updated'&&data.role==='assistant'&&data.status==='done'?'reply.completed':null;

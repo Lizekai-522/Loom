@@ -5,7 +5,7 @@ import logging
 
 from typing import Literal
 
-from fastapi import Header, HTTPException
+from fastapi import Header, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
 from .auth import is_human
@@ -90,6 +90,14 @@ def install_workspace_api(app, store, *, Reader, Writer, executor_config=None,
     @app.get('/v1/workspace/projects/{project_id}')
     def project(project_id: str, identity: Reader):
         return workspace.project(identity, project_id)
+
+    @app.get('/v1/workspace/projects/{project_id}/files')
+    def project_files(project_id: str, identity: Reader, q: str = Query('', max_length=80)):
+        return dict(items=workspace.list_files(identity, project_id, q))
+
+    @app.get('/v1/workspace/projects/{project_id}/file')
+    def project_file(project_id: str, identity: Reader, rel: str = Query(min_length=1, max_length=240)):
+        return workspace.read_project_file(identity, project_id, rel)
 
     @app.patch('/v1/workspace/projects/{project_id}')
     def rename_project(project_id: str, body: ProjectBody, identity: Writer):
