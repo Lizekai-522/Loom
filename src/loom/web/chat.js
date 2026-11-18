@@ -603,7 +603,7 @@
     $("open-sidebar").addEventListener("click", openSidebar);
     $("close-sidebar").addEventListener("click", closeSidebar);
     $("scrim").addEventListener("click", closeSidebar);
-    $("logout").addEventListener("click", async () => {
+    $("logout")?.addEventListener("click", async () => {
       try { await fetch("/preview/logout", {method: "POST", headers: {"Content-Type": "application/json"}, body: "{}"}); } catch {}
       location.assign("/preview/login");
     });
@@ -614,8 +614,10 @@
       notice(explain(error), true); return;
     }
     const preview = state.me.authentication === "public-session";
-    $("identity").textContent = (preview ? "公网体验 · " : "本机 · ") + state.me.subject_id;
-    $("logout").hidden = !preview;
+    if ($("identity")) {
+      $("identity").textContent = (preview ? "公网体验 · " : "本机 · ") + state.me.subject_id;
+      if ($("logout")) $("logout").hidden = !preview;
+    }
     if (!state.me.capabilities.includes("plan.approve")) {
       state.canWrite = false;
       $("prompt").disabled = true; $("send").disabled = true;

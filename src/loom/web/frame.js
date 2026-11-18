@@ -22,9 +22,23 @@
       if (event.key === "Escape" && !menu.hidden) { setOpen(false); trigger.focus(); }
     });
   }
-  $("collapse-sidebar")?.addEventListener("click", () => {
-    document.querySelector(".app-frame")?.classList.toggle("is-rail");
-  });
+  const railButton = $("collapse-sidebar");
+  if (railButton && !railButton.dataset.railBound) {
+    railButton.dataset.railBound = "1";
+    const applyRail = on => {
+      document.querySelector(".app-frame")?.classList.toggle("is-rail", on);
+      document.querySelector(".verilo-sidebar")?.classList.toggle("collapsed", on);
+      $("shell")?.classList.toggle("rail", on);
+      railButton.setAttribute("aria-pressed", String(on));
+    };
+    try { if (localStorage.getItem("verilo.sidebar.collapsed") === "1") applyRail(true); } catch { /* keep the expanded sidebar */ }
+    railButton.addEventListener("click", () => {
+      const on = !railButton.getAttribute("aria-pressed") || railButton.getAttribute("aria-pressed") === "false";
+      applyRail(on);
+      try { localStorage.setItem("verilo.sidebar.collapsed", on ? "1" : "0"); } catch { /* the layout still toggles */ }
+    });
+  }
+  if (trigger) trigger.dataset.accountBound = "1";
   const usd = micro => "$" + (Number(micro || 0) / 1e6).toFixed(4);
   async function read(path) {
     const response = await fetch(path, {headers: {Accept: "application/json", "X-Loom-Console": "local"}, credentials: "same-origin", cache: "no-store"});

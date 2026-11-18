@@ -126,7 +126,7 @@
     const name=node('span');name.id='terminal-project';head.append(name);
     const stop=node('button','结束终端','ghost');stop.type='button';
     const close=node('button','×','ghost');close.type='button';close.setAttribute('aria-label','收起终端');head.append(stop,close);
-    const screen=node('div');screen.id='terminal-screen';panel.append(handle,head,screen);composer.parentElement.append(panel);
+    const screen=node('div');screen.id='terminal-screen';panel.append(handle,head,screen);(composer.closest('.as-main,.main')||composer.parentElement).append(panel);
     button.addEventListener('click',()=>{if(!panel.hidden)terminalVisible(false);else openTerminal();});close.addEventListener('click',()=>terminalVisible(false));
     stop.addEventListener('click',async()=>{try{if(state.terminalId)await request('DELETE','/v1/terminals/'+encodeURIComponent(state.terminalId));state.terminalId=null;state.terminalWorktreeId=null;clearTimeout(state.poll);terminalVisible(false);}catch(e){notice(e.message);}});
     project.addEventListener('change',()=>{savePreference('selected_project_id',project.value);loadBranches();});

@@ -176,7 +176,14 @@
     const button = $("interrupt");
     if (button) button.hidden = !live;
     const send = $("send");
-    if (send && state.canWrite) send.textContent = live ? "发送并打断" : "发送";
+    if (send && state.canWrite) {
+      const label = live ? "发送并打断" : "发送";
+      const face = send.querySelector(".send-label");
+      if (face) face.textContent = label;
+      else send.textContent = label;
+      send.classList.toggle("is-interrupt", live);
+      send.setAttribute("aria-label", label);
+    }
   }
   function rerenderLinked(field, id) {
     for (const m of state.messages.values()) if (m.meta && m.meta[field] === id) renderMessage(m.id);
