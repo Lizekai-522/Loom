@@ -456,6 +456,72 @@ def test_executor_builds_the_assistant_with_private_model_and_search_secrets(tmp
     assert dict(load_project_secrets(secrets, allowed_names={'DEEPSEEK_API_KEY'})) == {'DEEPSEEK_API_KEY': 'k' * 32}
 
 
+def test_followups_and_worker_cards_share_one_router_turn(env):
+    thread, _ = say(env, '先做这个', key='follow-1')
+    env['data'].add_message('a', thread['id'], role='user', kind='text', body='再补一句', status='queued',
+                            meta={'trigger': 'followup'}, author='subject:alice')
+    env['data'].create_task('a', thread['id'], kind='coding', title='写一个加法', brief='加一', origin='user',
+                            status='waiting_approval', actor='assistant')
+    model = Model(['好的，一起处理。'])
+    assert asyncio.run(runtime(env, model).chat_once()) == 'replied'
+    assert len(model.requests) == 1
+    user = model.requests[0]['messages'][-1]['content']
+    system = model.requests[0]['messages'][0]['content']
+    assert '先做这个' in user and '再补一句' in user
+    assert '[waiting]' in system and '需要: approve' in system
+    follow = next(item for item in env['data'].messages('a', thread['id']) if item['text'] == '再补一句')
+    assert follow['status'] == 'answered' and follow['meta']['batched_into']
+
+
+def test_project_instructions_enter_router_context(env):
+    from pathlib import Path
+    workspace = env['app'].state.workspace
+    identity = type('I', (), {'tenant_id': 'a', 'subject_id': 'alice'})()
+    project = workspace.add_project(identity, '说明')
+    Path(project['path'], 'AGENTS.md').write_text('UNIQUE_AGENT_RULE keep the suite green\n', encoding='utf-8')
+    Path(project['path'], 'CLAUDE.md').write_text('UNIQUE_CLAUDE_RULE too\n', encoding='utf-8')
+    thread = env['data'].thread_for('a', 'alice')
+    message = env['data'].add_message('a', thread['id'], role='user', kind='text', body='看说明', status='queued',
+                                      meta={'project_path': project['path'], 'project_name': project['name']},
+                                      author='subject:alice')
+    system = runtime(env, Model(['好']))._context('a', thread['id'], message)[0]['content']
+    assert 'UNIQUE_AGENT_RULE' in system and 'UNIQUE_CLAUDE_RULE' in system
+    assert '不授予文件或终端权限' in system
+
+
+def test_plan_mode_does_not_open_a_coding_approval(env):
+    actions = [dict(type='coding', title='写程序', prompt='读取JSON加一')]
+    thread, response = say(env, '先给计划', key='plan-mode')
+    assert response['meta']['confirmation_mode'] == 'ask'
+    queued = env['data'].message('a', response['id'])
+    env['data'].update_message('a', queued['id'], meta={'confirmation_mode': 'plan'})
+    model = Model(['计划如下。\n' + ACTION_MARK + json.dumps(actions, ensure_ascii=False)])
+    assert asyncio.run(runtime(env, model).chat_once()) == 'replied'
+    assert env['data'].approvals('a') == []
+    assert '计划模式' in model.requests[0]['messages'][0]['content']
+    assert '未创建后台任务' in env['data'].messages('a', thread['id'])[-1]['text']
+
+
+def test_patrol_does_not_resume_after_the_daily_budget_changes(env):
+    data = env['data']
+    thread = data.thread_for('a', 'alice')
+    granted = env['client'].post('/v1/assistant/mandates', headers=local('mandate-policy'),
+                                 json={'scopes': ['resume'], 'daily_budget_microusd': 200000, 'days': 3})
+    assert granted.status_code == 201, granted.text
+    data.create_task('a', thread['id'], kind='research', title='甲', brief='问题', origin='user', status='blocked',
+                     actor='assistant', state={'blocked': 'SEARCH_TRANSPORT_ERROR', 'resumes': 0, 'step': 'search'})
+    rt = runtime(env, Model([]))
+    assert rt.patrol('a', thread, force=True)['resumed'] == 1
+    assert data.active_mandate('a', 'resume', 'alice')['policy_digest']
+    changed = env['client'].put('/v1/assistant/settings', headers=local('budget-tighten'),
+                                json={'daily_budget_microusd': 1000})
+    assert changed.status_code == 200, changed.text
+    data.create_task('a', thread['id'], kind='research', title='乙', brief='问题', origin='user', status='blocked',
+                     actor='assistant', state={'blocked': 'NO_SEARCH_RESULTS', 'resumes': 0, 'step': 'search'})
+    second = rt.patrol('a', thread, force=True)
+    assert second['resumed'] == 0 and second['held'] == 1
+
+
 def test_unreadable_search_configuration_blocks_with_a_reason_instead_of_spinning(env):
     task = research_task(env)
     def broken():

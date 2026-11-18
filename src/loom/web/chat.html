@@ -15,6 +15,7 @@
   <script src="/console/assets/vendor-xterm.js" defer></script>
   <script src="/console/assets/vendor-xterm-fit.js" defer></script>
   <script src="/console/assets/workspace-ui.js" defer></script>
+  <script src="/console/assets/harness-ui.js" defer></script>
 </head>
 <body>
   <div class="shell" id="shell">
@@ -46,24 +47,21 @@
       <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
       <section class="stream" id="stream" aria-live="polite">
         <div class="welcome" id="welcome">
-          <h2>今天要构建什么？</h2>
-          <p class="muted">用一句话描述程序。Loom 自动分析需求和设计测试；需要确认实现计划时，会在会话中提示你一次批准，随后编写代码并在隔离环境验收。预算不足、调用结果未知或验收失败时会暂停。</p>
           <div class="examples" id="examples"></div>
-          <p class="scope">当前自动会话支持：Python 标准库程序，从标准输入读取 JSON、向标准输出写 JSON。验收用例由测试角色生成并留出，不等同于独立双模型复核。</p>
         </div>
         <div id="conversation" hidden></div>
       </section>
       <div class="examples-box" id="examples-box" hidden>
-        <label for="examples-input">验收样例（可选，最多 10 个；实现者看不到，用来独立检验结果）</label>
-        <textarea id="examples-input" rows="3" maxlength="20000" spellcheck="false" placeholder='每行一个：输入 JSON => 期望输出 JSON&#10;{"value": 1} => {"answer": 2}'></textarea>
+        <label for="examples-input">验收样例</label>
+        <textarea id="examples-input" rows="3" maxlength="20000" spellcheck="false" aria-label="验收样例"></textarea>
       </div>
       <div id="attachments" class="chat-attachments" hidden aria-label="已添加的文件"></div>
       <input id="file-input" type="file" multiple hidden accept=".txt,.md,.csv,.json,.jsonl,.py,.js,.ts,.tsx,.jsx,.html,.css,.yaml,.yml,.xml,.log,.sh,.ps1,.toml,.ini,.c,.h,.cpp,.hpp,.java,.go,.rs,.sql,.rb,.php,.swift,.kt,.vue,.svelte,.scala,.cs,.bat">
       <form class="composer" id="composer">
-        <button id="attach" class="ghost" type="button" aria-label="添加文本或代码文件" title="添加文件">＋</button>
-        <button id="toggle-examples" class="ghost examples-toggle" type="button" aria-expanded="false" aria-controls="examples-box" title="添加你自己的验收样例">＋ 样例</button>
+        <button id="attach" class="ghost" type="button" aria-label="添加文本或代码文件">＋</button>
+        <button id="toggle-examples" class="ghost examples-toggle" type="button" aria-expanded="false" aria-controls="examples-box">＋ 样例</button>
         <label class="sr-only" for="prompt">描述你的需求</label>
-        <textarea id="prompt" rows="1" maxlength="4000" placeholder="描述你想要的程序…" title="Enter 发送，Shift+Enter 换行" autocomplete="off"></textarea>
+        <textarea id="prompt" rows="1" maxlength="4000" aria-label="需求" autocomplete="off"></textarea>
         <button id="send" class="send" type="submit" aria-label="发送">发送</button>
       </form>
     </main>

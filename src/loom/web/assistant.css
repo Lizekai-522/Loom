@@ -76,10 +76,35 @@
 
 /* Verilo workspace: the existing task and approval controls retain their handlers. */
 :root{color-scheme:light;--bg:#fff;--surface:#fff;--sunken:#f7f9f7;--ink:#1b2520;--muted:#65716a;--faint:#89958d;--line:#e6ebe7;--line-strong:#d3ddd5;--accent:#245b35;--accent-ink:#fff;--accent-soft:#eaf2ec;--ok:#245b35;--ok-soft:#edf5ef;--code:#f6f8f6}
-.as-shell{grid-template-columns:220px minmax(0,1fr)}
-.as-shell.panel-open{grid-template-columns:220px minmax(0,1fr) 320px}
-.as-shell.panel-open[data-panel-size="0"]{grid-template-columns:220px minmax(0,1fr) 260px}
-.as-shell.panel-open[data-panel-size="2"]{grid-template-columns:220px minmax(0,1fr) 400px}
+.as-shell{grid-template-columns:280px minmax(0,1fr)}
+.as-shell.panel-open{grid-template-columns:280px minmax(0,1fr) minmax(320px,42vw)}
+.as-shell.panel-open[data-panel-size="0"]{grid-template-columns:280px minmax(0,1fr) minmax(260px,34vw)}
+.as-shell.panel-open[data-panel-size="2"]{grid-template-columns:280px minmax(0,1fr) minmax(400px,48vw)}
+.as-shell.rail{grid-template-columns:56px minmax(0,1fr)}
+.as-shell.rail.panel-open,.as-shell.rail.panel-open[data-panel-size="0"],.as-shell.rail.panel-open[data-panel-size="2"]{grid-template-columns:56px minmax(0,1fr) minmax(320px,42vw)}
+.rightbar{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--surface);border-left:1px solid var(--line);overflow:hidden}
+.rightbar[hidden]{display:none!important}
+.rightbar .as-panel{border-left:0;min-height:0}
+.verilo-sidebar.collapsed{padding:12px 6px;gap:10px}
+.verilo-sidebar.collapsed .verilo-brand span,.verilo-sidebar.collapsed .verilo-new span,.verilo-sidebar.collapsed .verilo-search,.verilo-sidebar.collapsed #session-rail,.verilo-sidebar.collapsed .verilo-sidebar-footer a{display:none}
+.verilo-sidebar.collapsed .verilo-nav a,.verilo-sidebar.collapsed .verilo-nav button{justify-content:center;font-size:0;padding:8px 0}
+.verilo-sidebar.collapsed .verilo-nav span{font-size:16px}
+.verilo-search input{width:100%;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 8px;font:inherit}
+#open-skills{width:100%;text-align:left;border:0;background:transparent;color:var(--ink);border-radius:7px;padding:8px 12px;font:inherit}
+#open-skills:hover{background:var(--accent-soft);color:var(--accent)}
+#session-rail{display:flex;flex-direction:column;gap:2px;min-height:0;overflow:auto}
+.session-row{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:8px 10px;border:0;border-radius:8px;background:transparent;color:var(--ink);text-align:left;font:inherit;cursor:pointer}
+.session-row:hover{background:var(--accent-soft);color:var(--accent)}
+.session-row small,.session-empty{color:var(--muted);font-size:11px}
+.verilo-sidebar-footer button{border:0;background:transparent;color:var(--muted);font:inherit;cursor:pointer}
+.as-composer{display:flex;flex-wrap:wrap;align-items:flex-end}
+.as-composer textarea{flex:1;min-width:0}
+.command-palette{position:fixed;inset:12vh 0 auto;margin:0 auto;width:min(520px,calc(100% - 32px));background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 16px 40px rgb(20 40 24 / .16);z-index:40;padding:8px}
+.command-palette input,.suggest-pop button,.command-palette button{width:100%;text-align:left;border:0;background:transparent;color:var(--ink);font:inherit;padding:8px 10px;border-radius:8px}
+.command-palette button:hover,.suggest-pop button:hover{background:var(--accent-soft);color:var(--accent)}
+.suggest-pop{position:absolute;left:12px;right:12px;bottom:100%;margin-bottom:6px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgb(20 40 24 / .12);max-height:220px;overflow:auto;z-index:5}
+.mention-chips{display:flex;flex-wrap:wrap;gap:6px;max-width:780px;width:calc(100% - 56px);margin:0 auto 4px}
+.mention-chip{border:1px solid var(--line);background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:2px 8px;font:inherit;font-size:12px}
 .verilo-sidebar{display:flex;flex-direction:column;gap:20px;min-width:0;padding:25px 14px 16px;background:#fafbfa;border-right:1px solid var(--line)}
 .verilo-brand{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:0 12px;color:var(--accent);text-decoration:none;font-size:14px;font-weight:650;letter-spacing:.19em}
 .verilo-brand img{display:block;width:100px;height:34px;object-fit:contain}
@@ -118,16 +143,17 @@ body.file-drag .as-composer{border-color:var(--accent);box-shadow:0 0 0 2px var(
 .bento{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
 .bento article{border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px;background:var(--sunken)}
 .bento strong{display:block;font-size:13px}
-.inspector{border-top:1px solid var(--line);padding:8px 16px 12px;max-height:42vh;overflow:auto}
+.inspector{border-top:0;padding:8px 16px 12px;max-height:none;overflow:auto;flex:1}
 .inspector .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
 .inspector input,.inspector select,.inspector textarea{border:1px solid var(--line);background:var(--surface);border-radius:var(--radius-sm);padding:6px 8px}
 .inspector pre{white-space:pre-wrap;font:12px/1.45 ui-monospace,monospace;background:var(--code);padding:8px;border-radius:var(--radius-sm)}
 .inspector img{max-width:100%;border:1px solid var(--line)}
 #interrupt{border:1px solid var(--line);background:transparent;border-radius:var(--radius-sm);padding:8px 12px}
 @media(max-width:1000px){
-  .as-shell,.as-shell.panel-open,.as-shell.panel-open[data-panel-size="0"],.as-shell.panel-open[data-panel-size="2"]{grid-template-columns:200px minmax(0,1fr)}
-  .as-panel{position:fixed;inset:56px 0 0 auto;width:min(360px,100vw);transform:translateX(100%);visibility:hidden;z-index:20}
-  .as-panel.open{transform:none;visibility:visible}
+  .as-shell,.as-shell.panel-open,.as-shell.panel-open[data-panel-size="0"],.as-shell.panel-open[data-panel-size="2"]{grid-template-columns:220px minmax(0,1fr)}
+  .as-shell.rail,.as-shell.rail.panel-open,.as-shell.rail.panel-open[data-panel-size="0"],.as-shell.rail.panel-open[data-panel-size="2"]{grid-template-columns:56px minmax(0,1fr)}
+  .rightbar{position:fixed;inset:56px 0 0 auto;width:min(420px,100vw);z-index:24;box-shadow:-8px 0 24px rgb(0 0 0 / .12)}
+  .as-panel{position:static;width:auto;transform:none;visibility:visible;inset:auto}
   .verilo-panel-actions #panel-narrow,.verilo-panel-actions #panel-widen{display:none}
   .only-mobile{display:inline-flex!important}
 }
@@ -139,7 +165,7 @@ body.file-drag .as-composer{border-color:var(--accent);box-shadow:0 0 0 2px var(
   .verilo-new{padding:6px 10px;font-size:12px;white-space:nowrap}
   .verilo-nav{flex-direction:row;overflow:auto;gap:1px}
   .verilo-nav a,.verilo-nav button{width:auto;min-height:36px;padding:6px 8px;white-space:nowrap;font-size:12px}
-  .verilo-nav span,.verilo-sidebar-footer{display:none}
+  .verilo-nav span,.verilo-sidebar-footer,#session-rail,.verilo-search,#open-skills{display:none}
   .as-head{padding:8px 14px;min-height:48px}
   .as-links a.settings-link{display:inline}
   .as-status{min-width:0;overflow:hidden}

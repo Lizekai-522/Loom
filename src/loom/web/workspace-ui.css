@@ -1,4 +1,6 @@
 .workspace-toolbar{display:flex;align-items:center;gap:8px;max-width:780px;width:calc(100% - 56px);margin:4px auto 6px;flex-wrap:wrap;font-size:12px}
+.composer,.as-composer{flex-wrap:wrap}
+.composer .workspace-toolbar,.as-composer .workspace-toolbar{flex:1 0 100%;width:100%;max-width:none;margin:6px 0 0;padding-top:6px;border-top:1px solid var(--line)}
 .workspace-toolbar select{width:auto;max-width:200px;border:0;background:var(--sunken);color:var(--ink);border-radius:6px;padding:7px 8px;font:inherit}
 .workspace-toolbar #workspace-model{margin-left:auto}.workspace-toolbar a{color:var(--muted);text-decoration:none;padding:4px}
 .workspace-notice{max-width:780px;width:calc(100% - 56px);margin:2px auto;color:var(--warn);font-size:12px}

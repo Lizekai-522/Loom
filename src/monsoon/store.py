@@ -63,6 +63,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ms_todos_ref ON ms_todos(tenant,ref) WHERE ref
 CREATE TABLE IF NOT EXISTS ms_mandates (
  tenant TEXT NOT NULL, id TEXT NOT NULL, subject TEXT NOT NULL, scopes TEXT NOT NULL,
  daily_budget_microusd INTEGER NOT NULL, expires_at REAL NOT NULL, created_at REAL NOT NULL, revoked_at REAL,
+ policy_digest TEXT,
  PRIMARY KEY(tenant,id));
 CREATE TABLE IF NOT EXISTS ms_approvals (
  tenant TEXT NOT NULL, id TEXT NOT NULL, thread_id TEXT NOT NULL, action TEXT NOT NULL, title TEXT NOT NULL,
@@ -112,6 +113,9 @@ class AssistantStore:
         if initialize:
             with store.connect() as db:
                 db.executescript(SCHEMA)
+                columns = {row['name'] for row in db.execute('PRAGMA table_info(ms_mandates)')}
+                if 'policy_digest' not in columns:
+                    db.execute('ALTER TABLE ms_mandates ADD COLUMN policy_digest TEXT')
 
     # ----- audit + stream ---------------------------------------------------
     def _audit(self, db, tenant, record_id, record, actor):
@@ -456,10 +460,12 @@ class AssistantStore:
         with self.store.transaction() as db:
             now = self.store.now(db)
             mandate = dict(id=new_id('mandate'), subject=subject, scopes=sorted(scopes), daily_budget_microusd=daily_budget_microusd,
-                           expires_at=now + days * 86400, created_at=now, revoked_at=None)
-            db.execute('INSERT INTO ms_mandates VALUES(?,?,?,?,?,?,?,?)',
+                           expires_at=now + days * 86400, created_at=now, revoked_at=None, policy_digest=None)
+            db.execute('''INSERT INTO ms_mandates
+                (tenant,id,subject,scopes,daily_budget_microusd,expires_at,created_at,revoked_at,policy_digest)
+                VALUES(?,?,?,?,?,?,?,?,?)''',
                        (tenant, mandate['id'], subject, canonical(mandate['scopes']), daily_budget_microusd,
-                        mandate['expires_at'], now, None))
+                        mandate['expires_at'], now, None, None))
             self._audit(db, tenant, mandate['id'], dict(op='mandate.granted', **{k: v for k, v in mandate.items() if k != 'id'}),
                         'subject:' + subject)
             return mandate
@@ -487,6 +493,19 @@ class AssistantStore:
     def mandates(self, tenant):
         with self.store.connect() as db:
             return [self._mandate(r) for r in db.execute('SELECT * FROM ms_mandates WHERE tenant=? ORDER BY created_at DESC', (tenant,))]
+
+    def set_mandate_policy_digest(self, tenant, mandate_id, policy_digest):
+        if type(policy_digest) is not str or len(policy_digest) != 64 or any(c not in '0123456789abcdef' for c in policy_digest):
+            raise InvalidInput('invalid policy digest')
+        with self.store.transaction() as db:
+            row = db.execute('SELECT policy_digest FROM ms_mandates WHERE tenant=? AND id=?', (tenant, mandate_id)).fetchone()
+            if row is None:
+                raise NotFound('mandate not found')
+            if row['policy_digest']:
+                return row['policy_digest']
+            db.execute('UPDATE ms_mandates SET policy_digest=? WHERE tenant=? AND id=? AND policy_digest IS NULL',
+                       (policy_digest, tenant, mandate_id))
+            return policy_digest
 
     def active_mandate(self, tenant, scope, subject):
         """The signer's own active mandate: it never covers another person's thread."""

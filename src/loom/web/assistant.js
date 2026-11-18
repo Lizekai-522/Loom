@@ -182,11 +182,18 @@
     for (const m of state.messages.values()) if (m.meta && m.meta[field] === id) renderMessage(m.id);
   }
 
+  function syncRightbar() {
+    const bar = $("rightbar");
+    if (!bar) return;
+    const open = ($("panel") && !$("panel").hidden) || ($("inspector") && !$("inspector").hidden);
+    bar.hidden = !open;
+    $("shell").classList.toggle("panel-open", open);
+  }
   function showPanel(open) {
     $("panel").hidden = !open;
     $("panel").classList.toggle("open", open);
-    $("shell").classList.toggle("panel-open", open);
     $("toggle-panel").setAttribute("aria-expanded", String(open));
+    syncRightbar();
   }
   function noticeRunning(task, previous) {
     if (task.status === "running" && previous?.status !== "running") showPanel(true);
@@ -251,7 +258,13 @@
     setTimeout(listen, state.retry);
   }
   function setStatusLink(connected) {
-    if (!connected) { $("status").className = "as-status offline"; $("status-text").textContent = "连接中断，正在重连…"; }
+    const el = $("status");
+    if (!el) return;
+    el.className = connected ? "as-status" : "as-status offline";
+    const text = $("status-text");
+    if (!text) return;
+    if (!connected) text.textContent = "连接中断，正在重连…";
+    else if (text.textContent === "连接中断，正在重连…" || text.textContent === "连接中…") text.textContent = "在线";
   }
 
   // ---------- panel ----------
@@ -274,14 +287,14 @@
         body.append(card);
       }
     } else if (state.tab === "approvals") {
-      if (!pending.length) empty("没有等你批准的事项");
+      const waitingCode = tasks.filter(t => t.kind === "coding" && t.status === "waiting_approval");
+      if (!pending.length && !waitingCode.length) empty("没有等你批准的事项");
       for (const a of pending) {
         const card = el("div", "as-item"); card.append(el("h4", null, a.title), el("p", null, a.detail));
         const row = el("div", "row");
         if (state.canApprove) row.append(button("批准", "primary", () => decide(a, "approved")), button("拒绝", "ghost", () => decide(a, "rejected")));
         card.append(row); body.append(card);
       }
-      const waitingCode = tasks.filter(t => t.kind === "coding" && t.status === "waiting_approval");
       for (const t of waitingCode) {
         const card = taskItem(t); const a = el("a", "primary", "去批准实现计划");
         a.href = "/console/sessions#s=" + encodeURIComponent(t.state.session_id || ""); card.append(a); body.append(card);
@@ -305,7 +318,8 @@
       form.append(input, label, add);
       form.addEventListener("submit", async (event) => {
         event.preventDefault(); if (!input.value.trim()) return;
-        await act("POST", "/v1/assistant/todos", {text: input.value.trim(), research: research.checked}); input.value = "";
+        const ok = await act("POST", "/v1/assistant/todos", {text: input.value.trim(), research: research.checked});
+        if (ok !== false) input.value = "";
       });
       body.append(form);
       const items = [...state.todos.values()].filter(t => ["open", "in_progress"].includes(t.status));
@@ -498,7 +512,8 @@
     try {
       await request(method, path, body, key()); notice("");
       await refreshSide();
-    } catch (error) { notice(explain(error), true); }
+      return true;
+    } catch (error) { notice(explain(error), true); return false; }
   }
   async function decide(approval, decision) {
     try {
@@ -594,6 +609,7 @@
     try {
       const m = await request("POST", `/v1/assistant/threads/${encodeURIComponent(state.thread.id)}/messages`, payload, state.pendingMessage.key);
       upsertMessage(m); $("prompt").value = ""; state.attachments = []; state.pendingMessage = null;
+      window.VeriloHarness?.onSent?.();
       renderAttachments(); autoGrow(); notice("");
     } catch (error) { notice(explain(error), true); }
     finally { $("send").disabled = !state.canWrite; }

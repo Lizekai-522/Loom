@@ -225,7 +225,7 @@ def install_product_settings_api(app, store, *, Reader, Writer, Key, executor_co
             project_id = preferences.get('selected_project_id')
             if project_id:
                 project = workspace.project(identity, project_id)
-                meta.update(project_id=project_id, project_name=project['name'])
+                meta.update(project_id=project_id, project_name=project['name'], project_path=project.get('path'))
 
         def apply(db):
             return assistant.add_message(identity.tenant_id, thread['id'], role='user', kind='text', body=text,

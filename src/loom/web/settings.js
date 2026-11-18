@@ -477,7 +477,16 @@
     renderSandbox(o);
     renderHostTests();
     renderExecutor(o);
+    focusHashedSection();
   }
+  const HASH_ALIAS = {models: "section-model", model: "section-model"};
+  function focusHashedSection() {
+    const raw = (location.hash || "").replace(/^#/, "");
+    const id = HASH_ALIAS[raw] || raw;
+    const node = id && document.getElementById(id);
+    if (node) node.scrollIntoView();
+  }
+  window.addEventListener("hashchange", focusHashedSection);
 
   $("restart-now").addEventListener("click", () => doRestart("executor"));
   load();

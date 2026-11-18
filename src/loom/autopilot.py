@@ -478,6 +478,10 @@ class SessionService:
             return None
 
     def advance(self, tenant, session_id):
+        try:
+            self.materialize_checkout(tenant, session_id)
+        except (LoomError, OSError):
+            pass
         with self.store.connect() as db:
             record, links = self._session_row(db, tenant, session_id)
             controls = self._control_events(db, tenant, session_id, list(links.values()))
@@ -798,6 +802,45 @@ class SessionService:
                     reviewed += 1
                     deviations += 1
         return reviewed, deviations
+
+    def materialize_checkout(self, tenant, session_id):
+        """Copy the latest developer or fixer main.py into the session worktree, if one was provisioned."""
+        source = self._latest_program_source(tenant, session_id)
+        if not source:
+            return None
+        from .workspace import Workspace
+        return Workspace(self.store).write_program(tenant, session_id, source)
+
+    def _latest_program_source(self, tenant, session_id):
+        try:
+            with self.store.connect() as db:
+                _, links = self._session_row(db, tenant, session_id)
+        except LoomError:
+            return None
+        source = None
+        seen = set()
+        for name in ('build', 'spec'):
+            run_id = links.get(name)
+            if not run_id or run_id in seen:
+                continue
+            seen.add(run_id)
+            try:
+                events = self.store.events(tenant, run_id)
+            except LoomError:
+                continue
+            found = None
+            for event in events:
+                payload = event.get('payload') or {}
+                if event.get('type') == 'execution.candidate' and isinstance(payload.get('source'), str):
+                    found = payload['source']
+                output = payload.get('output') if event.get('type') == 'task.output_submitted' else None
+                if isinstance(output, dict) and isinstance(output.get('source'), str):
+                    found = output['source']
+            if found:
+                source = found
+                if name == 'build':
+                    return source
+        return source
 
     def owner(self, tenant, session_id):
         with self.store.connect() as db:

@@ -5,6 +5,7 @@ a current frame and a target selected by clicking that frame. A global emergency
 hotkey revokes the grant even when the browser has lost keyboard focus.
 """
 import ctypes
+import io
 import os
 import secrets
 import struct
@@ -57,22 +58,41 @@ KEYS = {'enter': (0x0D,), 'tab': (0x09,), 'escape': (0x1B,), 'backspace': (0x08,
         'ctrl+a': (0x11, 0x41), 'ctrl+c': (0x11, 0x43), 'ctrl+v': (0x11, 0x56), 'ctrl+z': (0x11, 0x5A)}
 
 
-def png_rgb(width, height, bgra):
-    """Encode native top-down BGRA without adding an imaging dependency."""
-    if len(bgra) != width * height * 4:
-        raise ControlError('SCREEN_FRAME_INVALID')
+def _png_chunk(kind, data):
+    return struct.pack('!I', len(data)) + kind + data + struct.pack('!I', zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+
+def _png_rgb_zlib(width, height, bgra):
+    """Pure-Python PNG. One zlib pass over the filtered scanlines."""
     rgb = bytearray(width * height * 3)
     rgb[0::3], rgb[1::3], rgb[2::3] = bgra[2::4], bgra[1::4], bgra[0::4]
-    compressor = zlib.compressobj(2)
-    parts = []
     stride = width * 3
+    raw = bytearray((stride + 1) * height)
     for row in range(height):
-        parts.append(compressor.compress(b'\0' + rgb[row * stride:(row + 1) * stride]))
-    parts.append(compressor.flush())
+        start = row * (stride + 1)
+        raw[start] = 0
+        raw[start + 1:start + 1 + stride] = rgb[row * stride:(row + 1) * stride]
+    compressed = zlib.compress(bytes(raw), 1)
+    return (b'\x89PNG\r\n\x1a\n'
+            + _png_chunk(b'IHDR', struct.pack('!2I5B', width, height, 8, 2, 0, 0, 0))
+            + _png_chunk(b'IDAT', compressed)
+            + _png_chunk(b'IEND', b''))
 
-    def chunk(kind, data):
-        return struct.pack('!I', len(data)) + kind + data + struct.pack('!I', zlib.crc32(kind + data) & 0xFFFFFFFF)
-    return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('!2I5B', width, height, 8, 2, 0, 0, 0)) + chunk(b'IDAT', b''.join(parts)) + chunk(b'IEND', b'')
+
+def png_rgb(width, height, bgra):
+    """Encode native top-down BGRA. Pillow when installed, otherwise one zlib pass."""
+    if len(bgra) != width * height * 4:
+        raise ControlError('SCREEN_FRAME_INVALID')
+    try:
+        from PIL import Image
+        image = Image.frombuffer('RGB', (width, height), bytes(bgra), 'raw', 'BGRX', 0, 1)
+        buf = io.BytesIO()
+        image.save(buf, format='PNG', compress_level=1)
+        return buf.getvalue()
+    except ImportError:
+        return _png_rgb_zlib(width, height, bgra)
+    except (OSError, ValueError):
+        return _png_rgb_zlib(width, height, bgra)
 
 
 class WindowsDesktop:

@@ -30,7 +30,9 @@ class MessageIn(Body):
     text: str = Field(min_length=1, max_length=8000)
     model_alias: str | None = Field(default=None, min_length=1, max_length=100)
     project_id: str | None = Field(default=None, min_length=1, max_length=100)
-    confirmation_mode: Literal['ask', 'read_only'] | None = None
+    confirmation_mode: Literal['ask', 'plan', 'read_only'] | None = None
+    mentions: list[str] = Field(default_factory=list, max_length=8)
+    linked_session_id: str | None = Field(default=None, pattern=r'^[A-Za-z0-9_-]{1,80}$')
     barge_in: bool = False
 
 
@@ -39,7 +41,7 @@ class InterruptIn(Body):
     followup_text: str | None = Field(default=None, min_length=1, max_length=8000)
     model_alias: str | None = Field(default=None, min_length=1, max_length=100)
     project_id: str | None = Field(default=None, min_length=1, max_length=100)
-    confirmation_mode: Literal['ask', 'read_only'] | None = None
+    confirmation_mode: Literal['ask', 'plan', 'read_only'] | None = None
 
 
 class TodoIn(Body):
@@ -141,11 +143,20 @@ def install(app, store, *, Tenant, Reader, Writer, Approver, Key, sessions):
             selected = project_id or preferences.get('selected_project_id')
             if selected:
                 project = workspace.project(identity, selected)
-                meta.update(project_id=selected, project_name=project['name'])
+                meta.update(project_id=selected, project_name=project['name'], project_path=project.get('path'))
             meta['confirmation_mode'] = confirmation_mode or preferences.get('confirmation_mode', 'ask')
         elif model_alias or project_id or confirmation_mode:
             raise InvalidInput('workspace is not configured')
         return meta
+
+    def attach_context(identity, meta, mentions, linked_session_id):
+        workspace = getattr(app.state, 'workspace', None)
+        if mentions:
+            if workspace is None or not meta.get('project_id'):
+                raise InvalidInput('file mentions require a selected project')
+            meta['mentions'] = workspace.read_mentions(identity, meta['project_id'], mentions)
+        if linked_session_id:
+            meta['linked_session_id'] = linked_session_id
 
     @app.get('/v1/assistant/thread')
     def my_thread(identity: Reader, limit: int = Query(50, ge=1, le=200)):
@@ -166,6 +177,7 @@ def install(app, store, *, Tenant, Reader, Writer, Approver, Key, sessions):
         def apply(db):
             meta = resolve_message_options(identity, model_alias=body.model_alias, project_id=body.project_id,
                                            confirmation_mode=body.confirmation_mode)
+            attach_context(identity, meta, body.mentions, body.linked_session_id)
             if body.barge_in:
                 interrupted = data.interrupt_streaming(
                     db, identity.tenant_id, thread_id, actor='subject:' + identity.subject_id, reason='barge_in')
@@ -332,6 +344,8 @@ def install(app, store, *, Tenant, Reader, Writer, Approver, Key, sessions):
         worktree = None
         workspace = getattr(app.state, 'workspace', None)
         project_id = payload.get('project_id')
+        if workspace is not None and not project_id:
+            project_id = workspace.preferences(identity).get('selected_project_id')
         if workspace is not None and project_id:
             try:
                 worktree = workspace.ensure_worktree(
